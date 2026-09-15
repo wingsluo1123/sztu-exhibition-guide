@@ -1,0 +1,59 @@
+# HarmonyOS Exhibition Hall Content - English
+
+content:
+  point_01:
+    intro: "Welcome to the SZTU HarmonyOS Exhibition Hall. I am your intelligent tour guide, AgiBot. Let me show you the innovative technology of Huawei's HarmonyOS."
+    detail: "HarmonyOS is Huawei's independently developed distributed operating system for the era of Internet of Everything. It breaks the boundaries of traditional operating systems and achieves revolutionary breakthroughs in multi-device collaboration and resource sharing."
+    emotion: "greeting"
+    gesture: "wave"
+    duration: 15
+    
+  point_02:
+    intro: "Now we arrive at the HarmonyOS Overview Area."
+    detail: "HarmonyOS adopts a layered and decoupled architecture design, from bottom to top: kernel layer, system service layer, framework layer, and application layer. Its core features include one-time development with multi-device deployment, unified cross-device ecosystem, and powerful distributed capabilities. HarmonyOS supports not only smartphones and tablets, but also smartwatches, car systems, and smart screens."
+    emotion: "happy"
+    gesture: "explain"
+    duration: 30
+    
+  point_03:
+    intro: "Here we showcase the core technology of HarmonyOS - the Distributed Soft Bus."
+    detail: "The Distributed Soft Bus is the 'nerve center' of HarmonyOS. Through a unified communication framework, it enables different devices to combine freely like components. Whether Bluetooth, Wi-Fi, or wired connection, the soft bus automatically selects the optimal communication method for seamless device connection. For example, you can edit documents on your phone and transfer them to a tablet with one tap, or seamlessly cast videos from your phone to a smart screen."
+    emotion: "thinking"
+    gesture: "point"
+    duration: 25
+    
+  point_04:
+    intro: "Next, let's explore the HarmonyOS application ecosystem."
+    detail: "The HarmonyOS ecosystem is growing rapidly. Currently, over 5,000 applications natively support HarmonyOS, covering social networking, shopping, travel, education, and more. Developers using the ArkTS development framework can adapt one codebase to multiple devices including phones, tablets, and watches, significantly reducing development costs. This 'develop once, deploy everywhere' capability accelerates the HarmonyOS ecosystem expansion."
+    emotion: "happy"
+    gesture: "welcome"
+    duration: 20
+    
+  point_05:
+    intro: "This is the Interactive Experience Zone where you can personally experience HarmonyOS distributed capabilities."
+    detail: "Watch this demonstration: when my phone approaches this tablet, they automatically recognize and connect. Now I open a video on my phone, and with a simple gesture, the video transfers to the tablet's larger screen. The audio can also switch to the smart speaker nearby. This is HarmonyOS's 'Super Device' capability - combining multiple devices into a virtual super device that shares hardware resources."
+    emotion: "surprised"
+    gesture: "point"
+    duration: 30
+    
+  point_06:
+    intro: "Finally, let's look at the future of HarmonyOS."
+    detail: "HarmonyOS's vision is to build an intelligent world of interconnected everything. In the future, HarmonyOS will be deployed in more scenarios: in smart homes, all devices will work collaboratively through HarmonyOS; in intelligent transportation, car systems, phones, and smartwatches will seamlessly coordinate; in industrial fields, HarmonyOS will empower smart manufacturing. Huawei expects that by 2030, over 1 billion devices will run HarmonyOS, truly realizing the vision of interconnected everything."
+    emotion: "thinking"
+    gesture: "explain"
+    duration: 20
+    
+  point_07:
+    intro: "This concludes today's tour."
+    detail: "Thank you for visiting! If you have any questions about HarmonyOS, please feel free to consult our staff. Shenzhen Technology University welcomes you back anytime!"
+    emotion: "greeting"
+    gesture: "wave"
+    duration: 10
+
+prompts:
+  welcome: "Welcome to SZTU HarmonyOS Exhibition Hall"
+  navigation_start: "Navigating to the next area"
+  navigation_arrived: "We have arrived"
+  navigation_failed: "Sorry, navigation encountered an obstacle, please wait"
+  goodbye: "Thank you for visiting, goodbye"
+  error: "Sorry, we encountered a small issue, please wait a moment"
