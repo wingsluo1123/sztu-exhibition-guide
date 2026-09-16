@@ -13,6 +13,7 @@ and dispatches them to the existing controllers:
   - STAND / WALK / RUN    -> posture / gait command (placeholder, see TODO)
   - expression labels     -> EmotionController.show_emotion
   - gesture/action labels -> GestureController.perform_gesture
+  - hand-turn labels      -> GestureController.turn_hand (wrist roll)
   - SAY:<text>            -> TtsController.speak
 
 Design notes:
@@ -97,6 +98,16 @@ GESTURE_LABELS = {
     '敬礼': 'salute',
     '拥抱': 'hug',
     '思考': 'thinking',
+}
+
+# Hand-turn labels -> which hand GestureController.turn_hand rotates. These do
+# not use the preset-motion service: the preset catalogue has no wrist-roll
+# entry, so the wrist joint is interpolated on /aima/hal/joint/arm/command.
+HAND_TURN_LABELS = {
+    '转手': 'right',
+    '左手转手': 'left',
+    '右手转手': 'right',
+    '双手转手': 'both',
 }
 
 
@@ -327,6 +338,12 @@ class BridgeServer(Node):
         # Gesture / action label -> gesture controller
         if text in GESTURE_LABELS:
             ok = self.gesture.perform_gesture(GESTURE_LABELS[text])
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
+            return
+
+        # Hand-turn label -> wrist rotation (blocking, a couple of seconds)
+        if text in HAND_TURN_LABELS:
+            ok = self.gesture.turn_hand(HAND_TURN_LABELS[text])
             self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
             return
 
