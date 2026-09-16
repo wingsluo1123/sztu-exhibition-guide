@@ -30,7 +30,7 @@ class GuideManager(Node):
         super().__init__('guide_manager')
         
         self.get_logger().info('='*60)
-        self.get_logger().info('   🤖 深圳技术大学 鸿蒙展厅讲解员系统')
+        self.get_logger().info('   SZTU HarmonyOS Exhibition Guide System')
         self.get_logger().info('='*60)
         
         # 配置文件路径
@@ -50,41 +50,41 @@ class GuideManager(Node):
         self.load_config()
         
         # 初始化子系统
-        self.get_logger().info('\n📦 初始化子系统...')
+        self.get_logger().info('\nInitializing subsystems...')
         
         self.slam = SlamManager()
-        self.get_logger().info('  ✓ SLAM 系统')
+        self.get_logger().info('  + SLAM system')
         
         self.navigation = NavigationManager()
-        self.get_logger().info('  ✓ 导航系统')
+        self.get_logger().info('  + Navigation system')
         
         self.tts = TtsController()
-        self.get_logger().info('  ✓ TTS 语音系统')
+        self.get_logger().info('  + TTS speech system')
         
         self.emotion = EmotionController()
-        self.get_logger().info('  ✓ 表情控制系统')
+        self.get_logger().info('  + Emotion control system')
         
         self.gesture = GestureController()
-        self.get_logger().info('  ✓ 手势控制系统')
+        self.get_logger().info('  + Gesture control system')
         
         self.waypoint_executor = WaypointExecutor(self.waypoints_file)
-        self.get_logger().info('  ✓ 点位执行器')
+        self.get_logger().info('  + Waypoint executor')
         
-        self.get_logger().info('\n✅ 讲解员系统初始化完成！')
+        self.get_logger().info('\nGuide system initialization complete')
         self.get_logger().info('='*60 + '\n')
     
     def load_config(self):
-        """加载配置文件"""
-        self.get_logger().info('📂 加载配置文件...')
-        
+        """Load configuration files"""
+        self.get_logger().info('Loading configuration files...')
+
         # 加载点位配置
         try:
             with open(self.waypoints_file, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
-                self.waypoints = data.get('exhibition_points', [])
-                self.get_logger().info(f'  ✓ 点位配置: {len(self.waypoints)} 个点位')
+                self.waypoints = data.get('waypoints', [])
+                self.get_logger().info(f'  + Waypoint config: {len(self.waypoints)} points')
         except Exception as e:
-            self.get_logger().error(f'  ✗ 点位配置加载失败: {e}')
+            self.get_logger().error(f'  x Waypoint config loading failed: {e}')
         
         # 加载讲解内容
         content_file = self.content_zh_file if self.language == 'zh_CN' else self.content_en_file
@@ -93,70 +93,70 @@ class GuideManager(Node):
                 data = yaml.safe_load(f)
                 self.content = data.get('content', {})
                 self.prompts = data.get('prompts', )
-                self.get_logger().info(f'  ✓ 讲解内容: {self.language}')
+                self.get_logger().info(f'  + Guide content: {self.language}')
         except Exception as e:
-            self.get_logger().error(f'  ✗ 讲解内容加载失败: {e}')
+            self.get_logger().error(f'  x Guide content loading failed: {e}')
     
     def start_guide_tour(self, language: str = 'zh_CN'):
         """
-        启动完整讲解流程
+        Start complete guide tour
         
         Args:
-            language: 语言 ('zh_CN' 或 'en_US')
+            language: language ('zh_CN' or 'en_US')
         """
         if self.is_guiding:
-            self.get_logger().warn('⚠️  讲解已在进行中')
+            self.get_logger().warn('Guide tour already in progress')
             return False
         
         self.language = language
-        self.load_config()  # 重新加载对应语言的内容
+        self.load_config()  # Reload content for the corresponding language
         
         self.get_logger().info('\n' + '='*60)
-        self.get_logger().info(f'🚀 开始讲解流程 (语言: {language})')
+        self.get_logger().info(f'Starting guide tour (language: {language})')
         self.get_logger().info('='*60 + '\n')
         
-        # 欢迎语
+        # Welcome message
         welcome_msg = self.prompts.get('welcome', 'Welcome!')
         self.tts.speak_blocking(welcome_msg)
         self.emotion.show_emotion('greeting')
         self.gesture.perform_gesture('wave')
         
-        # 检查定位状态
+        # Check localization status
         if not self.slam.is_ready():
-            self.get_logger().warn('⚠️  定位未就绪，尝试加载地图...')
-            # TODO: 自动加载地图或提示管理员
+            self.get_logger().warn('Localization not ready, attempting to load map...')
+            # TODO: Auto load map or notify admin
             return False
         
         self.is_guiding = True
         
-        # 遍历所有讲解点位
+        # Iterate through all waypoints
         for i, waypoint in enumerate(self.waypoints):
             if not self.is_guiding or not rclpy.ok():
-                self.get_logger().warn('⚠️  讲解被中断')
+                self.get_logger().warn('Guide tour interrupted')
                 return False
             
             self.current_point_index = i
             point_id = waypoint['id']
             point_name = waypoint['name']
             
-            self.get_logger().info(f'\n📍 点位 {i+1}/{len(self.waypoints)}: {point_name}')
+            self.get_logger().info(f'\nWaypoint {i+1}/{len(self.waypoints)}: {point_name}')
             self.get_logger().info('-'*60)
             
             # 1. 导航到点位
             if not self.navigate_to_point(waypoint):
-                self.get_logger().error(f'❌ 导航失败: {point_name}')
+                self.get_logger().error(f'Navigation failed: {point_name}')
                 self.handle_error()
                 continue
             
             # 2. 执行讲解
             if not self.perform_lecture(point_id):
-                self.get_logger().error(f'❌ 讲解执行失败: {point_name}')
+                self.get_logger().error(f'Guide execution failed: {point_name}')
             
-            self.get_logger().info(f'✅ 点位完成: {point_name}\n')
+            self.get_logger().info(f'Waypoint complete: {point_name}\n')
         
         # 讲解结束
         self.get_logger().info('='*60)
-        self.get_logger().info('🎉 讲解流程全部完成！')
+        self.get_logger().info('Guide tour complete')
         self.get_logger().info('='*60 + '\n')
         
         goodbye_msg = self.prompts.get('goodbye', 'Goodbye!')
@@ -201,7 +201,7 @@ class GuideManager(Node):
         lecture_content = self.content.get(point_id, {})
         
         if not lecture_content:
-            self.get_logger().warn(f'⚠️  点位 {point_id} 无讲解内容')
+            self.get_logger().warn(f'No guide content for waypoint {point_id}')
             return False
         
         # 提取讲解要素
@@ -234,7 +234,7 @@ class GuideManager(Node):
     
     def stop_guide_tour(self):
         """停止讲解"""
-        self.get_logger().info('🛑 停止讲解流程')
+        self.get_logger().info('Stopping guide tour')
         self.is_guiding = False
         self.navigation.stop()
 

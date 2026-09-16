@@ -16,7 +16,7 @@ class PoseMonitor(Node):
     def __init__(self):
         super().__init__('pose_monitor')
         
-        self.get_logger().info('🚀 Pose Monitor 初始化...')
+        self.get_logger().info('Pose Monitor initializing...')
         
         # QoS 配置
         odom_qos = QoSProfile(
@@ -47,7 +47,7 @@ class PoseMonitor(Node):
         # 定时发布当前位姿
         self.timer = self.create_timer(0.1, self.publish_pose)  # 10Hz
         
-        self.get_logger().info('✅ Pose Monitor 就绪')
+        self.get_logger().info('Pose Monitor ready')
     
     def odom_callback(self, msg: Odometry):
         """里程计回调"""

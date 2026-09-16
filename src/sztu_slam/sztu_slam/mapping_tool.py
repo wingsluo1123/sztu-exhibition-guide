@@ -34,7 +34,7 @@ def main(args=None):
                 
                 if choice == '1':
                     slam_manager.start_mapping()
-                    print("✅ 建图已启动，请控制机器人移动以扫描环境")
+                    print("Mapping started，请控制机器人移动以扫描环境")
                     
                 elif choice == '2':
                     map_name = input("请输入地图名称: ").strip()
@@ -42,16 +42,16 @@ def main(args=None):
                         map_name = f"exhibition_map_{int(rclpy.clock.Clock().now().nanoseconds / 1e9)}"
                     
                     if slam_manager.stop_mapping(map_name):
-                        print(f"✅ 地图已保存为: {map_name}")
+                        print(f"Map saved为: {map_name}")
                     else:
-                        print("❌ 保存失败")
+                        print("Save failed")
                         
                 elif choice.lower() == 'q':
                     print("👋 退出建图工具")
                     break
                     
                 else:
-                    print("⚠️  无效输入，请输入 1、2 或 q")
+                    print("Invalid input, please enter 1, 2, or q")
                     
     except KeyboardInterrupt:
         print("\n\n👋 用户中断")

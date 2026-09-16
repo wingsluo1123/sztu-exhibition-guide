@@ -18,7 +18,7 @@ class NavigationManager(Node):
     def __init__(self):
         super().__init__('navigation_manager')
         
-        self.get_logger().info('🚀 Navigation Manager 初始化...')
+        self.get_logger().info('Navigation Manager initializing...')
         
         # QoS 配置
         odom_qos = QoSProfile(
@@ -65,29 +65,29 @@ class NavigationManager(Node):
         # 控制循环
         self.control_timer = self.create_timer(0.1, self.control_loop)  # 10Hz
         
-        self.get_logger().info('✅ Navigation Manager 就绪')
+        self.get_logger().info('Navigation Manager ready')
     
     def odom_callback(self, msg: Odometry):
         """位姿回调"""
         self.current_pose = msg.pose.pose
     
     def lidar_callback(self, msg: PointCloud2):
-        """激光雷达回调：简单避障检测"""
-        # TODO: 实现点云解析和障碍物检测
-        # 目前占位，实际需要解析 PointCloud2 数据
+        """Lidar callback: simple obstacle detection"""
+        # TODO: Implement point cloud parsing and obstacle detection
+        # Currently placeholder, need to parse PointCloud2 data
         pass
     
     def navigate_to(self, x: float, y: float, yaw: float = None):
         """
-        导航到目标点
-        x, y: 目标位置（米）
-        yaw: 目标朝向（弧度），None 表示不限制朝向
+        Navigate to target point
+        x, y: target position (meters)
+        yaw: target heading (radians), None means no heading constraint
         """
         if self.current_pose is None:
-            self.get_logger().error('❌ 未获取到当前位姿，无法导航')
+            self.get_logger().error('Current pose not available, cannot navigate')
             return False
         
-        self.get_logger().info(f'🎯 导航到目标: x={x:.2f}, y={y:.2f}, yaw={yaw:.2f if yaw else "any"}')
+        self.get_logger().info(f'Navigating to target: x={x:.2f}, y={y:.2f}, yaw={yaw:.2f if yaw else "any"}')
         
         # 设置目标
         self.target_pose = {
@@ -134,7 +134,7 @@ class NavigationManager(Node):
                     return
             
             # 到达目标
-            self.get_logger().info('✅ 已到达目标点')
+            self.get_logger().info('Reached target point')
             self.stop()
             self.is_navigating = False
             return
@@ -156,7 +156,7 @@ class NavigationManager(Node):
         
         # 避障检测
         if self.obstacle_detected:
-            self.get_logger().warn('⚠️  检测到障碍物，减速')
+            self.get_logger().warn('Obstacle detected, reducing speed')
             cmd.linear.x *= 0.3
         
         # 发布速度命令
@@ -184,20 +184,20 @@ class NavigationManager(Node):
         self.cmd_vel_pub.publish(cmd)
     
     def cancel_navigation(self):
-        """取消当前导航"""
-        self.get_logger().info('🛑 取消导航')
+        """Cancel current navigation"""
+        self.get_logger().info('Canceling navigation')
         self.is_navigating = False
         self.stop()
     
     @staticmethod
     def quaternion_to_yaw(q):
-        """四元数转 yaw 角"""
+        """Convert quaternion to yaw angle"""
         return math.atan2(2.0 * (q.w * q.z + q.x * q.y),
                          1.0 - 2.0 * (q.y * q.y + q.z * q.z))
     
     @staticmethod
     def normalize_angle(angle):
-        """角度归一化到 [-pi, pi]"""
+        """Normalize angle to [-pi, pi]"""
         while angle > math.pi:
             angle -= 2.0 * math.pi
         while angle < -math.pi:
@@ -205,7 +205,7 @@ class NavigationManager(Node):
         return angle
     
     def get_current_position(self):
-        """获取当前位置"""
+        """Get current position"""
         if self.current_pose is None:
             return None
         return (

@@ -15,7 +15,7 @@ class TtsController(Node):
     def __init__(self):
         super().__init__('tts_controller')
         
-        self.get_logger().info('🚀 TTS Controller 初始化...')
+        self.get_logger().info('TTS Controller initializing...')
         
         # 服务客户端：TTS 播放
         self.tts_client = self.create_client(
@@ -24,11 +24,11 @@ class TtsController(Node):
         )
         
         # 等待服务可用
-        self.get_logger().info('⏳ 等待 TTS 服务...')
+        self.get_logger().info('Waiting for TTS service...')
         if self.tts_client.wait_for_service(timeout_sec=5.0):
-            self.get_logger().info('✅ TTS Controller 就绪')
+            self.get_logger().info('TTS Controller ready')
         else:
-            self.get_logger().warn('⚠️  TTS 服务未响应（将在调用时重试）')
+            self.get_logger().warn('TTS service not responding (will retry on call)')
     
     def speak(self, text: str, domain: str = 'sztu_guide', 
               priority: int = 6, interrupt: bool = True):
@@ -45,14 +45,14 @@ class TtsController(Node):
             True 成功，False 失败
         """
         if not text:
-            self.get_logger().warn('⚠️  文本为空，跳过播报')
+            self.get_logger().warn('Empty text, skipping speech')
             return False
         
-        self.get_logger().info(f'🔊 播报: {text[:50]}{"..." if len(text) > 50 else ""}')
+        self.get_logger().info(f'Speaking: {text[:50]}{"..." if len(text) > 50 else ""}')
         
         # 等待服务可用（带重试）
         if not self.tts_client.wait_for_service(timeout_sec=3.0):
-            self.get_logger().error('❌ TTS 服务不可用')
+            self.get_logger().error('TTS service unavailable')
             return False
         
         # 构造请求
@@ -74,23 +74,23 @@ class TtsController(Node):
                 break
             
             if attempt < 7:
-                self.get_logger().debug(f'重试 TTS 服务调用 [{attempt + 1}/8]')
+                self.get_logger().debug(f'Retrying TTS service call [{attempt + 1}/8]')
         
         if not future.done():
-            self.get_logger().error('❌ TTS 服务调用超时')
+            self.get_logger().error('TTS service call timeout')
             return False
         
         # 检查结果
         response = future.result()
         if response is None:
-            self.get_logger().error('❌ TTS 服务返回空结果')
+            self.get_logger().error('TTS service returned empty result')
             return False
         
         if response.tts_resp.is_success:
-            self.get_logger().info('✅ TTS 播报成功')
+            self.get_logger().info('TTS speech successful')
             return True
         else:
-            self.get_logger().error('❌ TTS 播报失败')
+            self.get_logger().error('TTS speech failed')
             return False
     
     def speak_blocking(self, text: str, duration_estimate: float = None):
@@ -111,7 +111,7 @@ class TtsController(Node):
             # 中文：约 4 字/秒，英文：约 2.5 词/秒
             duration_estimate = len(text) * 0.25 + 1.0  # 保守估算
         
-        self.get_logger().info(f'⏳ 等待播报完成（预估 {duration_estimate:.1f} 秒）')
+        self.get_logger().info(f'Waiting for speech completion (estimated {duration_estimate:.1f}s)')
         time.sleep(duration_estimate)
         
         return True

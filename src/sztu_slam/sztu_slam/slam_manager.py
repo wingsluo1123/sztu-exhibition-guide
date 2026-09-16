@@ -18,7 +18,7 @@ class SlamManager(Node):
     def __init__(self):
         super().__init__('slam_manager')
         
-        self.get_logger().info('🚀 SLAM Manager 初始化...')
+        self.get_logger().info('SLAM Manager initializing...')
         
         # QoS 配置（匹配 AimDK 要求）
         command_qos = QoSProfile(
@@ -65,50 +65,50 @@ class SlamManager(Node):
         self.is_localized = False
         self.mapping_active = False
         
-        self.get_logger().info('✅ SLAM Manager 就绪')
+        self.get_logger().info('SLAM Manager ready')
     
     def odom_callback(self, msg: Odometry):
-        """位姿回调：更新当前位置"""
+        """Pose callback: update current position"""
         self.current_pose = msg.pose.pose
         if not self.is_localized:
             self.is_localized = True
-            self.get_logger().info('✅ 定位成功')
+            self.get_logger().info('Localization successful')
     
     def start_mapping(self):
-        """开始建图"""
-        self.get_logger().info('📍 启动 SLAM 建图...')
+        """Start mapping"""
+        self.get_logger().info('Starting SLAM mapping...')
         
         msg = String()
         msg.data = 'start_mapping'
         self.command_pub.publish(msg)
         
         self.mapping_active = True
-        self.get_logger().info('✅ 建图模式已激活')
+        self.get_logger().info('Mapping mode activated')
         return True
     
     def stop_mapping(self, map_name: str):
-        """停止建图并保存地图"""
+        """Stop mapping and save map"""
         if not self.mapping_active:
-            self.get_logger().warn('⚠️  建图未激活，无需停止')
+            self.get_logger().warn('Mapping not active, no need to stop')
             return False
         
-        self.get_logger().info(f'💾 停止建图并保存为: {map_name}')
+        self.get_logger().info(f'Stopping mapping and saving as: {map_name}')
         
         msg = String()
         msg.data = f'stop_mapping:{map_name}'
         self.command_pub.publish(msg)
         
         self.mapping_active = False
-        self.get_logger().info('✅ 地图已保存')
+        self.get_logger().info('Map saved')
         return True
     
     def load_map(self, map_name: str):
-        """加载已保存的地图"""
-        self.get_logger().info(f'🗺️  加载地图: {map_name}')
+        """Load saved map"""
+        self.get_logger().info(f'Loading map: {map_name}')
         
         # 等待服务可用
         if not self.map_client.wait_for_service(timeout_sec=5.0):
-            self.get_logger().error('❌ 地图服务不可用')
+            self.get_logger().error('Map service unavailable')
             return False
         
         # 调用服务
@@ -120,26 +120,26 @@ class SlamManager(Node):
         rclpy.spin_until_future_complete(self, future, timeout_sec=10.0)
         
         if future.result() is None:
-            self.get_logger().error('❌ 地图加载失败：服务超时')
+            self.get_logger().error('Map loading failed: service timeout')
             return False
         
         result = future.result()
         if result.code == 0:
-            self.get_logger().info(f'✅ 地图加载成功: {result.map_path}')
-            self.get_logger().info(f'   分辨率: {result.map_info.resolution}m')
-            self.get_logger().info(f'   尺寸: {result.map_info.width}x{result.map_info.height}')
+            self.get_logger().info(f'Map loaded successfully: {result.map_path}')
+            self.get_logger().info(f'Resolution: {result.map_info.resolution}m')
+            self.get_logger().info(f'Size: {result.map_info.width}x{result.map_info.height}')
             return True
         else:
-            self.get_logger().error(f'❌ 地图加载失败，错误码: {result.code}')
+            self.get_logger().error(f'Map loading failed, error code: {result.code}')
             return False
     
     def relocalize(self, x: float, y: float, yaw: float = 0.0):
         """
-        手动重定位
-        x, y: 地图坐标（米）
-        yaw: 朝向角（弧度）
+        Manual relocalization
+        x, y: map coordinates (meters)
+        yaw: heading angle (radians)
         """
-        self.get_logger().info(f'🎯 重定位到: x={x:.2f}, y={y:.2f}, yaw={yaw:.2f}')
+        self.get_logger().info(f'Relocalizing to: x={x:.2f}, y={y:.2f}, yaw={yaw:.2f}')
         
         # 发送重定位命令
         cmd = String()
@@ -164,7 +164,7 @@ class SlamManager(Node):
         
         self.relocalization_pose_pub.publish(pose)
         
-        self.get_logger().info('✅ 重定位请求已发送，等待定位反馈...')
+        self.get_logger().info('Relocalization request sent, waiting for feedback...')
         
         # 等待定位成功
         self.is_localized = False
@@ -175,18 +175,18 @@ class SlamManager(Node):
             rclpy.spin_once(self, timeout_sec=0.1)
         
         if self.is_localized:
-            self.get_logger().info('✅ 重定位成功')
+            self.get_logger().info('Relocalization successful')
             return True
         else:
-            self.get_logger().error('❌ 重定位超时')
+            self.get_logger().error('Relocalization timeout')
             return False
     
     def get_current_pose(self):
-        """获取当前位姿"""
+        """Get current pose"""
         return self.current_pose if self.is_localized else None
     
     def is_ready(self):
-        """检查 SLAM 是否就绪（已定位）"""
+        """Check if SLAM is ready (localized)"""
         return self.is_localized
 
 

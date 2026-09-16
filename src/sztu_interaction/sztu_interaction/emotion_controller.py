@@ -13,7 +13,7 @@ class EmotionController(Node):
     def __init__(self):
         super().__init__('emotion_controller')
         
-        self.get_logger().info('🚀 Emotion Controller 初始化...')
+        self.get_logger().info('Emotion Controller initializing...')
         
         # 服务客户端：表情播放
         self.emoji_client = self.create_client(
@@ -23,20 +23,20 @@ class EmotionController(Node):
         
         # 预定义表情映射
         self.emotions = {
-            'greeting': 'happy',      # 问候 -> 开心
-            'happy': 'happy',         # 开心
-            'surprised': 'surprised', # 惊讶
-            'thinking': 'thinking',   # 思考
-            'nodding': 'nodding',     # 点头
-            'sad': 'sad',             # 难过
-            'neutral': 'neutral',     # 中性
+            'greeting': 'happy',
+            'happy': 'happy',
+            'surprised': 'surprised',
+            'thinking': 'thinking',
+            'nodding': 'nodding',
+            'sad': 'sad',
+            'neutral': 'neutral',
         }
         
-        self.get_logger().info('⏳ 等待表情服务...')
+        self.get_logger().info('Waiting for emotion service...')
         if self.emoji_client.wait_for_service(timeout_sec=5.0):
-            self.get_logger().info('✅ Emotion Controller 就绪')
+            self.get_logger().info('Emotion Controller ready')
         else:
-            self.get_logger().warn('⚠️  表情服务未响应（将在调用时重试）')
+            self.get_logger().warn('Emotion service not responding (will retry on call)')
     
     def show_emotion(self, emotion: str):
         """
@@ -51,11 +51,11 @@ class EmotionController(Node):
         # 映射表情名称
         emoji_name = self.emotions.get(emotion, emotion)
         
-        self.get_logger().info(f'😊 显示表情: {emotion} ({emoji_name})')
+        self.get_logger().info(f'Showing emotion: {emotion} ({emoji_name})')
         
         # 等待服务可用
         if not self.emoji_client.wait_for_service(timeout_sec=3.0):
-            self.get_logger().error('❌ 表情服务不可用')
+            self.get_logger().error('Emotion service unavailable')
             return False
         
         # 构造请求
@@ -68,16 +68,16 @@ class EmotionController(Node):
         rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
         
         if not future.done():
-            self.get_logger().error('❌ 表情服务调用超时')
+            self.get_logger().error('Emotion service call timeout')
             return False
         
         response = future.result()
         if response is None:
-            self.get_logger().error('❌ 表情服务返回空结果')
+            self.get_logger().error('Emotion service returned empty result')
             return False
         
-        # PlayEmoji 服务通常没有返回字段，只要调用成功就认为播放成功
-        self.get_logger().info('✅ 表情播放成功')
+        # PlayEmoji service typically has no return fields, success if call completes
+        self.get_logger().info('Emotion display successful')
         return True
     
     def reset_emotion(self):

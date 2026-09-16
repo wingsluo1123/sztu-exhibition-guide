@@ -14,21 +14,21 @@ class GestureController(Node):
     def __init__(self):
         super().__init__('gesture_controller')
         
-        self.get_logger().info('🚀 Gesture Controller 初始化...')
+        self.get_logger().info('Gesture Controller initializing...')
         
-        # TODO: 根据实际 AimDK 接口调整
-        # 目前占位实现，实际需要查阅 AimDK 预设动作服务文档
+        # TODO: Adjust according to actual AimDK interface
+        # Currently placeholder implementation, need to check AimDK preset motion service documentation
         
-        # 预定义手势映射
+        # Predefined gesture mapping
         self.gestures = {
-            'wave': 'wave_hand',           # 挥手
-            'point': 'point_forward',      # 指向前方
-            'welcome': 'open_arms',        # 张开双臂
-            'explain': 'hand_gesture_1',   # 讲解手势
-            'idle': 'idle_pose',           # 待机姿势
+            'wave': 'wave_hand',
+            'point': 'point_forward',
+            'welcome': 'open_arms',
+            'explain': 'hand_gesture_1',
+            'idle': 'idle_pose',
         }
         
-        self.get_logger().info('✅ Gesture Controller 就绪（占位实现）')
+        self.get_logger().info('Gesture Controller ready (placeholder implementation)')
     
     def perform_gesture(self, gesture: str):
         """
@@ -42,13 +42,13 @@ class GestureController(Node):
         """
         gesture_name = self.gestures.get(gesture, gesture)
         
-        self.get_logger().info(f'🤚 执行手势: {gesture} ({gesture_name})')
+        self.get_logger().info(f'Performing gesture: {gesture} ({gesture_name})')
         
-        # TODO: 调用实际的预设动作服务
-        # 目前为占位实现
-        time.sleep(0.5)  # 模拟动作执行
+        # TODO: Call actual preset motion service
+        # Currently placeholder implementation
+        time.sleep(0.5)
         
-        self.get_logger().info('✅ 手势执行完成（占位）')
+        self.get_logger().info('Gesture execution complete (placeholder)')
         return True
     
     def reset_pose(self):
