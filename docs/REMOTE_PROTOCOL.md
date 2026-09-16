@@ -49,6 +49,36 @@
 
 未知标签会作为预设动作名透传给 `GestureController`。
 
+### 转手（慢速路径，直接插值腕关节）
+
+| 指令 | 含义 |
+|------|------|
+| `转手` `右手转手` | 右手腕 roll 轴转一下，转到位后自动转回原姿态 |
+| `左手转手` | 左手腕，同上 |
+| `双手转手` | 左右手依次各转一下 |
+
+说明：预设动作目录（`McPresetMotion`）里没有腕关节 roll 项，所以“转手”不走
+`SetMcPresetMotion`，而是由 `GestureController.turn_hand` 把
+`left/right_wrist_roll_joint` 从当前角度线性插值推 `0.8 rad`（约 46°）再推回来：
+
+- 指令发布：`/aima/hal/joint/arm/command`（`JointCommandArray`，目标关节给轨迹点，
+  其余关节回填当前角度，避免整臂被拉走）
+- 角度回读：`/aima/hal/joint/arm/state`
+- 左右手按镜像取反向，保证同一角度下翻掌方向一致；超出关节限位时自动反向
+
+前置条件与排障：
+
+- 必须先能从 `/aima/hal/joint/arm/state` 读到腕关节角度。读不到（例如 HAL 未起）
+  会直接返回 `ERR:转手`，日志给出原因，不会盲目下发。
+- `mc_ros2_node` 也在向 `/aima/hal/joint/arm/command` 高频发布全零
+  （`stiffness=0`）指令，可能压过本节点 20 Hz 的指令导致关节不动。因此每次转手
+  都会回读校验，关节没跟上时上报 `ERR:转手` 并在日志打印期望角与实际角，
+  不会出现“没动却报成功”。
+- 转手是阻塞动作（单向约 1 秒，去回合计约 2 秒/手，另含回读校验），ack 在动作做完后才回。
+
+客户端侧：在 `entry/src/main/ets/pages/Index.ets` 的动作按钮列表里直接发送 `转手`
+等标签即可，TCP 路径无需加前缀（客户端工程不在本仓库，标签名以 App 实际按钮为准）。
+
 ### 语音
 
 | 指令 | 含义 |
