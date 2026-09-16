@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'guide_manager = sztu_guide.guide_manager:main',
+            'bridge_server = sztu_guide.bridge_server:main',
         ],
     },
 )
