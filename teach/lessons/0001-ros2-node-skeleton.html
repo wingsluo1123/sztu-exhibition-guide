@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>第 1 课 · ROS2 节点骨架</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<script src="../assets/quiz.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="kicker">Lesson 0001 · 地基</p>
+  <h1>一个 Python 类，怎么变成能跑起来的 ROS2 节点</h1>
+  <p class="lede">读懂本项目里最短的一个节点 —— <code>emotion_controller.py</code>（约 60 行）—— 你就掌握了全项目所有节点共用的那副骨架。</p>
+
+  <div class="mission">
+    <span class="tag">为什么先学这个</span>
+    你的目标是<strong>能独立改代码 / 加功能</strong>。但无论你想加一条指令、改一段导航、还是修个 bug，第一步都得先看懂"这段代码是怎么被 ROS 跑起来的"。这副骨架就是那把钥匙 —— 本项目 <strong>10 个节点全是它的变体</strong>。
+  </div>
+
+  <h2>一、先看完整的一个节点</h2>
+  <p>这是 <code>src/sztu_interaction/sztu_interaction/emotion_controller.py</code> 的结构（去掉了业务细节，只留骨架）。全项目每个节点都长这个样子：</p>
+
+<pre><code><span class="cmt"># ① 导入 rclpy 和 Node 基类</span>
+import rclpy
+from rclpy.node import Node
+from aimdk_msgs.srv import PlayEmoji   <span class="cmt"># 这个节点要用的服务类型</span>
+
+<span class="cmt"># ② 定义一个类，继承 Node</span>
+class EmotionController(<span class="hl">Node</span>):
+    def __init__(self):
+        <span class="hl">super().__init__('emotion_controller')</span>   <span class="cmt"># ③ 给节点起名</span>
+
+        <span class="cmt"># ④ 声明这个节点要用的 ROS 接口</span>
+        self.emoji_client = <span class="hl">self.create_client</span>(
+            PlayEmoji, '/aimdk_5Fmsgs/srv/PlayEmoji')
+
+    <span class="cmt"># ⑤ 节点自己的能力，做成普通方法</span>
+    def show_emotion(self, emotion):
+        ...
+        future = self.emoji_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+        ...
+
+<span class="cmt"># ⑥ main：把节点跑起来的固定套路</span>
+def main(args=None):
+    <span class="hl">rclpy.init</span>(args=args)          <span class="cmt"># 启动 ROS 运行时</span>
+    node = EmotionController()      <span class="cmt"># 建节点（会执行上面的 __init__）</span>
+    try:
+        <span class="hl">rclpy.spin</span>(node)            <span class="cmt"># 交出控制权，等回调</span>
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()</code></pre>
+
+  <h2>二、六个部件，逐个说清</h2>
+  <ol class="anatomy">
+    <li><strong>继承 <code>Node</code></strong>：<code>class EmotionController(Node)</code> 让你的类"是一个"ROS 节点，自动拥有 <code>create_client</code>、<code>get_logger</code>、<code>create_timer</code> 等一整套能力。你几乎从不直接 new 一个 Node，而是继承它。</li>
+    <li><strong><code>super().__init__('名字')</code></strong>：这行把节点<strong>注册进 ROS 网络</strong>，用的名字就是别人 <code>ros2 node list</code> 看到的名字。名字必须唯一 —— 这也是为什么 <code>bridge_server</code> 把三个控制器塞进一个进程后，绝不能再单独启动它们（会重名冲突）。</li>
+    <li><strong>声明式接口</strong>：<code>create_publisher / create_subscription / create_client / create_timer</code>。注意关键词——<em>声明</em>。你只是登记"我要用这个 topic/service"，并不是马上执行。真正干活发生在回调里。</li>
+    <li><strong>能力=普通方法</strong>：<code>show_emotion()</code> 就是个普通 Python 方法，内部用第③步登记的 <code>emoji_client</code> 去调服务。<strong>你加功能，绝大多数时候就是在这里加一个方法。</strong></li>
+    <li><strong><code>main()</code> 的四步套路</strong>：<code>init → 建节点 → spin → shutdown</code>。这四行几乎逐字出现在每个节点文件末尾，是模板，不用背，认得出即可。</li>
+    <li><strong><code>entry_points</code> 注册</strong>：<code>setup.py</code> 里写 <code>'emotion_controller = ...emotion_controller:main'</code>，才让 <code>ros2 run sztu_interaction emotion_controller</code> 能找到这个 <code>main</code>。改了入口要重新 <code>colcon build</code>。</li>
+  </ol>
+
+  <div class="why">
+    <span class="tag">关键心智模型</span>
+    <code>__init__</code> 里<strong>声明</strong>接口（一次性、开机时），方法和回调里<strong>使用</strong>接口（反复、运行时）。<code>rclpy.spin(node)</code> 是那句"我准备好了，开始处理事件吧"—— 在它之前一切都是布置，在它之后节点才真正活着响应。
+  </div>
+
+  <h2>三、<code>spin</code> 到底在干嘛？</h2>
+  <p>这是新手最容易含糊的一点。<code>rclpy.spin(node)</code> 会<strong>阻塞</strong>在这里不返回，进入一个循环：不停地检查"有没有我订阅的消息到了 / 有没有定时器该触发了 / 有没有服务响应回来了"，有就调用对应的回调函数。</p>
+  <p>所以节点的运行模式是<strong>事件驱动</strong>的：你不主动轮询，而是登记好回调，然后 <code>spin</code> 替你等。<code>emotion_controller</code> 作为一个纯服务调用节点，甚至可以不 <code>spin</code>——它的 <code>main</code> 里有个分支：命令行带参数时直接调一次 <code>show_emotion</code> 就退出，不带参数才 <code>spin</code> 当常驻服务。</p>
+
+  <div class="note">
+    <span class="tag">对照真实代码</span>
+    打开 <code>src/sztu_interaction/sztu_interaction/emotion_controller.py</code>，从头到尾对一遍上面六个部件。它只有 60 行，是全项目最干净的样本。看完再瞄一眼 <code>tts_controller.py</code>——你会发现<strong>同一副骨架</strong>，只是多了重试逻辑。这就是"读懂一个=读懂一类"。
+  </div>
+
+  <h2>四、检索练习</h2>
+  <p>合上上面的内容，凭记忆答。答错没关系——正确答案会即时高亮并解释，这种"努力回忆"正是记得牢的关键。</p>
+
+  <div class="quiz" data-answer="B">
+    <p class="q">1. <code>super().__init__('emotion_controller')</code> 这一行最主要做了什么？</p>
+    <button data-opt="A">立即调用一次表情播放服务接口</button>
+    <button data-opt="B">用该名字把节点注册进 ROS 网络</button>
+    <button data-opt="C">启动事件循环开始处理所有回调</button>
+    <button data-opt="D">从配置文件里加载表情映射字典</button>
+    <p class="explain" hidden>它调用父类 <code>Node</code> 的构造，用给定名字把节点注册进 ROS 图。启动事件循环是 <code>rclpy.spin</code>（C），调服务是 <code>show_emotion</code>（A），都不在这一行。</p>
+  </div>
+
+  <div class="quiz" data-answer="C">
+    <p class="q">2. 你想给这个节点加一个"重置表情"的新能力，最该改哪里？</p>
+    <button data-opt="A">在 main 函数的 spin 循环体内部写</button>
+    <button data-opt="B">在 setup.py 的 install_requires 里加</button>
+    <button data-opt="C">在类里加一个新的方法比如 reset</button>
+    <button data-opt="D">在 rclpy.init 之前作为全局函数写</button>
+    <button data-opt="E">直接修改 rclpy 的 Node 基类源码</button>
+    <p class="explain">节点的能力就是类里的方法（第④/⑤部件）。实际上 <code>emotion_controller.py</code> 已经有一个 <code>reset_emotion()</code> 方法，它就是调 <code>show_emotion('neutral')</code>——正是这个模式。</p>
+  </div>
+
+  <div class="quiz" data-answer="A">
+    <p class="q">3. 为什么 <code>bridge_server</code> 内部持有三个控制器后，就不能再单独 <code>ros2 run</code> 启动它们？</p>
+    <button data-opt="A">节点名字会重复导致冲突崩溃</button>
+    <button data-opt="B">端口八千八百八十八已被占用</button>
+    <button data-opt="C">服务客户端数量超过了硬性上限</button>
+    <button data-opt="D">配置文件会被两个进程同时改写</button>
+    <p class="explain">每个控制器 <code>__init__</code> 里都 <code>super().__init__('tts_controller')</code> 等固定名字（第②部件）。同名节点在同一 ROS 网络里冲突。这正是 <code>remote.launch.py</code> 注释反复强调"不要重复启动"的原因。</p>
+  </div>
+
+  <div class="ask">
+    💬 <strong>我是你的老师，随时提问。</strong>任何一行看不懂、想让我拿另一个节点再讲一遍、或者想直接动手加个方法试试 —— 直接说。
+  </div>
+
+  <h2>下一步</h2>
+  <p>这一课你拿到的"赢"：<strong>能指着 <code>emotion_controller.py</code> 说清每个结构行的作用，并知道加功能该往哪加</strong>。</p>
+  <p>第 2 课预告：<strong>service client 的调用模式</strong>——<code>create_client → wait_for_service → call_async → spin_until_future_complete</code> 这条链，以及 <code>tts_controller</code> 为什么要在它外面套 8 次重试。那是你改交互功能时天天要碰的东西。</p>
+
+  <p><strong>建议精读的一手资料</strong>（本课主题最权威来源）：<a href="https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html">ROS 2 Humble 官方教程 · Writing a simple publisher and subscriber (Python)</a>。官方最小节点范例，和本课骨架一一对应。</p>
+
+  <div class="footnav">
+    <span>速查卡：<a href="../reference/ros2-node-skeleton.html">ROS2 节点骨架 Cheat Sheet</a></span>
+    <span>使命：<a href="../MISSION.md">MISSION.md</a></span>
+    <span>下一课：Lesson 0002（service client 调用链，待发布）</span>
+  </div>
+
+</div>
+</body>
+</html>

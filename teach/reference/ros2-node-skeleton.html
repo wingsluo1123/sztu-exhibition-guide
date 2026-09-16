@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>速查卡 · ROS2 节点骨架</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+  <p class="kicker">Reference · 随时翻</p>
+  <h1>ROS2 节点骨架 · 速查卡</h1>
+  <p class="lede">写/改任何一个 <code>rclpy</code> 节点时对照用。配套 <a href="../lessons/0001-ros2-node-skeleton.html">第 1 课</a>。</p>
+
+  <h2>最小模板</h2>
+<pre><code>import rclpy
+from rclpy.node import Node
+
+class MyNode(Node):
+    def __init__(self):
+        super().__init__('my_node')      <span class="cmt"># 唯一名字</span>
+        <span class="cmt"># 在这里声明接口 ↓</span>
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = MyNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()</code></pre>
+
+  <h2>四种接口声明（写在 <code>__init__</code> 里）</h2>
+  <table>
+    <tr><th>要做的事</th><th>声明</th><th>拿到什么</th></tr>
+    <tr><td>发消息</td><td><code>self.create_publisher(Msg, 'topic', qos)</code></td><td>publisher，用 <code>.publish(msg)</code></td></tr>
+    <tr><td>收消息</td><td><code>self.create_subscription(Msg, 'topic', cb, qos)</code></td><td>每来一条消息调 <code>cb(msg)</code></td></tr>
+    <tr><td>调服务</td><td><code>self.create_client(Srv, 'srv')</code></td><td>client，用 <code>.call_async(req)</code></td></tr>
+    <tr><td>定时干活</td><td><code>self.create_timer(period_sec, cb)</code></td><td>每隔 period 调一次 <code>cb()</code></td></tr>
+  </table>
+
+  <h2>心智模型</h2>
+  <div class="why">
+    <span class="tag">一句话</span>
+    <code>__init__</code> <strong>声明</strong>（一次），回调/方法里<strong>使用</strong>（反复），<code>spin</code> <strong>之后</strong>节点才真正响应事件。
+  </div>
+
+  <h2>常用动作对照</h2>
+  <table>
+    <tr><th>你想…</th><th>去哪写</th></tr>
+    <tr><td>加一个新能力</td><td>类里加一个方法</td></tr>
+    <tr><td>让节点响应新消息</td><td><code>create_subscription</code> + 一个回调方法</td></tr>
+    <tr><td>让节点周期性执行</td><td><code>create_timer</code> + 一个回调方法</td></tr>
+    <tr><td>让 <code>ros2 run</code> 能启动它</td><td><code>setup.py</code> 的 <code>entry_points</code>，然后 <code>colcon build</code></td></tr>
+    <tr><td>看节点在不在线</td><td><code>ros2 node list</code>（看到的是 <code>super().__init__</code> 里的名字）</td></tr>
+  </table>
+
+  <h2>易踩的坑</h2>
+  <table>
+    <tr><th>症状</th><th>多半原因</th></tr>
+    <tr><td>节点起不来 / 名字冲突</td><td>同名节点已在运行（如 bridge 已内含该控制器）</td></tr>
+    <tr><td>改了代码没生效</td><td>忘了重新 <code>colcon build</code> + <code>source install/setup</code></td></tr>
+    <tr><td><code>ros2 run</code> 找不到命令</td><td><code>entry_points</code> 没写对或没重建</td></tr>
+    <tr><td>回调从不触发</td><td>没进 <code>spin</code>，或 topic 名 / QoS 不匹配</td></tr>
+  </table>
+
+  <div class="footnav">
+    <span>回到：<a href="../lessons/0001-ros2-node-skeleton.html">第 1 课</a></span>
+    <span>官方：<a href="https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html">ROS2 Humble 教程</a></span>
+  </div>
+
+</div>
+</body>
+</html>

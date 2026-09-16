@@ -1,0 +1,179 @@
+/* Shared stylesheet for all lessons + reference cards.
+   Tufte-inspired: quiet typography, generous margins, readable line length.
+   Theme-aware (light default, dark via prefers-color-scheme), print-friendly. */
+
+:root {
+  --bg: #fffef9;
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --rule: #e2ddd0;
+  --accent: #7a2e2e;        /* deep brick — SZTU-ish, used sparingly */
+  --accent-soft: #f4e9e9;
+  --code-bg: #f4f1e8;
+  --code-ink: #2a2a2a;
+  --ok: #2e6b3a;
+  --bad: #9a2b2b;
+  --card: #fffdf5;
+  --shadow: 0 1px 3px rgba(0,0,0,.06);
+  --maxw: 720px;
+  --font-serif: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-sans: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", Consolas, "Noto Sans Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16150f;
+    --ink: #e8e4d8;
+    --muted: #9c968a;
+    --rule: #34322a;
+    --accent: #e0908a;
+    --accent-soft: #2a1f1f;
+    --code-bg: #201e17;
+    --code-ink: #d6d2c4;
+    --ok: #7fc48a;
+    --bad: #e08a8a;
+    --card: #1c1a13;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.62;
+  margin: 0;
+  padding: 3rem 1.5rem 6rem;
+}
+
+.wrap { max-width: var(--maxw); margin: 0 auto; }
+
+/* --- Header / breadcrumbs --- */
+.kicker {
+  font-family: var(--font-sans);
+  font-size: .72rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 .6rem;
+}
+h1 {
+  font-weight: 600;
+  font-size: 2.15rem;
+  line-height: 1.15;
+  margin: 0 0 .5rem;
+  letter-spacing: -.01em;
+}
+.lede {
+  font-size: 1.12rem;
+  color: var(--muted);
+  margin: 0 0 2rem;
+  font-style: italic;
+}
+h2 {
+  font-family: var(--font-sans);
+  font-weight: 650;
+  font-size: 1.28rem;
+  margin: 2.6rem 0 .8rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--rule);
+}
+h3 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 1.02rem;
+  margin: 1.6rem 0 .5rem;
+}
+p { margin: 0 0 1rem; }
+strong { font-weight: 650; }
+
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--rule); }
+a:hover { border-bottom-color: var(--accent); }
+
+/* --- Code --- */
+code {
+  font-family: var(--font-mono);
+  font-size: .86em;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  padding: .1em .35em;
+  border-radius: 3px;
+}
+pre {
+  background: var(--code-bg);
+  color: var(--code-ink);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  font-size: .82rem;
+  line-height: 1.55;
+  box-shadow: var(--shadow);
+  margin: 1rem 0 1.4rem;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+.cmt { color: var(--muted); font-style: italic; }
+.hl  { color: var(--accent); font-weight: 600; }
+
+/* --- Callouts --- */
+.note, .why, .mission {
+  font-family: var(--font-sans);
+  font-size: .92rem;
+  line-height: 1.55;
+  border-radius: 6px;
+  padding: .9rem 1.1rem;
+  margin: 1.4rem 0;
+}
+.note { background: var(--code-bg); border-left: 3px solid var(--muted); }
+.why  { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+.mission { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+.note .tag, .why .tag, .mission .tag {
+  display: block; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: .35rem; font-weight: 700;
+}
+
+/* --- Anatomy list (numbered walk-through) --- */
+.anatomy { list-style: none; counter-reset: step; padding: 0; margin: 1.2rem 0; }
+.anatomy li {
+  counter-increment: step;
+  position: relative;
+  padding: .55rem 0 .55rem 2.6rem;
+  border-bottom: 1px dashed var(--rule);
+  font-size: .98rem;
+}
+.anatomy li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: .5rem;
+  width: 1.7rem; height: 1.7rem;
+  background: var(--accent); color: #fff;
+  border-radius: 50%;
+  font-family: var(--font-sans); font-size: .8rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* --- Table --- */
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--font-sans); font-size: .88rem; }
+th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { color: var(--accent); font-weight: 650; }
+
+/* --- Footer nav --- */
+.footnav {
+  margin-top: 3.5rem; padding-top: 1.2rem; border-top: 1px solid var(--rule);
+  font-family: var(--font-sans); font-size: .9rem; display: flex; flex-wrap: wrap; gap: 1rem 2rem;
+}
+.footnav a { border: none; }
+.ask {
+  font-family: var(--font-sans); font-size: .9rem; background: var(--accent-soft);
+  border-radius: 6px; padding: .9rem 1.1rem; margin-top: 2rem; border-left: 3px solid var(--accent);
+}
+
+/* --- Print --- */
+@media print {
+  body { background: #fff; color: #000; font-size: 11pt; padding: 0; }
+  pre, .note, .why, .mission, .quiz { box-shadow: none; border: 1px solid #ccc; }
+  .footnav, .ask, .quiz button { display: none; }
+  a { color: #000; }
+}
