@@ -32,6 +32,7 @@ import socket
 import threading
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
@@ -139,8 +140,11 @@ class BridgeServer(Node):
         self.create_timer(0.05, self.drain_queue)  # 20 Hz
 
         # Track connected client writers so we can push acks back.
-        self._clients_lock = threading.Lock()
-        self._clients = set()
+        # NOTE: keep the "_connections" name. Naming this "_clients" would shadow
+        # rclpy Node._clients (the service-client list) and crash the executor
+        # with "'socket' object has no attribute 'handle'" once a peer connects.
+        self._connections_lock = threading.Lock()
+        self._connections = set()
 
         # Start servers in background daemon threads.
         self._stop = threading.Event()
@@ -175,8 +179,8 @@ class BridgeServer(Node):
 
     def _handle_tcp_client(self, conn: socket.socket, addr):
         conn.settimeout(None)
-        with self._clients_lock:
-            self._clients.add(conn)
+        with self._connections_lock:
+            self._connections.add(conn)
         buffer = b''
         try:
             while not self._stop.is_set():
@@ -193,8 +197,8 @@ class BridgeServer(Node):
         except OSError:
             pass
         finally:
-            with self._clients_lock:
-                self._clients.discard(conn)
+            with self._connections_lock:
+                self._connections.discard(conn)
             try:
                 conn.close()
             except OSError:
@@ -341,12 +345,16 @@ def main(args=None):
     node = BridgeServer()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
+        # Ctrl+C / SIGTERM: rclpy raises ExternalShutdownException instead of
+        # KeyboardInterrupt once the signal handler has shut the context down.
         pass
     finally:
-        node.shutdown()
-        node.destroy_node()
+        # When rclpy handled the signal itself the context is already down and
+        # publishing the stop twist would raise RCLError, so guard on rclpy.ok().
         if rclpy.ok():
+            node.shutdown()
+            node.destroy_node()
             rclpy.shutdown()
 
 

@@ -93,4 +93,6 @@ ros2 launch sztu_guide remote.launch.py tcp_port:=8888 ws_enabled:=true ws_port:
 
 - `STAND`/`WALK`/`RUN` 接入真实 AimDK 姿态/步态服务。
 - `EXPRESSION_LABELS` / `GESTURE_LABELS` 按机器人实际 emoji / 预设动作目录校准。
-- `gesture_controller.py` 目前为占位实现，需接入真实 `PresetMotion` 服务。
+- `gesture_controller.py` 已接入 `SetMcPresetMotion`，标签到动作 ID 的映射见
+  `GestureController.GESTURES`；`thinking`（思考）与 `lower_head`（低头）在
+  `McPresetMotion.msg` 中没有对应条目，暂未映射，调用会返回 `ERR`。
