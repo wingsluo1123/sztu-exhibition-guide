@@ -69,8 +69,11 @@ class MotionModeController(Node):
 
     def _call_with_retry(self, client, request, retries: int = 8):
         """跨板服务偶发丢包，按官方示例快速重试。返回响应或 None。"""
+        # 服务间请求头位置不同：SetMcAction.Request 有顶层 header，
+        # GetMcAction.Request 的 header 嵌套在 request.request 下。
+        header = getattr(request, 'header', None) or request.request.header
         for _ in range(retries):
-            request.header.stamp = self.get_clock().now().to_msg()
+            header.stamp = self.get_clock().now().to_msg()
             future = client.call_async(request)
             rclpy.spin_until_future_complete(self, future, timeout_sec=0.25)
             if future.done():
