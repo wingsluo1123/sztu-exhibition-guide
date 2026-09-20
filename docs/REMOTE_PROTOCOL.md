@@ -27,12 +27,25 @@
 |------|------|------|
 | `STOP` | 急停 | 发布零速度 `Twist` |
 | `JOY:<x>,<y>` | 摇杆 | `x`、`y` 取值 -100..100。`y`=前进/后退，`x`=转向。映射为 `linear.x = y/100 * max_linear`，`angular.z = -x/100 * max_angular` |
-| `STAND` | 站立姿态 | 占位，待接入 AimDK 姿态服务 |
-| `WALK` | 越野步态 | 占位 |
-| `RUN` | 走跑步态 | 占位 |
+| `MODE` | 查询运动模式 | 返回 `OK:MODE:<模式名>:<状态>`（状态 0=空闲 100=运行中 200=切换中），查询失败返回 `ERR:MODE` |
 
 发布话题：`/aima/mc/locomotion/velocity` (`geometry_msgs/Twist`)，可通过参数
 `cmd_vel_topic` 覆盖。
+
+### 运动模式切换（慢速路径，调用 `SetMcAction`）
+
+| 指令 | 目标模式 | 说明 |
+|------|---------|------|
+| `STAND` / `稳定站立` | `STAND_DEFAULT` | 稳定站立（力控站立），执行挥手等预设动作前需先进入此模式。**走安全序列**：若当前处于零力矩（吊起）等状态，先自动过渡到位控站立并等待稳定，再切稳定站立——从零力矩直切稳定站立会导致实机抽搐 |
+| `位控站立` | `JOINT_DEFAULT` | 站姿预备（位控站立），安全序列的过渡步 |
+| `HOIST` / `吊起` / `零力矩` | `PASSIVE_DEFAULT` | 零力矩模式。AimDK 无单独的"吊起"模式：按官方开机/关机指南，吊起（悬挂/装箱/搬运）时机器人处于零力矩状态 |
+| `阻尼` | `DAMPING_DEFAULT` | 阻尼模式（关节有阻尼感） |
+| `WALK` / `RUN` / `走跑模式` | `LOCOMOTION_DEFAULT` | 走跑模式 |
+
+标准操作顺序：`吊起`（悬挂/装箱）→ 放到平地双脚触地 → `STAND`（自动完成 位控站立→稳定站立）→ 遥操/预设动作。
+
+注意：模式切换受安全保护机制约束（如检测到摔倒时会被拒绝），拒绝原因见
+AimDK 文档 5.1.1 的 code 表；切换可能需要数秒，期间命令走慢速路径不会阻塞遥操。
 
 ### 表情（慢速路径，主线程调用 `PlayEmoji`）
 
@@ -44,8 +57,8 @@
 ### 手势/动作（慢速路径，主线程调用预设动作）
 
 `拍手` `左手点赞` `右手点赞` `双手点赞` `左手比耶` `右手比耶` `作揖`
-`左手碰拳` `右手碰拳` `点头` `摇头` `低头` `左手挥手` `右手挥手` `敬礼`
-`拥抱` `思考` 等。
+`左手碰拳` `右手碰拳` `点头` `摇头` `低头` `挥手` `左手挥手` `右手挥手`
+`敬礼` `拥抱` `思考` 等。
 
 未知标签会作为预设动作名透传给 `GestureController`。
 
@@ -121,7 +134,6 @@ ros2 launch sztu_guide remote.launch.py tcp_port:=8888 ws_enabled:=true ws_port:
 
 ## 待办 (TODO)
 
-- `STAND`/`WALK`/`RUN` 接入真实 AimDK 姿态/步态服务。
 - `EXPRESSION_LABELS` / `GESTURE_LABELS` 按机器人实际 emoji / 预设动作目录校准。
 - `gesture_controller.py` 已接入 `SetMcPresetMotion`，标签到动作 ID 的映射见
   `GestureController.GESTURES`；`thinking`（思考）与 `lower_head`（低头）在

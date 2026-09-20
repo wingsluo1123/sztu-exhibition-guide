@@ -10,7 +10,7 @@ line-based string commands. This node hosts the server, parses those commands,
 and dispatches them to the existing controllers:
 
   - JOY / STOP           -> Twist on /aima/mc/locomotion/velocity (fast path)
-  - STAND / WALK / RUN    -> posture / gait command (placeholder, see TODO)
+  - STAND / HOIST        -> AimDK SetMcAction motion-mode switch (slow path)
   - expression labels     -> EmotionController.show_emotion
   - gesture/action labels -> GestureController.perform_gesture
   - hand-turn labels      -> GestureController.turn_hand (wrist roll)
@@ -43,6 +43,7 @@ sys.path.append(os.path.expanduser('~/sztu/install/sztu_interaction/lib/python3.
 from sztu_interaction.tts_controller import TtsController
 from sztu_interaction.emotion_controller import EmotionController
 from sztu_interaction.gesture_controller import GestureController
+from sztu_interaction.motion_mode_controller import MotionModeController
 
 
 # --- Command label maps -----------------------------------------------------
@@ -93,6 +94,7 @@ GESTURE_LABELS = {
     '摇头': 'shake_head',
     '低头': 'lower_head',
     # commonly used upper-limb / lively actions
+    '挥手': 'wave',
     '左手挥手': 'wave_left',
     '右手挥手': 'wave_right',
     '敬礼': 'salute',
@@ -108,6 +110,18 @@ HAND_TURN_LABELS = {
     '左手转手': 'left',
     '右手转手': 'right',
     '双手转手': 'both',
+}
+
+# Motion-mode labels (Chinese) -> MotionModeController.set_mode label.
+# Per AimDK docs 5.1.1 there is no dedicated "吊起" mode: a hoisted robot
+# must be in the zero-torque mode (PASSIVE_DEFAULT), so 吊起 maps to it.
+MOTION_MODE_LABELS = {
+    '稳定站立': 'stand',        # STAND_DEFAULT，力控站立，预设动作前置模式
+    '位控站立': 'joint_stand',  # JOINT_DEFAULT，站姿预备
+    '吊起': 'passive',          # PASSIVE_DEFAULT，零力矩（吊起/装箱用）
+    '零力矩': 'passive',
+    '阻尼': 'damping',          # DAMPING_DEFAULT
+    '走跑模式': 'locomotion',   # LOCOMOTION_DEFAULT
 }
 
 
@@ -145,6 +159,7 @@ class BridgeServer(Node):
         self.tts = TtsController()
         self.emotion = EmotionController()
         self.gesture = GestureController()
+        self.motion_mode = MotionModeController()
 
         # Command queue for slow commands, drained on the main thread.
         self.cmd_queue: 'queue.Queue[tuple]' = queue.Queue()
@@ -279,13 +294,16 @@ class BridgeServer(Node):
             self._handle_joy(text[4:], conn)
             return
 
-        if upper in ('STAND', 'WALK', 'RUN'):
-            # TODO: map to real AimDK posture/gait service when available.
-            self.get_logger().info(f'Posture/gait command (placeholder): {upper}')
-            self._reply(conn, f'OK:{upper}')
+        if upper == 'MODE':
+            ok, mode, status = self.motion_mode.get_mode()
+            if ok:
+                self._reply(conn, f'OK:MODE:{mode}:{status}')
+            else:
+                self._reply(conn, 'ERR:MODE')
             return
 
-        # Slow path: enqueue for main-thread dispatch.
+        # STAND / WALK / RUN and Chinese motion-mode labels: slow path via
+        # SetMcAction (mode switch takes seconds and must not block teleop).
         self.cmd_queue.put((text, conn))
 
     def _handle_joy(self, payload: str, conn):
@@ -327,6 +345,37 @@ class BridgeServer(Node):
             spoken = text[4:]
             ok = self.tts.speak(spoken)
             self._reply(conn, f'{"OK" if ok else "ERR"}:SAY')
+            return
+
+        # English mode shortcuts -> motion-mode switch via SetMcAction.
+        # HOIST = 吊起：per docs a hoisted robot lives in zero-torque mode.
+        # STAND goes through the safe sequence (JOINT_DEFAULT -> STAND_DEFAULT):
+        # switching straight from zero torque to stable stand makes the robot
+        # twitch on the real machine.
+        if text.upper() in ('STAND', 'WALK', 'RUN', 'HOIST'):
+            mapping = {
+                'STAND': 'stand',
+                'WALK': 'locomotion',
+                'RUN': 'locomotion',
+                'HOIST': 'passive',
+            }
+            label = mapping[text.upper()]
+            if label == 'stand':
+                ok = self.motion_mode.enter_stand_sequence()
+            else:
+                ok = self.motion_mode.set_mode(label)
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{text.upper()}')
+            return
+
+        # Chinese motion-mode labels -> motion-mode switch.
+        if text in MOTION_MODE_LABELS:
+            label = MOTION_MODE_LABELS[text]
+            # 稳定站立走安全序列：位控站立过渡，避免从零力矩直切导致抽搐
+            if label == 'stand':
+                ok = self.motion_mode.enter_stand_sequence()
+            else:
+                ok = self.motion_mode.set_mode(label)
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
             return
 
         # Expression label -> emotion controller
