@@ -13,8 +13,9 @@
 5. [工作空间配置](#工作空间配置)
 6. [依赖安装](#依赖安装)
 7. [AimDK SDK](#aimdk-sdk)
-8. [编译与测试](#编译与测试)
-9. [常见问题](#常见问题)
+8. [X2 URDF 模型](#x2-urdf-模型)
+9. [编译与测试](#编译与测试)
+10. [常见问题](#常见问题)
 
 ---
 
@@ -443,6 +444,92 @@ colcon build --symlink-install
 ```bash
 ros2 run py_examples get_mc_action    # 读取机器人当前运动模式
 ```
+
+---
+
+## X2 URDF 模型
+
+URDF 用于在 RViz 里看机器人、建 TF 树，以及做运动学相关的开发。
+**不需要机器人开机，也不需要 AimDK SDK**，可以完全离线做。
+
+### 1. 下载模型压缩包
+
+开源仓库：<https://github.com/AgibotTech/agibot_x2_urdf>
+（或 AimDK 文档站右下角浮动工具栏 → Downloads）
+
+一个压缩包里同时含多个版本，按机器人**后颈铭牌最上面一行的结尾**选机型：
+
+| 铭牌结尾 | 机型 | `model` 参数 | 目录 | 根链接 |
+|---|---|---|---|---|
+| `X2 Ultra` | 旗舰版 | `x2_ultra` | `X2_URDF-v1.3.0/` | `base_link` |
+| `X2 Ultra -N` | 旗舰焕新版 | `X2-Ultra` | `X2_URDF-v1.4.0/` | `pelvis` |
+| `X2 EDU` | 人人造 | `X2-EDU` | `X2_URDF-v1.4.0/` | `pelvis` |
+
+旗舰焕新版另有末端执行器变体：`X2-Ultra_omnihand`（灵巧手）、
+`X2-Ultra_omnipicker`（夹爪）；各机型还都有 `*_simple_collision` 简化碰撞体版本，
+做碰撞检测/仿真时用它更快。
+
+### 2. 安装
+
+```bash
+cd ~/sztu
+./install_urdf.sh X2-Ultra                            # 自动找压缩包
+./install_urdf.sh X2-EDU /mnt/d/Downloads/X2_URDF.zip # 或指定路径
+```
+
+脚本做四件事：挑出该机型的 urdf、只拷它真正引用到的 STL、把 mesh 路径从
+`./meshes/xxx.STL` 改写成 `package://sztu_description/meshes/xxx.STL`、
+然后 `check_urdf` 校验并编译 `sztu_description`。
+
+> ⚠️ 路径改写这步是必须的 —— 官方 urdf 里写的是相对路径，
+> 而 **RViz 只认 `package://` 和 `file://`**，原样加载会看不到任何模型。
+
+> STL 有 100MB 上下，`src/sztu_description/{urdf,meshes}/` 已加入 `.gitignore`，
+> 不入库。换机器或重新 clone 后重跑一次 `install_urdf.sh` 即可。
+
+### 3. 查看模型
+
+```bash
+cd ~/sztu && source install/setup.bash
+ros2 launch sztu_description display.launch.py model:=X2-Ultra
+```
+
+launch 参数：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `model` | `X2-Ultra` | `urdf/` 下的文件名，不含 `.urdf` |
+| `gui` | `true` | `true` 起 `joint_state_publisher_gui` 拖滑块调关节；`false` 起无界面版 |
+| `rviz` | `true` | 是否同时开 RViz |
+
+> 用 v1.3.0 的 `x2_ultra` 时，根链接是 `base_link` 而不是 `pelvis`，
+> RViz 打开后在 Global Options → Fixed Frame 改一下即可（`install_urdf.sh` 会提示）。
+
+> WSL 里跑 RViz 需要图形支持：Win11 的 WSLg 开箱可用；
+> 用 `wsl --import` 导入的旧版 WSL 没有 WSLg，得自己装 X server 并设 `DISPLAY`。
+
+### 4. 不开 GUI 也能验证
+
+```bash
+ros2 launch sztu_description display.launch.py gui:=false rviz:=false &
+
+ros2 param get /robot_state_publisher robot_description | wc -c   # 约 4 万字节
+ros2 run tf2_ros tf2_echo pelvis left_wrist_roll_link             # 应输出变换
+ros2 topic echo /tf --once | grep -c child_frame_id               # X2-Ultra 为 31
+```
+
+`/tf_static` 上只有 fixed joint（X2-Ultra 7 个），revolute joint 走 `/tf`（31 个）。
+
+### 5. 只想快速看一眼模型
+
+不进 ROS 也行，压缩包自带 MuJoCo 格式：
+
+```bash
+pip3 install mujoco
+python3 -m mujoco.viewer --mjcf X2_URDF-v1.4.0/scene.xml
+```
+
+VSCode 装 **URDF Visualizer** 扩展也能直接预览 `.urdf`。
 
 ---
 

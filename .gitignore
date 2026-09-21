@@ -31,3 +31,10 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
+
+# X2 URDF 模型：由 install_urdf.sh 从官方压缩包生成。
+# STL 网格上百 MB，不入库。
+src/sztu_description/meshes/*
+!src/sztu_description/meshes/.gitkeep
+src/sztu_description/urdf/*
+!src/sztu_description/urdf/.gitkeep

@@ -9,3 +9,16 @@
 *.xml text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
+
+# ROS 资产
+*.urdf text eol=lf
+*.xacro text eol=lf
+*.rviz text eol=lf
+*.launch text eol=lf
+
+# 网格与图片：二进制，不做换行转换
+*.STL binary
+*.stl binary
+*.dae binary
+*.png binary
+*.jpg binary

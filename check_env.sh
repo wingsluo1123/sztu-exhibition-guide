@@ -172,8 +172,27 @@ else
 fi
 echo ""
 
-# 9. 检查 Git 配置
-echo "9️⃣  检查 Git 配置"
+# 9. 检查 X2 URDF 模型
+echo "9️⃣  检查 X2 URDF 模型"
+echo "---"
+URDF_DIR="$HOME/sztu/src/sztu_description/urdf"
+URDF_COUNT=$(find "$URDF_DIR" -maxdepth 1 -name '*.urdf' 2>/dev/null | wc -l)
+if [ "$URDF_COUNT" -gt 0 ]; then
+    for u in "$URDF_DIR"/*.urdf; do
+        echo -e "${GREEN}✓${NC} $(basename "$u")"
+    done
+    MESH_COUNT=$(find "$HOME/sztu/src/sztu_description/meshes" -maxdepth 1 \
+                 \( -iname '*.stl' \) 2>/dev/null | wc -l)
+    echo -e "${GREEN}✓${NC} mesh 文件: $MESH_COUNT 个"
+    check_pass=$((check_pass + 1))
+else
+    echo -e "${YELLOW}⚠${NC} 未安装 URDF 模型 —— RViz 里看不到机器人，TF 树也建不起来"
+    echo "   安装: ./install_urdf.sh <机型>   (机型见 DEV_SETUP.md「X2 URDF 模型」一节)"
+fi
+echo ""
+
+# 10. 检查 Git 配置
+echo "🔟 检查 Git 配置"
 echo "---"
 GIT_USER=$(git config --get user.name 2>/dev/null)
 GIT_EMAIL=$(git config --get user.email 2>/dev/null)
