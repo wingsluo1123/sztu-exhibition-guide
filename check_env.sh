@@ -1,8 +1,9 @@
 #!/bin/bash
 # SZTU 展厅讲解员系统 - 快速环境检查脚本
 # 用于验证开发环境是否正确配置
-
-set -e
+#
+# 注意: 这里刻意不用 set -e。本脚本的职责是把所有问题一次性列全，
+# 任何一项检查失败都不应该中断后续检查。
 
 echo "=========================================="
 echo "  SZTU 开发环境检查工具"
@@ -25,11 +26,11 @@ check_command() {
     
     if command -v $cmd &> /dev/null; then
         echo -e "${GREEN}✓${NC} $desc: $(command -v $cmd)"
-        ((check_pass++))
+        check_pass=$((check_pass + 1))
         return 0
     else
         echo -e "${RED}✗${NC} $desc: 未安装"
-        ((check_fail++))
+        check_fail=$((check_fail + 1))
         return 1
     fi
 }
@@ -40,11 +41,11 @@ check_file() {
     
     if [ -f "$file" ] || [ -d "$file" ]; then
         echo -e "${GREEN}✓${NC} $desc: $file"
-        ((check_pass++))
+        check_pass=$((check_pass + 1))
         return 0
     else
         echo -e "${RED}✗${NC} $desc: 不存在"
-        ((check_fail++))
+        check_fail=$((check_fail + 1))
         return 1
     fi
 }
@@ -55,11 +56,11 @@ check_ros_package() {
     
     if ros2 pkg list 2>/dev/null | grep -q "^$pkg$"; then
         echo -e "${GREEN}✓${NC} $desc: 已安装"
-        ((check_pass++))
+        check_pass=$((check_pass + 1))
         return 0
     else
         echo -e "${RED}✗${NC} $desc: 未安装"
-        ((check_fail++))
+        check_fail=$((check_fail + 1))
         return 1
     fi
 }
@@ -71,11 +72,10 @@ check_command "lsb_release" "系统信息"
 if [ $? -eq 0 ]; then
     OS_VERSION=$(lsb_release -rs)
     if [ "$OS_VERSION" == "22.04" ]; then
-        echo -e "   ${GREEN}✓${NC} Ubuntu 22.04 (推荐版本)"
-    elif [ "$OS_VERSION" == "20.04" ]; then
-        echo -e "   ${YELLOW}⚠${NC} Ubuntu 20.04 (支持但推荐 22.04)"
+        echo -e "   ${GREEN}✓${NC} Ubuntu 22.04"
     else
-        echo -e "   ${YELLOW}⚠${NC} Ubuntu $OS_VERSION (未测试)"
+        echo -e "   ${RED}✗${NC} Ubuntu $OS_VERSION —— AimDK 与 ROS 2 Humble 要求 22.04"
+        check_fail=$((check_fail + 1))
     fi
 fi
 echo ""
@@ -93,12 +93,20 @@ echo ""
 # 3. 检查 ROS 2
 echo "3️⃣  检查 ROS 2 Humble"
 echo "---"
-check_command "ros2" "ROS 2 CLI"
 check_file "/opt/ros/humble/setup.bash" "ROS 2 安装路径"
+# 先 source 再查 ros2：未 source 时 ros2 本来就不在 PATH 上
+source /opt/ros/humble/setup.bash 2>/dev/null
+check_command "ros2" "ROS 2 CLI"
 
 if command -v ros2 &> /dev/null; then
-    ROS_VERSION=$(ros2 --version 2>/dev/null | head -1)
-    echo -e "   ${GREEN}✓${NC} 版本: $ROS_VERSION"
+    # 注意: ros2 --version 在当前 ros2cli 上已被移除，用 ROS_DISTRO 判断
+    if [ "$ROS_DISTRO" == "humble" ]; then
+        echo -e "   ${GREEN}✓${NC} ROS_DISTRO: $ROS_DISTRO"
+        check_pass=$((check_pass + 1))
+    else
+        echo -e "   ${RED}✗${NC} ROS_DISTRO 为 '${ROS_DISTRO:-空}'，预期 humble"
+        check_fail=$((check_fail + 1))
+    fi
 fi
 echo ""
 
@@ -147,26 +155,43 @@ python3 -c "import yaml" 2>/dev/null && echo -e "${GREEN}✓${NC} PyYAML" || ech
 python3 -c "import numpy" 2>/dev/null && echo -e "${GREEN}✓${NC} NumPy" || echo -e "${YELLOW}⚠${NC} NumPy (可选: pip3 install numpy)"
 echo ""
 
-# 8. 检查 Git 配置
-echo "8️⃣  检查 Git 配置"
+# 8. 检查 AimDK SDK
+echo "8️⃣  检查 AimDK SDK"
+echo "---"
+source $HOME/aimdk/install/local_setup.bash 2>/dev/null
+if python3 -c "import aimdk_msgs" 2>/dev/null; then
+    echo -e "${GREEN}✓${NC} aimdk_msgs 可导入"
+    check_pass=$((check_pass + 1))
+else
+    echo -e "${YELLOW}⚠${NC} aimdk_msgs 不可用 —— 依赖它的模块无法启动:"
+    echo "     sztu_interaction (全部 4 个节点)"
+    echo "     sztu_slam        (slam_manager, mapping_tool)"
+    echo "     sztu_guide       (guide_manager, bridge_server)"
+    echo "   离线开发可忽略；联机前请按 DEV_SETUP.md 的 AimDK SDK 一节安装"
+    echo "   安装脚本: ./install_aimdk.sh <SDK压缩包路径>"
+fi
+echo ""
+
+# 9. 检查 Git 配置
+echo "9️⃣  检查 Git 配置"
 echo "---"
 GIT_USER=$(git config --get user.name 2>/dev/null)
 GIT_EMAIL=$(git config --get user.email 2>/dev/null)
 
 if [ -n "$GIT_USER" ]; then
     echo -e "${GREEN}✓${NC} Git 用户名: $GIT_USER"
-    ((check_pass++))
+    check_pass=$((check_pass + 1))
 else
     echo -e "${RED}✗${NC} Git 用户名未配置"
-    ((check_fail++))
+    check_fail=$((check_fail + 1))
 fi
 
 if [ -n "$GIT_EMAIL" ]; then
     echo -e "${GREEN}✓${NC} Git 邮箱: $GIT_EMAIL"
-    ((check_pass++))
+    check_pass=$((check_pass + 1))
 else
     echo -e "${RED}✗${NC} Git 邮箱未配置"
-    ((check_fail++))
+    check_fail=$((check_fail + 1))
 fi
 echo ""
 
