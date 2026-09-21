@@ -15,8 +15,8 @@ setup(
     zip_safe=True,
     maintainer='agi',
     maintainer_email='robotics@sztu.edu.cn',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='SZTU navigation module for waypoint navigation and path execution',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

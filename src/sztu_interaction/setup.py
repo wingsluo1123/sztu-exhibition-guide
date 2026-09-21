@@ -15,8 +15,8 @@ setup(
     zip_safe=True,
     maintainer='agi',
     maintainer_email='robotics@sztu.edu.cn',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='SZTU interaction module for TTS, emotion, and gesture control',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

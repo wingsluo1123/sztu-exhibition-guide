@@ -19,8 +19,8 @@ setup(
     zip_safe=True,
     maintainer='agi',
     maintainer_email='robotics@sztu.edu.cn',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='SZTU guide core module for exhibition tour management',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

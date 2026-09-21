@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 手势控制器节点
+
 通过 AimDK 预设动作服务 SetMcPresetMotion 驱动手臂/头部动作
 
 动作 ID 与区域 ID 取自 aimdk_msgs：

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 运动模式控制器节点
+
 通过 AimDK 的 SetMcAction / GetMcAction 服务切换和查询运动模式
 
 接口与模式名依据 AimDK 文档 5.1.1 运动模式切换：
