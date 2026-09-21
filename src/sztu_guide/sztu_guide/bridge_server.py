@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""
+r"""
 Northbound bridge server
 
 Bridges the HarmonyOS northbound client (Robot_APP) to the ROS 2 side.
 
 The client (see Robot_APP/entry/src/main/ets/pages/*) connects over TCP
-(default port 8888, UTF-8 lines terminated by \\r\\n) or WebSocket, and sends
+(default port 8888, UTF-8 lines terminated by \r\n) or WebSocket, and sends
 line-based string commands. This node hosts the server, parses those commands,
 and dispatches them to the existing controllers:
 
@@ -17,17 +17,18 @@ and dispatches them to the existing controllers:
   - SAY:<text>            -> TtsController.speak
 
 Design notes:
+  - 命令文本怎么解析、中文标签往哪路由，全在 sztu_guide.protocol 里，那边不
+    依赖 ROS，可以单测。本文件只负责 socket 收发和把解析结果落到控制器上。
   - Fast commands (JOY/STOP) are handled directly on the socket thread because
     publishing a Twist is thread-safe and must stay low-latency.
-  - Slow commands (expression/gesture/TTS) are pushed onto a thread-safe queue
-    and executed on the main ROS thread inside a timer callback, so a blocking
-    TTS call never stalls teleop and all service calls stay single-threaded.
+  - 其余命令（表情/手势/TTS/模式切换/MODE 查询）一律压进线程安全队列，由主
+    ROS 线程的定时器回调执行。这样阻塞的 TTS 不会拖住遥控，而且所有 service
+    调用都留在单线程上 —— MODE 查询曾经是在 socket 线程上直接调 service 的，
+    违反了这条约定，现在也走队列。
   - The server replies "OK:<cmd>" / "ERR:<cmd>:<reason>" so the client log
     (which prints "服务端:") shows an acknowledgement.
 """
 
-import os
-import sys
 import queue
 import socket
 import threading
@@ -37,92 +38,25 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
-# Ensure sibling packages are importable when run from the install space.
-sys.path.append(os.path.expanduser('~/sztu/install/sztu_interaction/lib/python3.10/site-packages'))
-
 from sztu_interaction.tts_controller import TtsController
 from sztu_interaction.emotion_controller import EmotionController
 from sztu_interaction.gesture_controller import GestureController
 from sztu_interaction.motion_mode_controller import MotionModeController
 
+from . import protocol
+from .protocol import (
+    EXPRESSION_LABELS,
+    GESTURE_LABELS,
+    HAND_TURN_LABELS,
+    MOTION_MODE_LABELS,
+    Kind,
+)
 
-# --- Command label maps -----------------------------------------------------
-# The client sends UI-facing Chinese labels with no type prefix, so the bridge
-# decides routing by set membership. Adjust these to match the real AimDK
-# preset-motion / emoji catalogue as it is confirmed on the robot.
-
-# Expression labels (from Index.ets `expressions`) -> AimDK emoji semantic name.
-# Unknown labels fall through to EmotionController, which passes them straight
-# to PlayEmoji as emoji_name.
-EXPRESSION_LABELS = {
-    '眨眼': 'blink',
-    '平静1': 'neutral',
-    '平静2': 'neutral',
-    '游戏': 'happy',
-    '可爱1': 'happy',
-    '可爱2': 'happy',
-    '可爱3': 'happy',
-    '可爱4': 'happy',
-    '闭眼': 'blink',
-    '睁眼': 'neutral',
-    '无聊': 'neutral',
-    '告警': 'surprised',
-    '睡眠': 'neutral',
-    '开心': 'happy',
-    '开心+': 'happy',
-    '开心++': 'happy',
-    '伤心': 'sad',
-    '同情': 'sad',
-}
-
-# Gesture / action labels (from Index.ets gesture/lively/upperLimb/head lists).
-# Value is the gesture name handed to GestureController.perform_gesture; the
-# controller maps known names to AimDK preset motions and passes through others.
-GESTURE_LABELS = {
-    # gestureActions
-    '拍手': 'clap',
-    '左手点赞': 'thumbs_up_left',
-    '右手点赞': 'thumbs_up_right',
-    '双手点赞': 'thumbs_up_both',
-    '左手比耶': 'yeah_left',
-    '右手比耶': 'yeah_right',
-    '作揖': 'bow_salute',
-    '左手碰拳': 'fist_bump_left',
-    '右手碰拳': 'fist_bump_right',
-    # headActions
-    '点头': 'nod',
-    '摇头': 'shake_head',
-    '低头': 'lower_head',
-    # commonly used upper-limb / lively actions
-    '挥手': 'wave',
-    '左手挥手': 'wave_left',
-    '右手挥手': 'wave_right',
-    '敬礼': 'salute',
-    '拥抱': 'hug',
-    '思考': 'thinking',
-}
-
-# Hand-turn labels -> which hand GestureController.turn_hand rotates. These do
-# not use the preset-motion service: the preset catalogue has no wrist-roll
-# entry, so the wrist joint is interpolated on /aima/hal/joint/arm/command.
-HAND_TURN_LABELS = {
-    '转手': 'right',
-    '左手转手': 'left',
-    '右手转手': 'right',
-    '双手转手': 'both',
-}
-
-# Motion-mode labels (Chinese) -> MotionModeController.set_mode label.
-# Per AimDK docs 5.1.1 there is no dedicated "吊起" mode: a hoisted robot
-# must be in the zero-torque mode (PASSIVE_DEFAULT), so 吊起 maps to it.
-MOTION_MODE_LABELS = {
-    '稳定站立': 'stand',        # STAND_DEFAULT，力控站立，预设动作前置模式
-    '位控站立': 'joint_stand',  # JOINT_DEFAULT，站姿预备
-    '吊起': 'passive',          # PASSIVE_DEFAULT，零力矩（吊起/装箱用）
-    '零力矩': 'passive',
-    '阻尼': 'damping',          # DAMPING_DEFAULT
-    '走跑模式': 'locomotion',   # LOCOMOTION_DEFAULT
-}
+# 标签表搬到 protocol.py 了，这里重新导出，保持 from bridge_server import ... 可用。
+__all__ = [
+    'BridgeServer', 'main',
+    'EXPRESSION_LABELS', 'GESTURE_LABELS', 'HAND_TURN_LABELS', 'MOTION_MODE_LABELS',
+]
 
 
 class BridgeServer(Node):
@@ -214,12 +148,9 @@ class BridgeServer(Node):
                 if not data:
                     break
                 buffer += data
-                # Client frames messages with \r\n; also tolerate bare \n.
-                while b'\n' in buffer:
-                    line, buffer = buffer.split(b'\n', 1)
-                    text = line.decode('utf-8', errors='replace').strip()
-                    if text:
-                        self._on_command(text, conn)
+                lines, buffer = protocol.split_lines(buffer)
+                for text in lines:
+                    self._on_command(text, conn)
         except OSError:
             pass
         finally:
@@ -282,43 +213,26 @@ class BridgeServer(Node):
         """Route a single command line. Fast path runs here; slow path queues."""
         self.get_logger().info(f'CMD: {text}')
 
-        upper = text.upper()
+        cmd = protocol.parse(text)
 
-        # Fast path: teleop (publish directly, thread-safe, low latency)
-        if upper == 'STOP':
+        # 快路径：直接在 socket 线程上发 Twist，保证遥控延迟
+        if cmd.kind == Kind.STOP:
             self._publish_twist(0.0, 0.0)
             self._reply(conn, 'OK:STOP')
             return
 
-        if upper.startswith('JOY:'):
-            self._handle_joy(text[4:], conn)
+        if cmd.kind == Kind.JOY:
+            if cmd.error:
+                self._reply(conn, f'ERR:JOY:{cmd.error}')
+                return
+            linear, angular = protocol.joy_to_twist(
+                cmd.joy_x, cmd.joy_y, self.max_linear, self.max_angular)
+            self._publish_twist(linear, angular)
+            # No ack on JOY: it streams at high rate and would flood the log.
             return
 
-        if upper == 'MODE':
-            ok, mode, status = self.motion_mode.get_mode()
-            if ok:
-                self._reply(conn, f'OK:MODE:{mode}:{status}')
-            else:
-                self._reply(conn, 'ERR:MODE')
-            return
-
-        # STAND / WALK / RUN and Chinese motion-mode labels: slow path via
-        # SetMcAction (mode switch takes seconds and must not block teleop).
-        self.cmd_queue.put((text, conn))
-
-    def _handle_joy(self, payload: str, conn):
-        try:
-            parts = payload.split(',')
-            x = float(parts[0])
-            y = float(parts[1])
-        except (ValueError, IndexError):
-            self._reply(conn, f'ERR:JOY:bad_payload')
-            return
-        # Client sends x,y in -100..100. y is forward/back, x is turn.
-        linear = max(-1.0, min(1.0, y / 100.0)) * self.max_linear
-        angular = -max(-1.0, min(1.0, x / 100.0)) * self.max_angular
-        self._publish_twist(linear, angular)
-        # No ack on JOY: it streams at high rate and would flood the log.
+        # 其余全部进队列，在 ROS 主线程上执行（含 MODE 查询：它要调 service）
+        self.cmd_queue.put((cmd, conn))
 
     def _publish_twist(self, linear: float, angular: float):
         cmd = Twist()
@@ -330,76 +244,57 @@ class BridgeServer(Node):
         """Timer callback (main thread): execute slow commands."""
         while True:
             try:
-                text, conn = self.cmd_queue.get_nowait()
+                cmd, conn = self.cmd_queue.get_nowait()
             except queue.Empty:
                 return
             try:
-                self._dispatch_slow(text, conn)
+                self._dispatch_slow(cmd, conn)
             except Exception as e:  # never let one command kill the timer
-                self.get_logger().error(f'Command failed "{text}": {e}')
-                self._reply(conn, f'ERR:{text}:{e}')
+                self.get_logger().error(f'Command failed "{cmd.raw}": {e}')
+                self._reply(conn, f'ERR:{cmd.raw}:{e}')
 
-    def _dispatch_slow(self, text: str, conn):
-        # SAY:<text> -> TTS
-        if text.upper().startswith('SAY:'):
-            spoken = text[4:]
-            ok = self.tts.speak(spoken)
+    def _dispatch_slow(self, cmd, conn):
+        """在 ROS 主线程上执行一条已解析的命令。"""
+        if cmd.kind == Kind.MODE_QUERY:
+            ok, mode, status = self.motion_mode.get_mode()
+            self._reply(conn, f'OK:MODE:{mode}:{status}' if ok else 'ERR:MODE')
+            return
+
+        if cmd.kind == Kind.SAY:
+            ok = self.tts.speak(cmd.value)
             self._reply(conn, f'{"OK" if ok else "ERR"}:SAY')
             return
 
-        # English mode shortcuts -> motion-mode switch via SetMcAction.
-        # HOIST = 吊起：per docs a hoisted robot lives in zero-torque mode.
-        # STAND goes through the safe sequence (JOINT_DEFAULT -> STAND_DEFAULT):
-        # switching straight from zero torque to stable stand makes the robot
-        # twitch on the real machine.
-        if text.upper() in ('STAND', 'WALK', 'RUN', 'HOIST'):
-            mapping = {
-                'STAND': 'stand',
-                'WALK': 'locomotion',
-                'RUN': 'locomotion',
-                'HOIST': 'passive',
-            }
-            label = mapping[text.upper()]
-            if label == 'stand':
+        if cmd.kind == Kind.MODE_SWITCH:
+            # 稳定站立走安全序列（JOINT_DEFAULT -> STAND_DEFAULT）：从零力矩
+            # 直切力控站立，真机上会抽一下。
+            if cmd.value == 'stand':
                 ok = self.motion_mode.enter_stand_sequence()
             else:
-                ok = self.motion_mode.set_mode(label)
-            self._reply(conn, f'{"OK" if ok else "ERR"}:{text.upper()}')
+                ok = self.motion_mode.set_mode(cmd.value)
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
             return
 
-        # Chinese motion-mode labels -> motion-mode switch.
-        if text in MOTION_MODE_LABELS:
-            label = MOTION_MODE_LABELS[text]
-            # 稳定站立走安全序列：位控站立过渡，避免从零力矩直切导致抽搐
-            if label == 'stand':
-                ok = self.motion_mode.enter_stand_sequence()
-            else:
-                ok = self.motion_mode.set_mode(label)
-            self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
+        if cmd.kind == Kind.EMOTION:
+            ok = self.emotion.show_emotion(cmd.value)
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
             return
 
-        # Expression label -> emotion controller
-        if text in EXPRESSION_LABELS:
-            ok = self.emotion.show_emotion(EXPRESSION_LABELS[text])
-            self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
+        if cmd.kind == Kind.GESTURE:
+            ok = self.gesture.perform_gesture(cmd.value)
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
             return
 
-        # Gesture / action label -> gesture controller
-        if text in GESTURE_LABELS:
-            ok = self.gesture.perform_gesture(GESTURE_LABELS[text])
-            self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
+        if cmd.kind == Kind.HAND_TURN:
+            # 腕部插值是阻塞的，要好几秒 —— 只能在慢路径上做
+            ok = self.gesture.turn_hand(cmd.value)
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
             return
 
-        # Hand-turn label -> wrist rotation (blocking, a couple of seconds)
-        if text in HAND_TURN_LABELS:
-            ok = self.gesture.turn_hand(HAND_TURN_LABELS[text])
-            self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
-            return
-
-        # Unknown label: try it as a raw gesture (preset motion passthrough).
-        self.get_logger().warn(f'Unknown command, forwarding as gesture: {text}')
-        ok = self.gesture.perform_gesture(text)
-        self._reply(conn, f'{"OK" if ok else "ERR"}:{text}')
+        # 认不出来的标签当预设动作名透传
+        self.get_logger().warn(f'Unknown command, forwarding as gesture: {cmd.raw}')
+        ok = self.gesture.perform_gesture(cmd.value or cmd.raw)
+        self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
 
     def shutdown(self):
         self._stop.set()

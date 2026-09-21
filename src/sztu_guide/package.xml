@@ -12,6 +12,14 @@
 
   <depend>aimdk_msgs</depend>
 
+  <!-- guide_manager / bridge_server 直接 import 这三个包里的控制器。
+       以前没声明依赖，靠在代码里 sys.path.append(install/.../site-packages)
+       硬凑，换个安装路径或 Python 版本就失效。声明出来后 colcon 会保证它们
+       先构建、并出现在 PYTHONPATH 上。 -->
+  <exec_depend>sztu_interaction</exec_depend>
+  <exec_depend>sztu_navigation</exec_depend>
+  <exec_depend>sztu_slam</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
