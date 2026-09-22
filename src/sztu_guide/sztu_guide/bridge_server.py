@@ -9,8 +9,8 @@ The client (see Robot_APP/entry/src/main/ets/pages/*) connects over TCP
 line-based string commands. This node hosts the server, parses those commands,
 and dispatches them to the existing controllers:
 
-  - JOY / STOP           -> Twist on /aima/mc/locomotion/velocity (fast path)
-  - STAND / HOIST        -> AimDK SetMcAction motion-mode switch (slow path)
+  - JOY / STOP           -> AimDK McLocomotionVelocity (50 Hz, fast path)
+  - STAND / WALK / HOIST -> AimDK SetMcAction motion-mode switch (slow path)
   - expression labels     -> EmotionController.show_emotion
   - gesture/action labels -> GestureController.perform_gesture
   - hand-turn labels      -> GestureController.turn_hand (wrist roll)
@@ -36,11 +36,11 @@ import threading
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from geometry_msgs.msg import Twist
 
 from sztu_interaction.tts_controller import TtsController
 from sztu_interaction.emotion_controller import EmotionController
 from sztu_interaction.gesture_controller import GestureController
+from sztu_interaction.locomotion_controller import LocomotionController
 from sztu_interaction.motion_mode_controller import MotionModeController
 
 from . import protocol
@@ -70,6 +70,8 @@ class BridgeServer(Node):
         self.declare_parameter('ws_enabled', False)
         self.declare_parameter('ws_port', 8080)
         self.declare_parameter('cmd_vel_topic', '/aima/mc/locomotion/velocity')
+        self.declare_parameter('locomotion_source', 'sdk_sztu_app')
+        self.declare_parameter('locomotion_priority', 55)
         self.declare_parameter('max_linear_speed', 0.5)
         self.declare_parameter('max_angular_speed', 0.8)
 
@@ -79,13 +81,20 @@ class BridgeServer(Node):
         self.max_linear = self.get_parameter('max_linear_speed').value
         self.max_angular = self.get_parameter('max_angular_speed').value
         cmd_vel_topic = self.get_parameter('cmd_vel_topic').value
+        locomotion_source = self.get_parameter('locomotion_source').value
+        locomotion_priority = self.get_parameter('locomotion_priority').value
 
         self.get_logger().info('=' * 60)
         self.get_logger().info('   Northbound Bridge Server')
         self.get_logger().info('=' * 60)
 
-        # Teleop publisher (fast path)
-        self.cmd_vel_pub = self.create_publisher(Twist, cmd_vel_topic, 10)
+        # AimDK 走跑控制：使用 McLocomotionVelocity 和已注册输入源。
+        self.locomotion = LocomotionController(
+            topic=cmd_vel_topic,
+            source=locomotion_source,
+            priority=int(locomotion_priority),
+        )
+        self.locomotion.register_input_source()
 
         # Interaction controllers (in-process; do NOT also start the standalone
         # tts/emotion/gesture nodes, or node names will collide).
@@ -98,6 +107,7 @@ class BridgeServer(Node):
         # Command queue for slow commands, drained on the main thread.
         self.cmd_queue: 'queue.Queue[tuple]' = queue.Queue()
         self.create_timer(0.05, self.drain_queue)  # 20 Hz
+        self.create_timer(0.02, self.locomotion.tick)  # AimDK 推荐 50 Hz
 
         # Track connected client writers so we can push acks back.
         # NOTE: keep the "_connections" name. Naming this "_clients" would shadow
@@ -215,9 +225,9 @@ class BridgeServer(Node):
 
         cmd = protocol.parse(text)
 
-        # 快路径：直接在 socket 线程上发 Twist，保证遥控延迟
+        # 快路径：socket 线程只更新目标速度；控制器以 50 Hz 发布 AimDK 消息。
         if cmd.kind == Kind.STOP:
-            self._publish_twist(0.0, 0.0)
+            self.locomotion.stop()
             self._reply(conn, 'OK:STOP')
             return
 
@@ -225,20 +235,15 @@ class BridgeServer(Node):
             if cmd.error:
                 self._reply(conn, f'ERR:JOY:{cmd.error}')
                 return
-            linear, angular = protocol.joy_to_twist(
+            forward, angular = protocol.joy_to_twist(
                 cmd.joy_x, cmd.joy_y, self.max_linear, self.max_angular)
-            self._publish_twist(linear, angular)
-            # No ack on JOY: it streams at high rate and would flood the log.
+            if not self.locomotion.set_velocity(forward, 0.0, angular):
+                self._reply(conn, 'ERR:JOY:input_source_unavailable')
+            # 正常 JOY 不回 ack，避免高频刷屏。
             return
 
         # 其余全部进队列，在 ROS 主线程上执行（含 MODE 查询：它要调 service）
         self.cmd_queue.put((cmd, conn))
-
-    def _publish_twist(self, linear: float, angular: float):
-        cmd = Twist()
-        cmd.linear.x = float(linear)
-        cmd.angular.z = float(angular)
-        self.cmd_vel_pub.publish(cmd)
 
     def drain_queue(self):
         """Timer callback (main thread): execute slow commands."""
@@ -266,10 +271,11 @@ class BridgeServer(Node):
             return
 
         if cmd.kind == Kind.MODE_SWITCH:
-            # 稳定站立走安全序列（JOINT_DEFAULT -> STAND_DEFAULT）：从零力矩
-            # 直切力控站立，真机上会抽一下。
+            # 稳定站立和走跑都走安全过渡，禁止从零力矩/阻尼直接切入。
             if cmd.value == 'stand':
                 ok = self.motion_mode.enter_stand_sequence()
+            elif cmd.value == 'locomotion':
+                ok = self.motion_mode.enter_locomotion_sequence()
             else:
                 ok = self.motion_mode.set_mode(cmd.value)
             self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
@@ -298,7 +304,7 @@ class BridgeServer(Node):
 
     def shutdown(self):
         self._stop.set()
-        self._publish_twist(0.0, 0.0)
+        self.locomotion.stop()
 
 
 def main(args=None):

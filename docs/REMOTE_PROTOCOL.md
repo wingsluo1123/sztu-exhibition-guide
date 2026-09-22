@@ -21,16 +21,22 @@
 
 ## 上行指令 (客户端 → 机器人)
 
-### 运动控制（快速路径，直接发布 `Twist`）
+### 走跑控制（快速路径，发布 `McLocomotionVelocity`）
 
 | 指令 | 含义 | 说明 |
 |------|------|------|
-| `STOP` | 急停 | 发布零速度 `Twist` |
-| `JOY:<x>,<y>` | 摇杆 | `x`、`y` 取值 -100..100。`y`=前进/后退，`x`=转向。映射为 `linear.x = y/100 * max_linear`，`angular.z = -x/100 * max_angular` |
+| `STOP` | 停止移动 | 立即发布零速度，并由 50 Hz 定时器继续保持零速度 |
+| `JOY:<x>,<y>` | 摇杆走路 | `x`、`y` 取值 -100..100；`y` 控制前进/后退，`x` 控制原地转向。APP 应在按住摇杆时持续发送（建议 20–50 Hz） |
 | `MODE` | 查询运动模式 | 返回 `OK:MODE:<模式名>:<状态>`（状态 0=空闲 100=运行中 200=切换中），查询失败返回 `ERR:MODE` |
 
-发布话题：`/aima/mc/locomotion/velocity` (`geometry_msgs/Twist`)，可通过参数
-`cmd_vel_topic` 覆盖。
+发布话题：`/aima/mc/locomotion/velocity`（`aimdk_msgs/msg/McLocomotionVelocity`），
+QoS 为 `BEST_EFFORT + VOLATILE`，内部以 50 Hz 发布。输入源默认为
+`sdk_sztu_app`（优先级 55、超时 1000 ms），启动时通过 `SetMcInputSource`
+注册并启用，未使用任何 AimDK 系统预置输入源。
+
+安全机制：最后一条 `JOY` 超过 250 ms 后，服务端自动把目标速度清零；AimDK
+自身超过 200 ms 未收到速度也会清零，超过 2000 ms 无走跑指令会自动回稳定站立。
+侧移暂未开放给当前二维 APP 摇杆（`lateral_velocity=0`）。
 
 ### 运动模式切换（慢速路径，调用 `SetMcAction`）
 

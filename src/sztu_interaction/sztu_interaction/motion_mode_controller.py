@@ -188,6 +188,27 @@ class MotionModeController(Node):
             'Safe stand sequence: step 2/2 -> STAND_DEFAULT (稳定站立)')
         return self.set_mode('stand')
 
+    def enter_locomotion_sequence(self, settle_timeout: float = 20.0) -> bool:
+        """安全进入走跑模式：先完成站立序列，再切 LOCOMOTION_DEFAULT。"""
+        ok, current, _ = self.get_mode()
+        if ok and current == 'LOCOMOTION_DEFAULT':
+            self.get_logger().info('Already in LOCOMOTION_DEFAULT')
+            return True
+
+        if not self.enter_stand_sequence(settle_timeout):
+            self.get_logger().error(
+                'Locomotion sequence aborted: failed to enter stable stand')
+            return False
+
+        if not self._wait_mode_stable('STAND_DEFAULT', settle_timeout):
+            self.get_logger().error(
+                'Locomotion sequence aborted: STAND_DEFAULT did not settle')
+            return False
+
+        self.get_logger().info(
+            'Locomotion sequence -> LOCOMOTION_DEFAULT (走跑模式)')
+        return self.set_mode('locomotion')
+
     def _wait_mode_stable(self, action_desc: str, timeout: float) -> bool:
         """轮询等待目标模式状态离开 TRANSITION(200)。"""
         deadline = time.monotonic() + timeout

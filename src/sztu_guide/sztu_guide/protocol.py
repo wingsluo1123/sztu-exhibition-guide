@@ -27,7 +27,7 @@ class Kind:
 
 
 # 快路径：必须在 socket 线程上立刻处理，不能进队列排队。
-# 发 Twist 是线程安全的，遥控手感全靠这条路径的延迟。
+# 走跑控制器会把目标速度以 50 Hz 发布为 McLocomotionVelocity。
 FAST_KINDS = frozenset({Kind.STOP, Kind.JOY})
 
 
