@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""AimDK 走跑速度控制器。
+"""
+AimDK 走跑速度控制器。
 
 按照 AimDK 5.1.2/5.1.3：
 - 使用 McLocomotionVelocity，而不是 geometry_msgs/Twist；
