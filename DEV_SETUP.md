@@ -660,24 +660,23 @@ pgrep -f aima-sim-app     # 能查到，但也会匹配到你自己这条命令�
 `Another instance is already running` 然后退出。需要在脚本里调用时，
 外面包一层命令行不含该字样的启动器即可。
 
-### 8. 当前是无界面模式
+### 8. 关于 GUI 窗口
 
-物理仿真与 ROS 话题均正常，但**不会弹出 MuJoCo 视图窗口**，
-因此官方文档提到的交互操作（`Backspace` 重置位置、`Ctrl` + 鼠标左/右键
-旋转/拖拽关节）当前没有窗口可操作。
+启动后会弹出 MuJoCo 交互窗口，可直接操作：
 
-已查明的事实：
+| 操作 | 效果 |
+|---|---|
+| `Backspace` | 重置机器人位置（调姿态优先用这个） |
+| 双击选中关节 + `Ctrl` + 鼠标左键 | 旋转该关节 |
+| 双击选中关节 + `Ctrl` + 鼠标右键 | 拖拽该关节 |
 
-- 进程未加载 GLFW（`grep -c glfw /proc/<pid>/maps` 为 0），
-  而 MuJoCo 的交互视图器依赖它；系统里 `libglfw.so.3` 存在，只是没被用到
-- 进程确实加载了 `libGLX_nvidia` 并连上 X11，推测用于相机/激光雷达的
-  离屏渲染（包内有 `bin/mujoco_plugin/libsensor_ray.so`）
-- `simulator/default.yaml` 里只有 `gui_executor: gui_work_thread`
-  一项与 GUI 相关，没有开关视图器的配置项
+窗口由静态链接进 `libaima-sim-module-mujoco.so` 的 `mujoco::GlfwAdapter`
+创建（`strings` 该 so 可见 `N6mujoco11GlfwAdapterE`）。
 
-**原因尚未查清** —— 待确认是否需要额外配置或特定启动方式才开视图器。
-
-只想看模型姿态的话，退回用 URDF + RViz（见上一节「查看模型」），那条路验证过。
+> ⚠️ **不要用 `grep glfw /proc/<pid>/maps` 判断有没有 GUI。**
+> GLFW 是静态链接的，不以独立 `libglfw.so` 形式出现在进程映射里，该命令
+> 恒返回 0，会误判成"无界面模式"。同理 `xwininfo -root -children` 也可能
+> 抓不到这个窗口。想确认窗口状态，直接看屏幕最准。
 
 ---
 
