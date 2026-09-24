@@ -14,8 +14,9 @@
 6. [依赖安装](#依赖安装)
 7. [AimDK SDK](#aimdk-sdk)
 8. [X2 URDF 模型](#x2-urdf-模型)
-9. [编译与测试](#编译与测试)
-10. [常见问题](#常见问题)
+9. [MuJoCo 仿真环境](#mujoco-仿真环境)
+10. [编译与测试](#编译与测试)
+11. [常见问题](#常见问题)
 
 ---
 
@@ -530,6 +531,153 @@ python3 -m mujoco.viewer --mjcf X2_URDF-v1.4.0/scene.xml
 ```
 
 VSCode 装 **URDF Visualizer** 扩展也能直接预览 `.urdf`。
+
+---
+
+## MuJoCo 仿真环境
+
+官方提供的 x86 仿真包，可在开发机上跑物理仿真，**不需要连机器人**。
+关节状态、IMU、里程计都以真机同构的 ROS 话题发出，所以对着仿真写的节点
+可以直接拿到真机上跑。
+
+> 本节针对 **x86_64 上位机**。AimDK SDK 主包只发 aarch64（机器人 Jetson 用），
+> 但仿真与运控另有官方 x86 版，见下表。
+
+### 1. 获取
+
+AimDK 文档站 <https://x2-aimdk.agibot.com> 右下角浮动工具栏 → Downloads：
+
+| 包 | 用途 | 大小 |
+|---|---|---|
+| `sim_mujoco-x86-v1.0.0` | MuJoCo 物理仿真 | 99 MB |
+| `mc-x86-v1.0.0` | 运控程序（让机器人站立/行走） | 225 MB |
+| `aimdk-extra-x2_rl_deploy-v1.1` | RL 部署示例（含 onnx 模型） | 67 MB |
+
+解压到 `$HOME` 即可，包内自带依赖库。
+
+### 2. 系统依赖
+
+下列清单由 `ldd` 反查二进制得出，比文档列出的更完整：
+
+```bash
+sudo apt install -y \
+  libgflags-dev libyaml-cpp-dev libfmt-dev libjsoncpp-dev \
+  libpcl-dev liborocos-kdl-dev liboctomap-dev libassimp-dev \
+  libconsole-bridge-dev libtinyxml2-dev libtinyxml-dev libscrypt-dev \
+  ros-humble-grid-map-ros ros-humble-grid-map-msgs ros-humble-joy \
+  ros-humble-rmw-cyclonedds-cpp ros-humble-orocos-kdl-vendor
+```
+
+装完自行核对是否还缺：
+
+```bash
+cd ~/sim_mujoco-x86-v1.0.0-20260522
+source /opt/ros/humble/setup.bash
+LD_LIBRARY_PATH="$PWD/bin:$PWD/lib:$LD_LIBRARY_PATH" \
+  ldd bin/aima-sim-app | grep -c 'not found'      # 应为 0
+```
+
+### 3. 启动
+
+```bash
+source /opt/ros/humble/setup.bash
+cd ~/sim_mujoco-x86-v1.0.0-20260522/bin
+mkdir -p log/crash          # 首次运行需要，否则有一条 crash 目录告警
+./start_sim.sh              # 首次会提示选机型，输入 0 选 lx2501_3_t2d5
+```
+
+机型选择会缓存在 `bin/sim_robot_name_cache.txt`，之后不再提示；
+加 `-s` 清缓存重新选择。
+
+停止：前台 `Ctrl+C`；后台运行时 `pkill -x soc_sim`（注意进程名，见第 7 节）。
+
+> 仿真包只带 `lx2501_3_t2d5` 一个机型，正是本项目的 X2 Ultra
+> （硬件版本 `t2d5`、项目标识 `lx2501_3`，见 [ROBOT_INFO](docs/ROBOT_INFO.md)）。
+
+### 4. 验证数据流
+
+仿真起来后另开终端：
+
+```bash
+source /opt/ros/humble/setup.bash
+ros2 topic list | grep aima                        # 13 个话题
+ros2 topic hz /aima/hal/joint/leg/state            # 约 1000 Hz
+ros2 topic echo /aima/hal/imu/torso/state --once   # 姿态四元数
+```
+
+实测频率：关节 **1 kHz**，IMU **500 Hz**。
+
+装了 AimDK SDK 也能用官方示例读：
+
+```bash
+source ~/aimdk/install/setup.bash
+ros2 run examples echo_imu_data                    # 持续打印 IMU
+```
+
+### 5. 主要话题
+
+| 话题 | 方向 | 内容 |
+|---|---|---|
+| `/aima/hal/joint/{arm,leg,head,waist}/state` | 出 | 关节位置/速度/力矩，1 kHz |
+| `/aima/hal/joint/{arm,leg,head,waist}/command` | 入 | 关节指令 |
+| `/aima/hal/imu/{chest,torso}/state` | 出 | IMU，500 Hz |
+| `/aima/hal/odom/state` | 出 | 里程计（`odom` → `base_link`） |
+| `/aima/sim/option/command` | 入 | 仿真控制 |
+
+**控制不依赖手柄。** 指令话题任何 ROS 节点都能发 —— `ros2 topic pub`
+或自己写节点都行。手柄只是 RL 部署示例的一种输入源（用来切模式：
+❌ 零力矩 / ⭕️ 阻尼 / 🔺 位控 / 🟥 RL），不接也能开发。
+
+### 6. 光有仿真机器人不会动
+
+仿真只负责算物理，动作要靠运控驱动：
+
+```
+仿真 sim_mujoco  +  运控 mc-x86 或 x2_rl_deploy  +  输入源
+```
+
+只启仿真的话机器人会瘫在原地 —— 关节数据照常发布，但没有指令驱动它。
+运控启动方式见 `mc-x86-*/bin/em_run.sh`，RL 示例见
+`aimdk-extra/x2_rl_deploy/README.md`。
+
+### 7. 两个会绊人的坑
+
+**进程名是 `soc_sim`，不是 `aima-sim-app`**
+
+二进制启动后会自我重命名（`prctl` 改 comm），按原名查进程会误判成"没在跑"：
+
+```bash
+pgrep -x aima-sim-app     # ✗ 查不到
+pgrep -x soc_sim          # ✓
+pgrep -f aima-sim-app     # 能查到，但也会匹配到你自己这条命令行
+```
+
+**`start_sim.sh` 的实例自检会误报**
+
+脚本用 `pgrep -f "start_sim.sh"` 检测重复实例，凡命令行里出现该字样的进程
+都会被算进去。在终端里直接 `./start_sim.sh` 不受影响（自身被排除），
+但从别的脚本或 `bash -c '...start_sim.sh...'` 里调用时会误报
+`Another instance is already running` 然后退出。需要在脚本里调用时，
+外面包一层命令行不含该字样的启动器即可。
+
+### 8. 当前是无界面模式
+
+物理仿真与 ROS 话题均正常，但**不会弹出 MuJoCo 视图窗口**，
+因此官方文档提到的交互操作（`Backspace` 重置位置、`Ctrl` + 鼠标左/右键
+旋转/拖拽关节）当前没有窗口可操作。
+
+已查明的事实：
+
+- 进程未加载 GLFW（`grep -c glfw /proc/<pid>/maps` 为 0），
+  而 MuJoCo 的交互视图器依赖它；系统里 `libglfw.so.3` 存在，只是没被用到
+- 进程确实加载了 `libGLX_nvidia` 并连上 X11，推测用于相机/激光雷达的
+  离屏渲染（包内有 `bin/mujoco_plugin/libsensor_ray.so`）
+- `simulator/default.yaml` 里只有 `gui_executor: gui_work_thread`
+  一项与 GUI 相关，没有开关视图器的配置项
+
+**原因尚未查清** —— 待确认是否需要额外配置或特定启动方式才开视图器。
+
+只想看模型姿态的话，退回用 URDF + RViz（见上一节「查看模型」），那条路验证过。
 
 ---
 
