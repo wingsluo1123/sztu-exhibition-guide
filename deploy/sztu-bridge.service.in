@@ -1,0 +1,40 @@
+# systemd 单元模板。不要直接拷到 /etc/systemd/system，
+# 里面的 __占位符__ 由 deploy/install_autostart.sh 按实际用户与路径替换。
+[Unit]
+Description=SZTU 展厅讲解员北向桥接服务 (bridge_server + SLAM + 导航)
+Documentation=file://__WS__/deploy/README.md
+After=network-online.target
+Wants=network-online.target
+# 依赖（网络 / AimDK）没就绪时脚本会退出等重试，所以不能让 systemd 因频繁重启放弃。
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__WS__
+
+# systemd 对系统级单元不保证注入 HOME，而 setup.sh 要用 ~/aimdk，必须显式给。
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+# 让 Python 日志实时进 journald，并去掉 ROS 日志的 ANSI 颜色码。
+Environment=PYTHONUNBUFFERED=1
+Environment=RCUTILS_COLORIZED_OUTPUT=0
+# 可选覆盖项（ROS_DOMAIN_ID / SZTU_LAUNCH_ARGS / SZTU_PEER_IP ...），文件不存在也不报错。
+EnvironmentFile=-/etc/default/sztu-bridge
+
+ExecStart=/bin/bash __WS__/deploy/bridge_boot.sh
+
+# 崩溃、被杀、依赖未就绪退出，一律重试。
+Restart=always
+RestartSec=10
+
+# ros2 launch 靠 SIGINT 做优雅关闭（会先让各节点 shutdown），SIGTERM 会留下僵留节点。
+KillSignal=SIGINT
+KillMode=control-group
+TimeoutStopSec=30
+
+SyslogIdentifier=sztu-bridge
+
+[Install]
+WantedBy=multi-user.target

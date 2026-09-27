@@ -84,6 +84,19 @@ cd ~/sztu
 # 再选择 1 - 中文讲解 或 2 - 英文讲解
 ```
 
+### 5. 开机自启北向服务（可选，推荐）
+
+不想每次开机都 ssh 上去手动跑 `./restart_bridge.sh`，就在**机器人的开发计算单元**上
+装一次 systemd 服务：
+
+```bash
+cd ~/sztu
+sudo ./deploy/install_autostart.sh --now
+```
+
+之后机器人一开机就自动起 `remote.launch.py`（SLAM + 导航 + bridge_server）。
+日志看 `journalctl -u sztu-bridge -f`，完整说明见 [deploy/README.md](deploy/README.md)。
+
 ---
 
 ## 系统架构

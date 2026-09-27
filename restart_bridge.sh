@@ -5,6 +5,30 @@
 
 WS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# 装了开机自启服务（deploy/install_autostart.sh）时，改由 systemctl 重启：
+# 否则手动实例和服务实例会反复抢 8888 端口——手动杀掉服务进程后 systemd 会自动拉起。
+# 需要在当前终端前台调试时，加 SZTU_NO_SYSTEMD=1 跳过这段。
+if [ -z "$SZTU_NO_SYSTEMD" ] && command -v systemctl >/dev/null 2>&1 \
+   && systemctl is-enabled --quiet sztu-bridge.service 2>/dev/null; then
+    if [ $# -gt 0 ]; then
+        echo "!! sztu-bridge.service 已启用，服务模式下不能从命令行传 launch 参数。"
+        echo "   要长期生效：把参数写进 /etc/default/sztu-bridge 的 SZTU_LAUNCH_ARGS，再"
+        echo "     sudo systemctl restart sztu-bridge"
+        echo "   只想临时前台调试："
+        echo "     sudo systemctl stop sztu-bridge && SZTU_NO_SYSTEMD=1 $0 $*"
+        exit 1
+    fi
+    echo "==> 检测到 sztu-bridge.service 已启用，改用 systemctl 重启"
+    SUDO=""
+    [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+    $SUDO systemctl restart sztu-bridge.service || exit 1
+    sleep 3
+    $SUDO systemctl --no-pager --lines=10 status sztu-bridge.service
+    echo
+    echo "==> 实时日志：journalctl -u sztu-bridge -f"
+    exit 0
+fi
+
 echo "==> 停止旧的 bridge_server / remote.launch ..."
 
 # 先按监听端口精确停止 bridge_server。
