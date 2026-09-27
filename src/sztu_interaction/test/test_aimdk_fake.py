@@ -76,9 +76,21 @@ def test_autovivified_child_is_stable(fake):
 
 def test_common_state_constants_exist(fake):
     _, _, msg = fake
-    # 只验证存在。数值是编的，任何用例都不该断言具体取值。
-    for name in ('SUCCESS', 'RUNNING', 'FAILED', 'UNKNOWN'):
-        assert isinstance(getattr(msg.CommonState, name), int)
+    # 这些名字和取值现在抄自 SDK 的 CommonState.msg，与真包一致，可以断言取值。
+    # （原来是编的占位值，其中 FAILED / RUNNING=2 两处是错的：真名叫 FAILURE，
+    #   RUNNING 实际是 400。）
+    assert msg.CommonState.UNKNOWN == 0
+    assert msg.CommonState.SUCCESS == 1
+    assert msg.CommonState.FAILURE == 2
+    assert msg.CommonState.RUNNING == 400
+
+
+def test_mc_input_action_constants_exist(fake):
+    """locomotion.LocomotionController 在类定义时就读这几个常量，缺了会 import 失败。"""
+    _, _, msg = fake
+    assert msg.McInputAction.INPUTACTION_ADD == 1001
+    assert msg.McInputAction.INPUTACTION_MODIFY == 1002
+    assert msg.McInputAction.INPUTACTION_ENABLE == 2001
 
 
 def test_private_attributes_still_raise(fake):

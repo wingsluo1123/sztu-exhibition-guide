@@ -4,7 +4,8 @@
 
 control_loop 里原来把"算到没到"和"发 Twist"揉在一起，结果控制逻辑只能靠
 连真机才能验证。这里把决策部分抽成无副作用的函数：输入当前位姿和目标，
-输出该发什么速度。节点那边只负责把结果塞进 Twist 发出去。
+输出该发什么速度。节点那边只负责把结果交给 locomotion.LocomotionController
+发出去（AimDK 的 McLocomotionVelocity，起步阈值也在那一层兜底）。
 """
 
 import math

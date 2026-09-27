@@ -107,7 +107,9 @@ exhibition_points:
 Topic: /slam/lidar_odom (nav_msgs/Odometry)
 
 # 发布速度命令
-Topic: /aima/mc/locomotion/velocity (geometry_msgs/Twist)
+Topic: /aima/mc/locomotion/velocity (aimdk_msgs/McLocomotionVelocity)
+# 发之前必须先用 /aimdk_5Fmsgs/srv/SetMcInputSource 注册输入源，
+# 未注册来源的指令会被 MC 静默丢弃（AimDK 5.1.3）
 
 # 订阅激光雷达（避障）
 Topic: /aima/hal/sensor/lidar_chest_front/lidar_pointcloud
@@ -262,7 +264,7 @@ content:
 | Topic | 消息类型 | 用途 |
 |-------|---------|------|
 | `/integrated_command` | std_msgs/String | SLAM 控制命令 |
-| `/aima/mc/locomotion/velocity` | geometry_msgs/Twist | 移动控制 |
+| `/aima/mc/locomotion/velocity` | aimdk_msgs/McLocomotionVelocity | 移动控制 |
 | `/relocalization_pose` | geometry_msgs/Pose | 重定位位姿 |
 
 ### Service 调用

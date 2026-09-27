@@ -27,6 +27,8 @@ _SRV_NAMES = (
     'SetMcAction',
     'GetMcAction',
     'SetMcPresetMotion',
+    'SetMcInputSource',
+    'GetCurrentInputSource',
     'PlayTts',
     'PlayEmoji',
     'GetStoredMapByName',
@@ -35,15 +37,21 @@ _SRV_NAMES = (
 # 代码里实际用到的 message 类型
 _MSG_NAMES = (
     'CommonRequest',
+    'CommonResponse',
     'CommonState',
+    'CommonTaskResponse',
     'JointCommand',
     'JointCommandArray',
     'JointStateArray',
     'McActionCommand',
     'McControlArea',
+    'McInputAction',
+    'McInputSource',
+    'McLocomotionVelocity',
     'McPresetMotion',
     'MessageHeader',
     'RequestHeader',
+    'ResponseHeader',
     'TtsPriorityLevel',
 )
 
@@ -95,14 +103,30 @@ def build_fake_aimdk_msgs():
     for name in _MSG_NAMES:
         setattr(msg, name, _make_msg_type(name))
 
-    # CommonState 的枚举值真包里是什么数字我们并不知道，这里只给占位常量，
-    # 保证 `CommonState.SUCCESS` 这种引用不报 AttributeError。
-    # 测试绝不能断言这些数值 —— 它们是编的。
+    # 这些常量不再是编的：值抄自 SDK 里的 aimdk_msgs/interface 下的 .msg 定义
+    # （CommonState.msg、McInputAction.msg），和真包一致。之前这里的
+    # RUNNING=2 / FAILED=3 是猜的，实际是 FAILURE=2、RUNNING=400。
     common_state = getattr(msg, 'CommonState')
     common_state.UNKNOWN = 0
     common_state.SUCCESS = 1
-    common_state.RUNNING = 2
-    common_state.FAILED = 3
+    common_state.FAILURE = 2
+    common_state.ABORTED = 3
+    common_state.TIMEOUT = 4
+    common_state.INVALID = 5
+    common_state.IN_MANUAL = 6
+    common_state.NOT_READY = 100
+    common_state.PENDING = 200
+    common_state.CREATED = 300
+    common_state.RUNNING = 400
+
+    # 输入源操作码（McInputAction.msg）。locomotion.LocomotionController 在类定义
+    # 时就引用它们，假货缺了这几个常量会让整个模块 import 不进来。
+    mc_input_action = getattr(msg, 'McInputAction')
+    mc_input_action.INPUTACTION_ADD = 1001
+    mc_input_action.INPUTACTION_MODIFY = 1002
+    mc_input_action.INPUTACTION_DELETE = 1003
+    mc_input_action.INPUTACTION_ENABLE = 2001
+    mc_input_action.INPUTACTION_DISABLE = 2002
 
     # 同理，TTS 优先级只给占位
     tts_priority = getattr(msg, 'TtsPriorityLevel')

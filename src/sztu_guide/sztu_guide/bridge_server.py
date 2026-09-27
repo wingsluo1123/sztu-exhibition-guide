@@ -20,7 +20,8 @@ Design notes:
   - 命令文本怎么解析、中文标签往哪路由，全在 sztu_guide.protocol 里，那边不
     依赖 ROS，可以单测。本文件只负责 socket 收发和把解析结果落到控制器上。
   - Fast commands (JOY/STOP) are handled directly on the socket thread because
-    publishing a Twist is thread-safe and must stay low-latency.
+    updating the target velocity is lock-protected and must stay low-latency;
+    the actual McLocomotionVelocity goes out on the 50 Hz timer.
   - 其余命令（表情/手势/TTS/模式切换/MODE 查询）一律压进线程安全队列，由主
     ROS 线程的定时器回调执行。这样阻塞的 TTS 不会拖住遥控，而且所有 service
     调用都留在单线程上 —— MODE 查询曾经是在 socket 线程上直接调 service 的，

@@ -17,7 +17,10 @@
 - `/aima/hal/sensor/lidar_chest_front/lidar_pointcloud` (sensor_msgs/PointCloud2) - 激光雷达数据
 
 **发布 Topic**:
-- `/aima/mc/locomotion/velocity` (geometry_msgs/Twist) - 速度命令
+- `/aima/mc/locomotion/velocity` (aimdk_msgs/McLocomotionVelocity) - 速度命令
+  （**不是** `geometry_msgs/Twist`。话题名相同但类型不同，DDS 不会建立连接，
+  指令一条都到不了机器人且两边都不报错。经由 `sztu_navigation.locomotion`
+  发布，发之前会先注册 AimDK 输入源。）
 
 **使用示例**:
 ```python
@@ -89,6 +92,13 @@ exhibition_points:
 | `max_linear_speed` | 0.5 m/s | 最大线速度 |
 | `max_angular_speed` | 0.8 rad/s | 最大角速度 |
 | `obstacle_distance` | 0.5 m | 避障距离阈值 |
+| `locomotion_source` | `sdk_sztu_nav` | AimDK 输入源名（5.1.3） |
+| `locomotion_priority` | 45 | 输入源优先级，高于 pnc(40)、低于遥控(55)/rc(80) |
+
+> AimDK 5.1.2 有静止起步阈值：前进 0.09 m/s、侧移 0.60 m/s、旋转 0.03 rad/s。
+> 低于阈值机器人原地不动且不报错。`locomotion.py` 会把前进/旋转抬到阈值之上，
+> 侧移则归零（0.60 m/s 的横移幅度太大，不适合自动抬升）。
+> 固件升级后阈值可能变化，文档要求自行复核。
 
 ## API 文档
 

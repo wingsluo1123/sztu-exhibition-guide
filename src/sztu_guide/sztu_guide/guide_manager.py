@@ -263,6 +263,13 @@ def main(args=None):
     except KeyboardInterrupt:
         guide.stop_guide_tour()
     finally:
+        # 退出前务必停车：正常退出这条路径原来不经过 stop_guide_tour()，
+        # 机器人可能还带着上一拍的速度。
+        guide.navigation.stop()
+        # navigation 自己是一个节点，它名下的 locomotion 又是一个独立节点
+        # （不交给 executor spin），两个都要销毁，否则留下悬挂节点。
+        guide.navigation.locomotion.destroy_node()
+        guide.navigation.destroy_node()
         guide.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

@@ -12,6 +12,9 @@
 
   <depend>aimdk_msgs</depend>
 
+  <!-- locomotion_controller 已转发到 sztu_navigation.locomotion -->
+  <exec_depend>sztu_navigation</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

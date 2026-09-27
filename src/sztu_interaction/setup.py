@@ -23,7 +23,6 @@ setup(
             'tts_controller = sztu_interaction.tts_controller:main',
             'emotion_controller = sztu_interaction.emotion_controller:main',
             'gesture_controller = sztu_interaction.gesture_controller:main',
-            'locomotion_controller = sztu_interaction.locomotion_controller:main',
             'motion_mode_controller = sztu_interaction.motion_mode_controller:main',
         ],
     },

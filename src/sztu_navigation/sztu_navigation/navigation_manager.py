@@ -10,11 +10,11 @@ import time
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
-from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 
 from .control import compute_velocity
+from .locomotion import LocomotionController
 from .waypoints import (
     DEFAULT_NAVIGATION_PARAMS,
     normalize_angle,
@@ -35,6 +35,11 @@ class NavigationManager(Node):
         self.declare_parameter('obstacle_distance', 0.5)
         self.declare_parameter('cmd_vel_topic', '/aima/mc/locomotion/velocity')
         self.declare_parameter('odom_topic', '/slam/lidar_odom')
+        # 走跑输入源（AimDK 5.1.3）。优先级 45 的取法：高于 pnc(40) 好让我们的
+        # 导航压住官方规划器，低于 interaction(50) / bridge 遥控(55) /
+        # app_proxy(60) / rc(80) —— 人拿遥控器或手机随时能接管自主导航。
+        self.declare_parameter('locomotion_source', 'sdk_sztu_nav')
+        self.declare_parameter('locomotion_priority', 45)
 
         self.position_tolerance = self.get_parameter('position_tolerance').value
         self.angle_tolerance = self.get_parameter('angle_tolerance').value
@@ -49,12 +54,27 @@ class NavigationManager(Node):
             reliability=QoSReliabilityPolicy.BEST_EFFORT
         )
 
-        # 发布者：速度命令
-        self.cmd_vel_pub = self.create_publisher(
-            Twist,
-            self.get_parameter('cmd_vel_topic').value,
-            10
+        # 速度指令：走 AimDK 的 McLocomotionVelocity + 已注册输入源。
+        # 这里曾经直接往同一个话题发 geometry_msgs/Twist —— 话题名对，类型不对，
+        # DDS 不会连接，指令全部丢在本地，而且两边都不报错。
+        #
+        # release_after=1.0：停车 1 秒后彻底停发，让 MC 把我们的输入源超时摘掉。
+        # 不这样做的话，空闲时我们会一直发零速度、把控制权压在手里不放。
+        self.locomotion = LocomotionController(
+            topic=self.get_parameter('cmd_vel_topic').value,
+            source=self.get_parameter('locomotion_source').value,
+            priority=int(self.get_parameter('locomotion_priority').value),
+            release_after=1.0,
+            node_name='navigation_locomotion',
         )
+        self.locomotion_ready = self.locomotion.register_input_source()
+        if not self.locomotion_ready:
+            self.get_logger().error(
+                '走跑输入源注册失败 —— 本节点无法驱动机器人。'
+                '导航请求会被直接拒绝，而不是假装在走。')
+
+        # AimDK 建议 50 Hz 连发；输入源 timeout 是 1000 ms，断流就丢控制权。
+        self.locomotion_timer = self.create_timer(0.02, self.locomotion.tick)
 
         # 订阅者：当前位姿
         self.odom_sub = self.create_subscription(
@@ -103,6 +123,11 @@ class NavigationManager(Node):
         阻塞版本见 navigate_to()。分成两个方法是因为 bridge、guide_manager
         这些调用方的线程模型不一样：前者不能被阻塞，后者是顺序流程。
         """
+        if not self.locomotion_ready:
+            self.get_logger().error(
+                '走跑输入源未注册，拒绝导航请求 —— 发速度也不会有人执行')
+            return False
+
         if self.current_pose is None:
             self.get_logger().error('Current pose not available, cannot navigate')
             return False
@@ -207,14 +232,15 @@ class NavigationManager(Node):
                       (1.0 if yaw_error > 0 else -1.0))
 
     def _publish(self, linear: float, angular: float):
-        cmd = Twist()
-        cmd.linear.x = float(linear)
-        cmd.angular.z = float(angular)
-        self.cmd_vel_pub.publish(cmd)
+        # 只下前进和旋转，不下侧移。起步阈值（前进 0.09 m/s、旋转 0.03 rad/s）
+        # 由 LocomotionController 统一兜底 —— 控制律算出的小速度在这一层被抬到
+        # 阈值之上，否则会出现"一直在发速度但机器人不动"。典型触发点是避障降速
+        # （0.15 × 0.3 = 0.045，低于前进阈值）。
+        self.locomotion.set_velocity(float(linear), 0.0, float(angular))
 
     def stop(self):
         """停止运动"""
-        self._publish(0.0, 0.0)
+        self.locomotion.stop()
 
     def cancel_navigation(self):
         """Cancel current navigation"""
@@ -255,6 +281,8 @@ def main(args=None):
     finally:
         if rclpy.ok():
             node.stop()
+            # locomotion 是独立节点（不交给 executor spin），要单独销毁
+            node.locomotion.destroy_node()
             node.destroy_node()
             rclpy.shutdown()
 

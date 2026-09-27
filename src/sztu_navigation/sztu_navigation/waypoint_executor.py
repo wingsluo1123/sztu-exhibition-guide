@@ -162,6 +162,8 @@ def main(args=None):
         if rclpy.ok():
             nav.stop()
             ros_executor.shutdown()
+            # locomotion 是 nav 名下的独立节点，没进 executor，要单独销毁
+            nav.locomotion.destroy_node()
             nav.destroy_node()
             executor_node.destroy_node()
             rclpy.shutdown()
