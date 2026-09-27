@@ -577,7 +577,7 @@ LD_LIBRARY_PATH="$PWD/bin:$PWD/lib:$LD_LIBRARY_PATH" \
   ldd bin/aima-sim-app | grep -c 'not found'      # 应为 0
 ```
 
-### 3. 启动
+### 3. 启动（独立仿真包）
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -589,7 +589,7 @@ mkdir -p log/crash          # 首次运行需要，否则有一条 crash 目录�
 机型选择会缓存在 `bin/sim_robot_name_cache.txt`，之后不再提示；
 加 `-s` 清缓存重新选择。
 
-停止：前台 `Ctrl+C`；后台运行时 `pkill -x soc_sim`（注意进程名，见第 7 节）。
+停止：前台 `Ctrl+C`；后台运行时 `pkill -x soc_sim`（注意进程名，见第 8 节）。
 
 > 仿真包只带 `lx2501_3_t2d5` 一个机型，正是本项目的 X2 Ultra
 > （硬件版本 `t2d5`、项目标识 `lx2501_3`，见 [ROBOT_INFO](docs/ROBOT_INFO.md)）。
@@ -627,6 +627,7 @@ ros2 run examples echo_imu_data                    # 持续打印 IMU
 **控制不依赖手柄。** 指令话题任何 ROS 节点都能发 —— `ros2 topic pub`
 或自己写节点都行。手柄只是 RL 部署示例的一种输入源（用来切模式：
 ❌ 零力矩 / ⭕️ 阻尼 / 🔺 位控 / 🟥 RL），不接也能开发。
+要用手柄的话，完整链路见第 7 节。
 
 ### 6. 光有仿真机器人不会动
 
@@ -637,10 +638,120 @@ ros2 run examples echo_imu_data                    # 持续打印 IMU
 ```
 
 只启仿真的话机器人会瘫在原地 —— 关节数据照常发布，但没有指令驱动它。
-运控启动方式见 `mc-x86-*/bin/em_run.sh`，RL 示例见
-`aimdk-extra/x2_rl_deploy/README.md`。
+用 PS5 手柄操控的完整链路见下一节（已实测跑通）；
+`mc-x86` 那条路的启动方式见 `mc-x86-*/bin/em_run.sh`。
 
-### 7. 两个会绊人的坑
+### 7. 手柄操控完整链路（RL 部署示例）
+
+本节是第 6 节那三层的一个实测可跑组合，用 PS5 手柄切换机器人模式、
+触发 RL 舞蹈动作。三个节点各开一个终端。
+
+> ⚠️ **两个仿真包的 `aima-sim-app` 不是同一个二进制**（md5 不同）。
+> RL 示例必须用它自带的 `x2_rl_deploy/x2_rl_deploy_mujoco/bin`，
+> 不能用独立包 `sim_mujoco-x86-*`，否则是版本错配。
+> 独立包适合只看物理仿真、不跑运控的场景。
+
+**前置依赖**（本机已装齐，重装环境时才需要）：
+
+```bash
+sudo apt install -y ros-humble-joy          # joy_node，实测 3.3.0
+# onnxruntime 1.23.2 装到 /usr/local/lib，步骤见 x2_rl_deploy/README.md 第 1 节
+ls /usr/local/lib/libonnxruntime.so.*        # 应能看到 .so.1.23.2
+
+# RL 包解压后仿真二进制没有可执行位，先补上（详见下面的坑 2）
+chmod +x ~/aimdk-extra/x2_rl_deploy/x2_rl_deploy_mujoco/bin/{start_sim.sh,aima-sim-app}
+```
+
+手柄用 **USB-C 连到开发机**。连上后确认：
+
+```bash
+ls /dev/input/js*                            # DualSense 会出现 js0（和 js1）
+udevadm info -q property -n /dev/input/js0 | grep -i 'ID_MODEL\|ID_INPUT_JOYSTICK'
+```
+
+> `js1` 是同一个手柄的体感子设备（Motion Sensors），不要用它。
+> `js0` 正好是 `joy_node` 的默认 `dev`，所以不必传参数。
+> 拔掉手柄后这些设备节点会消失，`joy_node` 需要重启才能重新抓到。
+
+**终端 1 —— 仿真**
+
+```bash
+source /opt/ros/humble/setup.bash
+source ~/aimdk-extra/x2_rl_deploy/install/local_setup.bash   # 必须，见下面的坑
+cd ~/aimdk-extra/x2_rl_deploy/x2_rl_deploy_mujoco/bin
+mkdir -p log/crash
+./start_sim.sh              # 首次会提示选机型，输入 0 选 lx2501_3_t2d5
+```
+
+**终端 2 —— RL 运控**
+
+```bash
+source /opt/ros/humble/setup.bash
+source ~/aimdk-extra/x2_rl_deploy/install/local_setup.bash
+ros2 run x2_rl_deploy_controller x2_rl_deploy_controller
+```
+
+启动时会打印 ONNX 模型的输入输出名（`obs` / `time_step` → `actions` 等），
+看到它就说明模型加载成功。有一条 GPU 发现失败的告警是回落到 CPU 推理，可忽略。
+
+**终端 3 —— 手柄**
+
+```bash
+source /opt/ros/humble/setup.bash
+ros2 run joy joy_node
+# → Opened joystick: Sony Interactive Entertainment DualSense Wireless Controller
+```
+
+**按键映射**（PS5 符号键）
+
+| 键 | 模式 |
+|---|---|
+| ❌ | `PASSIVE_DEFAULT` 零力矩（默认，机器人会瘫下） |
+| ⭕️ | `DAMPING_DEFAULT` 阻尼（安全模式） |
+| 🔺 | `JOINT_DEFAULT` 位控 |
+| 🟥 | `RL_DEFAULT` RL 部署示例（舞蹈动作） |
+
+官方建议顺序：MuJoCo 窗口里按 `Backspace` 重置位姿 → 🔺 位控
+→ 🟥 进 RL；结束按 ⭕️ 回阻尼。
+
+**验证链路真的通了**
+
+三个进程各自在跑不等于数据接上了，查订阅方计数最直接：
+
+```bash
+ros2 topic info /joy                          # 运控订阅了手柄
+# → Publisher count: 1 / Subscription count: 1
+ros2 topic info /aima/hal/joint/leg/command   # 运控 → 仿真
+# → Publisher count: 1 / Subscription count: 1
+```
+
+两个都是 `1/1` 才算闭环。`/joy` 只在手柄状态变化时发布，
+用 `ros2 topic echo /joy --once` 验证时要同时拨一下摇杆。
+
+**停止**
+
+```bash
+pkill -x soc_sim                    # 仿真（注意进程名，见第 8 节）
+pkill -f x2_rl_deploy_controller    # 运控
+pkill -f joy_node                   # 手柄
+```
+
+**手柄链路上的两个坑**（通用的坑见第 8 节）
+
+1. **不 source `install/local_setup.bash` 会启动即崩。** 自带仿真报
+   `libaimrt_monitor_plugin.so: undefined symbol ... aimdk_msgs::msg::ProcessInfo`
+   然后 abort。该 monitor 插件要用 RL 包自带那份 `aimdk_msgs` 的 typesupport，
+   只 source ROS 2 不够。独立包 `sim_mujoco-x86-*` 自带完整依赖，
+   所以不需要这步 —— 两个包在这点上行为不同，容易混。
+
+2. **RL 包解压后 `start_sim.sh` 和 `aima-sim-app` 没有可执行位**
+   （`-rw-rw-r--`），直接跑报"权限不够"。独立包没这问题。
+
+   ```bash
+   chmod +x ~/aimdk-extra/x2_rl_deploy/x2_rl_deploy_mujoco/bin/{start_sim.sh,aima-sim-app}
+   ```
+
+### 8. 三个会绊人的坑
 
 **进程名是 `soc_sim`，不是 `aima-sim-app`**
 
@@ -660,7 +771,19 @@ pgrep -f aima-sim-app     # 能查到，但也会匹配到你自己这条命令�
 `Another instance is already running` 然后退出。需要在脚本里调用时，
 外面包一层命令行不含该字样的启动器即可。
 
-### 8. 关于 GUI 窗口
+**`raycaster_lidar not found` 是正常的，仿真里没有激光雷达**
+
+两个仿真包启动时都会打这条告警。不是配置漏了 —— 随包的 MJCF 模型
+（`configuration/robot/lx2501_3_t2d5/model_info/{x2.xml,scene.xml}`）里
+搜 `raycaster` / `lidar` / `rangefinder` 一个都没有，只有 `imu_0/1/2`
+三个 site。`mujoco_plugin/libsensor_ray.so` 插件虽然在，但模型没声明传感器，
+自然加载不到。
+
+> 这一点对后续工作有影响：**当前仿真环境出不了点云，SLAM 相关的东西
+> 没法在仿真里验证**，只能上真机。要在仿真里跑 SLAM，得自己往 MJCF 里
+> 加 raycaster 传感器声明。
+
+### 9. 关于 GUI 窗口
 
 启动后会弹出 MuJoCo 交互窗口，可直接操作：
 
