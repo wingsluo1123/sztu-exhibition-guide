@@ -75,8 +75,11 @@ esac
 # --------------------------------------------- 2. 我们写死的名字对不对得上
 head2 "2. 代码里写死的话题/服务名，在这台机器上存不存在"
 
-# 我们的代码依赖这三个名字。仓库里没有任何抓包或官方文档能证明它们是对的，
-# 所以这里不只是「在不在」，还要把机器人上真实存在的同类名字全列出来对照。
+# 我们的代码依赖这三个名字。三个都来自 AimDK v1.0.0 官方例程
+# （~/aimdk/src/py_examples/py_examples/{slam,relocate,get_map}.py 和
+#   ~/aimdk/topics_and_services），所以不是抄错的问题——
+# 如果这里对不上，说明机器人固件跑的是另一代接口。
+# 因此把机器人上真实存在的同类名字全列出来对照。
 topics_all="$(ros2 topic list -t 2>/dev/null)"
 srvs_all="$(ros2 service list -t 2>/dev/null)"
 
@@ -115,8 +118,9 @@ if echo "$srvs_all" | grep -q "^$SRV "; then
     ok "$SRV 存在"
 else
     bad "$SRV 不存在 —— load_map() 必然超时失败"
-    say "   （这个名字里的 _5F 是下划线的转义残留，本来就很可疑，"
-    say "     八成是从文档里抄错了。对照下面的真实服务清单。）"
+    say "   （名字没抄错：_5F 是下划线的 DDS 转义，这就是 AimDK v1.0.0"
+    say "     ~/aimdk/topics_and_services 里写明的官方服务名。"
+    say "     不存在说明机器人跑的不是这一代接口，对照下面的真实清单。）"
 fi
 
 head2 "2b. 机器人上真实存在的同类名字（用来对照上面抄错的部分）"
