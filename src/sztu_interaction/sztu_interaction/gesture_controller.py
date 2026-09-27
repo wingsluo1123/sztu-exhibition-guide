@@ -31,6 +31,7 @@ AREA_NONE = 0
 AREA_LEFT_HAND = 1
 AREA_RIGHT_HAND = 2
 AREA_HEAD = 4
+AREA_COMBINED = 11
 
 # 机械臂关节表：名称 -> (下限, 上限, kp, kd)
 # 数值取自 AimDK 官方示例 py_examples/motocontrol.py 的 ARM 配置
@@ -97,23 +98,20 @@ class GestureController(Node):
         'explain': (3016, AREA_NONE),         # 说话手势
         'point': (1001, AREA_RIGHT_HAND),     # 抬手，用作指引展品
         # --- 北向客户端的动作标签 ---
-        'clap': (1008, AREA_NONE),            # 击掌
+        'clap': (3017, AREA_COMBINED),       # 鼓掌
         'thumbs_up_left': (3002, AREA_LEFT_HAND),      # 点赞
         'thumbs_up_right': (3002, AREA_RIGHT_HAND),
         'thumbs_up_both': (3002, AREA_NONE),
         'yeah_left': (3003, AREA_LEFT_HAND),           # 比耶
         'yeah_right': (3003, AREA_RIGHT_HAND),
-        'bow_salute': (3001, AREA_NONE),               # 鞠躬 / 作揖
+        'bow_salute': (3001, AREA_COMBINED),           # 鞠躬 / 作揖
         'fist_bump_left': (1009, AREA_LEFT_HAND),      # 碰拳
         'fist_bump_right': (1009, AREA_RIGHT_HAND),
-        'nod': (4001, AREA_HEAD),                      # 点头
-        'shake_head': (4002, AREA_HEAD),               # 摇头
         'wave_left': (1002, AREA_LEFT_HAND),           # 左手挥手
         'wave_right': (1002, AREA_RIGHT_HAND),         # 右手挥手
-        'salute': (1013, AREA_NONE),                   # 敬礼
-        'hug': (3008, AREA_NONE),                      # 拥抱
-        # 说明：'thinking'（思考）和 'lower_head'（低头）在预设动作表里没有
-        # 对应条目，暂不映射，调用时会给出告警并返回 False。
+        'salute': (1013, AREA_RIGHT_HAND),             # 右手敬礼
+        'hug': (3008, AREA_COMBINED),                  # 拥抱
+        # 点头/摇头、思考和低头没有官方文档支持的预设动作组合，暂不映射。
     }
 
     SERVICE_NAME = '/aimdk_5Fmsgs/srv/SetMcPresetMotion'

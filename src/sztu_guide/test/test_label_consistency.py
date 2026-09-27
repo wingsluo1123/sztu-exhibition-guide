@@ -14,10 +14,10 @@ import pytest
 from sztu_guide import protocol
 
 
-# 已知没有对应预设动作的手势。GestureController 的注释里写明了原因：
-# 预设动作表里就没有这两项。列在这里是为了让"缺失"变成一个有据可查的决定，
+# 已知没有官方支持组合的手势。GestureController 的注释里写明了原因：
+# 当前预设动作表里没有这些组合。列在这里是为了让"缺失"变成一个有据可查的决定，
 # 而不是一次被遗忘的疏漏 —— 真机上补齐后把它们从这里删掉，测试会自动开始覆盖。
-KNOWN_UNMAPPED_GESTURES = {'thinking', 'lower_head'}
+KNOWN_UNMAPPED_GESTURES = {'thinking', 'lower_head', 'nod', 'shake_head'}
 
 
 @pytest.fixture(scope='module')
@@ -68,6 +68,14 @@ def test_gesture_preset_ids_are_positive_ints(gesture_controller_cls):
         assert isinstance(area, int) and area >= 0, name
 
 
+def test_official_preset_motion_combinations(gesture_controller_cls):
+    gestures = gesture_controller_cls.GESTURES
+    assert gestures['clap'] == (3017, 11)
+    assert gestures['bow_salute'] == (3001, 11)
+    assert gestures['salute'] == (1013, 2)
+    assert gestures['hug'] == (3008, 11)
+
+
 def test_left_right_gesture_pairs_use_matching_motion_ids(gesture_controller_cls):
     """
     左右手同名动作应该共用同一个预设动作 ID，只靠控制区域区分。
@@ -85,6 +93,27 @@ def test_left_right_gesture_pairs_use_matching_motion_ids(gesture_controller_cls
             f'{name} 与 {right} 的预设动作 ID 不一致')
         assert gestures[name][1] != gestures[right][1], (
             f'{name} 与 {right} 的控制区域相同，左右手分不开')
+
+
+def test_bridge_gesture_dispatch_interrupts_running_preset_motion():
+    from types import SimpleNamespace
+
+    from sztu_guide.bridge_server import BridgeServer
+    from sztu_guide.protocol import Command, Kind
+
+    calls = []
+    replies = []
+    bridge = SimpleNamespace(
+        gesture=SimpleNamespace(
+            perform_gesture=lambda *args, **kwargs: calls.append((args, kwargs)) or True),
+        _reply=lambda conn, message: replies.append(message),
+    )
+
+    BridgeServer._dispatch_slow(
+        bridge, Command(Kind.GESTURE, value='wave', raw='挥手'), None)
+
+    assert calls == [(('wave',), {'interrupt': True})]
+    assert replies == ['OK:挥手']
 
 
 # --- 运控模式 ---------------------------------------------------------------

@@ -287,7 +287,7 @@ class BridgeServer(Node):
             return
 
         if cmd.kind == Kind.GESTURE:
-            ok = self.gesture.perform_gesture(cmd.value)
+            ok = self.gesture.perform_gesture(cmd.value, interrupt=True)
             self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
             return
 

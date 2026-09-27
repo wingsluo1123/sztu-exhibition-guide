@@ -94,8 +94,8 @@ def test_nodding_is_not_an_emotion():
     assert 'nodding' not in EmotionController.EMOTIONS
 
 
-def test_nod_is_available_as_a_gesture():
-    """移除 nodding 的前提是点头在手势侧确有实现。"""
+def test_nod_is_not_a_documented_preset_motion_combination():
+    """AimDK 预设动作组合表未列出头部点头动作。"""
     from sztu_interaction.gesture_controller import GestureController
 
-    assert 'nod' in GestureController.GESTURES
+    assert 'nod' not in GestureController.GESTURES

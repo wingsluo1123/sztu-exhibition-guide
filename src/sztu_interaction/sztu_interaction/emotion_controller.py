@@ -25,8 +25,7 @@ class EmotionController(Node):
         'thinking': 170,   # EMOTION_EYE_THINKING 思考
         'sad': 110,        # EMOTION_EYE_SAD      悲伤
         'neutral': 10,     # EMOTION_IDLE_CALM_1  平静
-        # 说明：'nodding'（点头）是头部动作而非表情，表情枚举里没有对应项。
-        # 点头走预设动作接口：GestureController.GESTURES['nod'] = (4001, AREA_HEAD)。
+        # 说明：点头是头部动作而非表情；当前 AimDK 预设组合表未列出头部动作。
     }
 
     # 播放模式（PlayEmoji.Request.mode）
