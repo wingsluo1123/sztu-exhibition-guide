@@ -22,6 +22,12 @@ TCP_PORT="${SZTU_TCP_PORT:-8888}"
 WAIT_NET="${SZTU_WAIT_NET:-120}"
 WAIT_AIMDK="${SZTU_WAIT_AIMDK:-90}"
 
+# cron 和 systemd 给的 $PATH 都很精简，常常没有 /usr/sbin，而下面要用 ss。
+case ":$PATH:" in
+    *":/usr/sbin:"*) : ;;
+    *) export PATH="$PATH:/usr/sbin:/sbin" ;;
+esac
+
 # journald 已经带时间戳，但手动执行时也需要，所以自己打一份。
 log() {
     echo "[$(date '+%F %T')] $*"

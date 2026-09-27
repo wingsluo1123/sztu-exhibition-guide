@@ -5,28 +5,63 @@
 
 WS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 装了开机自启服务（deploy/install_autostart.sh）时，改由 systemctl 重启：
-# 否则手动实例和服务实例会反复抢 8888 端口——手动杀掉服务进程后 systemd 会自动拉起。
+# 装了开机自启（deploy/ 下三种方式之一）时，转发给对应的管理命令：
+# 否则手动实例和自启实例会反复抢 8888 端口——手动杀掉后对方又会自动拉起。
 # 需要在当前终端前台调试时，加 SZTU_NO_SYSTEMD=1 跳过这段。
-if [ -z "$SZTU_NO_SYSTEMD" ] && command -v systemctl >/dev/null 2>&1 \
-   && systemctl is-enabled --quiet sztu-bridge.service 2>/dev/null; then
-    if [ $# -gt 0 ]; then
-        echo "!! sztu-bridge.service 已启用，服务模式下不能从命令行传 launch 参数。"
-        echo "   要长期生效：把参数写进 /etc/default/sztu-bridge 的 SZTU_LAUNCH_ARGS，再"
-        echo "     sudo systemctl restart sztu-bridge"
-        echo "   只想临时前台调试："
-        echo "     sudo systemctl stop sztu-bridge && SZTU_NO_SYSTEMD=1 $0 $*"
-        exit 1
+if [ -z "$SZTU_NO_SYSTEMD" ]; then
+    AUTOSTART=""
+    HINT=""
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl is-enabled --quiet sztu-bridge.service 2>/dev/null; then
+            AUTOSTART="system"          # 系统级服务（install_autostart.sh）
+            HINT="/etc/default/sztu-bridge"
+        elif systemctl --user is-enabled --quiet sztu-bridge.service 2>/dev/null; then
+            AUTOSTART="user"            # 用户级服务（install_autostart_nosudo.sh）
+            HINT="~/.config/sztu-bridge.env"
+        fi
     fi
-    echo "==> 检测到 sztu-bridge.service 已启用，改用 systemctl 重启"
-    SUDO=""
-    [ "$(id -u)" -ne 0 ] && SUDO="sudo"
-    $SUDO systemctl restart sztu-bridge.service || exit 1
-    sleep 3
-    $SUDO systemctl --no-pager --lines=10 status sztu-bridge.service
-    echo
-    echo "==> 实时日志：journalctl -u sztu-bridge -f"
-    exit 0
+    if [ -z "$AUTOSTART" ] && [ -f "$HOME/.cache/sztu-bridge/supervisor.pid" ] \
+       && kill -0 "$(cat "$HOME/.cache/sztu-bridge/supervisor.pid" 2>/dev/null)" 2>/dev/null; then
+        AUTOSTART="cron"                # cron @reboot + 守护壳
+        HINT="~/.config/sztu-bridge.env"
+    fi
+
+    if [ -n "$AUTOSTART" ]; then
+        if [ $# -gt 0 ]; then
+            echo "!! 已装开机自启（$AUTOSTART 方式），此模式下不能从命令行传 launch 参数。"
+            echo "   要长期生效：把参数写进 $HINT 的 SZTU_LAUNCH_ARGS 再重启"
+            echo "   只想临时前台调试：先停掉自启实例，然后"
+            echo "     SZTU_NO_SYSTEMD=1 $0 $*"
+            exit 1
+        fi
+        case "$AUTOSTART" in
+            system)
+                echo "==> 检测到系统级 sztu-bridge.service，改用 systemctl 重启"
+                SUDO=""
+                [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+                $SUDO systemctl restart sztu-bridge.service || exit 1
+                sleep 3
+                $SUDO systemctl --no-pager --lines=10 status sztu-bridge.service
+                echo
+                echo "==> 实时日志：journalctl -u sztu-bridge -f"
+                ;;
+            user)
+                echo "==> 检测到用户级 sztu-bridge.service，改用 systemctl --user 重启"
+                systemctl --user restart sztu-bridge.service || exit 1
+                sleep 3
+                systemctl --user --no-pager --lines=10 status sztu-bridge.service
+                echo
+                echo "==> 实时日志：journalctl --user -u sztu-bridge -f"
+                ;;
+            cron)
+                echo "==> 检测到守护壳在运行，改由它重启"
+                "$WS/deploy/bridge_supervise.sh" --restart || exit 1
+                echo
+                echo "==> 实时日志：./deploy/bridge_supervise.sh --log"
+                ;;
+        esac
+        exit 0
+    fi
 fi
 
 echo "==> 停止旧的 bridge_server / remote.launch ..."

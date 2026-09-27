@@ -22,6 +22,10 @@ WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE="$WS/deploy/sztu-bridge.service.in"
 BOOT_SCRIPT="$WS/deploy/bridge_boot.sh"
 
+# detect_rc_var / write_env_file 与 install_autostart_nosudo.sh 共用。
+# shellcheck source=deploy/_common.sh
+source "$WS/deploy/_common.sh"
+
 RUN_USER=""
 DO_START=0
 DO_UNINSTALL=0
@@ -109,78 +113,7 @@ echo "$UNIT_CONTENT" > "$UNIT_PATH" || die "写入 $UNIT_PATH 失败"
 chmod 644 "$UNIT_PATH"
 echo "==> 已写入 $UNIT_PATH（运行用户 $RUN_USER，工作空间 $WS）"
 
-# systemd 不加载 ~/.bashrc，用户平时 export 的 ROS 变量在服务里会消失。
-# 域 ID 回落到 0 会让服务「起着但收不到任何话题」，所以从 shell 配置里把它搬过来。
-detect_rc_var() {
-    local var="$1" rc val
-    # 先看当前环境（直接以 root 跑或用 sudo -E 时能拿到）。
-    val="$(printenv "$var")"
-    if [ -n "$val" ]; then
-        echo "$val"
-        return 0
-    fi
-    # sudo 默认会清掉环境变量，所以再翻一遍目标用户的 shell 配置。
-    for rc in "$RUN_HOME/.bashrc" "$RUN_HOME/.bash_profile" "$RUN_HOME/.profile"; do
-        [ -f "$rc" ] || continue
-        val="$(grep -hE "^[[:space:]]*export[[:space:]]+$var=" "$rc" 2>/dev/null | tail -1 \
-               | sed -E "s/^[[:space:]]*export[[:space:]]+$var=//; s/[\"']//g; s/[[:space:]]*(#.*)?\$//")"
-        if [ -n "$val" ]; then
-            echo "$val"
-            return 0
-        fi
-    done
-    return 1
-}
-
-# 可调项配置文件：已存在就不动，免得覆盖现场改过的参数。
-if [ ! -f "$DEFAULTS_PATH" ]; then
-    DOMAIN_LINE="#ROS_DOMAIN_ID=0"
-    if detected="$(detect_rc_var ROS_DOMAIN_ID)"; then
-        DOMAIN_LINE="ROS_DOMAIN_ID=$detected"
-        echo "==> 从 $RUN_USER 的 shell 配置读到 ROS_DOMAIN_ID=$detected，已写入服务环境"
-    else
-        echo "⚠ $RUN_USER 的 shell 配置里没有 ROS_DOMAIN_ID，服务将按域 0 运行。"
-        echo "⚠ 若机器人侧不是域 0，务必在 $DEFAULTS_PATH 里设置，否则收不到话题。"
-    fi
-
-    RMW_LINE="#RMW_IMPLEMENTATION=rmw_fastrtps_cpp"
-    if detected="$(detect_rc_var RMW_IMPLEMENTATION)"; then
-        RMW_LINE="RMW_IMPLEMENTATION=$detected"
-        echo "==> 同时带上 RMW_IMPLEMENTATION=$detected"
-    fi
-
-    cat > "$DEFAULTS_PATH" <<EOF
-# sztu-bridge.service 的可调参数。改完执行：
-#   sudo systemctl restart sztu-bridge
-#
-# 注意：systemd 不读 ~/.bashrc，ROS 相关环境变量只认这个文件。
-
-# ROS 域 ID，必须与机器人侧一致
-$DOMAIN_LINE
-
-# DDS 实现，需与机器人侧一致
-$RMW_LINE
-
-# 追加给 remote.launch.py 的参数，例如同时开 WebSocket
-#SZTU_LAUNCH_ARGS=ws_enabled:=true ws_port:=8080
-
-# 北向 TCP 端口
-#SZTU_TCP_PORT=8888
-
-# 机器人计算单元 IP：设了就等它 ping 通再启动（X2 Ultra 开发单元 10.0.1.41）
-#SZTU_PEER_IP=10.0.1.41
-#SZTU_WAIT_NET=120
-
-# 等 AimDK ROS 服务上线的秒数，0 = 不等
-#SZTU_WAIT_AIMDK=90
-EOF
-    chmod 644 "$DEFAULTS_PATH"
-    echo "==> 已生成 $DEFAULTS_PATH"
-else
-    echo "==> $DEFAULTS_PATH 已存在，保持原样"
-    grep -qE '^[[:space:]]*ROS_DOMAIN_ID=' "$DEFAULTS_PATH" \
-        || echo "⚠ 该文件里没有生效的 ROS_DOMAIN_ID，服务将按域 0 运行，确认是否符合预期"
-fi
+write_env_file "$DEFAULTS_PATH" "sudo systemctl restart sztu-bridge"
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" >/dev/null || die "设置开机自启失败"

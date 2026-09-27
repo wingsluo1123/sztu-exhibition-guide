@@ -1,0 +1,32 @@
+# systemd **用户级**单元模板（不需要 root）。占位符由 install_autostart_nosudo.sh 替换。
+# 与系统级单元的区别：没有 User=/Group=（本来就跑在用户下），
+# 环境文件放家目录，%h 由 systemd 展开为家目录。
+[Unit]
+Description=SZTU 展厅讲解员北向桥接服务 (bridge_server + SLAM + 导航)
+Documentation=file://__WS__/deploy/README.md
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=__WS__
+
+Environment=PYTHONUNBUFFERED=1
+Environment=RCUTILS_COLORIZED_OUTPUT=0
+EnvironmentFile=-%h/.config/sztu-bridge.env
+
+ExecStart=/bin/bash __WS__/deploy/bridge_boot.sh
+
+Restart=always
+RestartSec=10
+
+# ros2 launch 只认 SIGINT 做优雅关闭，SIGTERM 会留下僵留节点占着端口。
+KillSignal=SIGINT
+KillMode=control-group
+TimeoutStopSec=30
+
+SyslogIdentifier=sztu-bridge
+
+[Install]
+# 用户级单元用 default.target，不是 multi-user.target。
+WantedBy=default.target
