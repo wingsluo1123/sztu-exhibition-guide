@@ -11,12 +11,16 @@
 #   tools/setup_fastlio.sh --no-build   # clone 完就停，不编译
 #   tools/setup_fastlio.sh --force      # 已存在也重新 clone（会删掉本地改动）
 #
-# 为什么不改 FAST_LIO 的源码
+# 为什么几乎不改 FAST_LIO 的源码
 #   它的 CMakeLists 有 find_package(livox_ros_driver2 REQUIRED)，因为它支持
 #   Livox 的 AVIA/MID360。我们这颗雷达发标准 PointCloud2，走 velodyne 分支,
 #   永远不碰 AVIA 那条路 —— 但编译期这个依赖得满足。我们用
 #   src/livox_ros_driver2_stub/ 这个只有两个消息定义的占位包顶上，
-#   FAST_LIO 的源码一个字节都不动。理由见那个目录的 README.md。
+#   而不是去删它的 find_package。理由见那个目录的 README.md。
+#
+#   整棵树里我们只改一个文件：CMakeLists.txt 的 C++ 标准 14 → 17（第 3c 步，
+#   脚本自动打，可重复执行）。理由见坑 5 —— 那是上游的 bug，不是口味问题。
+#   .cpp / .hpp 一个字节都不动。
 #
 # 坑 1：pcl_ros 不在 ros-humble-desktop 里。
 #     FAST_LIO 需要 pcl_ros，而它不是 desktop 元包的一部分。缺了它 cmake 会
@@ -39,11 +43,17 @@
 #     坏了。也不能用 --recurse-submodules：那会走 .gitmodules 里的 github
 #     地址，机器人不一定通。脚本第 3b 步显式用 gitcode 镜像优先去取。
 #
-# 坑 5：机器人的 /opt/ros/humble 里有厂商装的 livox_ros_driver2。
-#     这个脚本原先"系统里有就不编我们的占位包"，于是开发机（没装）编得过、
-#     机器人编不过，报一串 "using invalid field callback_variant_" 的模板
-#     错误 —— 看着像 rclcpp 的问题，其实是编译对象换了一个包。
-#     现在一律编我们自己的那份并用 overlay 盖住，两台机器结果才一样。
+# 坑 5：FAST_LIO 的 CMakeLists 强制 C++14，而 Humble 的 rclcpp 要 C++17。
+#     报出来的是 "using invalid field callback_variant_" 这一串 rclcpp 模板
+#     错误，看着像 rclcpp 坏了；往上翻到第一条才是真的：
+#     "'variant' in namespace 'std' does not name a template type"。
+#     ament 会加 -std=c++17，FAST_LIO 的 ADD_COMPILE_OPTIONS 会加 -std=c++14，
+#     两个都在命令行上，**GCC 取最后一个**。谁在后面由 cmake 版本决定：
+#       cmake 3.22（开发机）：... -fPIE -std=c++14 -fPIC -std=c++17   → 17 ✓
+#       cmake 3.28（机器人）：... -std=c++17 -fPIE -std=c++14 -fPIC   → 14 ✗
+#     所以开发机是**侥幸编过的**，不是机器人有问题。从外面传
+#     -DCMAKE_CXX_STANDARD / -DCMAKE_CXX_FLAGS 都盖不住（它用的是无 CACHE 的
+#     set()，直接覆盖），只能改那个文件。第 3c 步自动改。
 
 set -u
 
@@ -271,16 +281,56 @@ else
     fi
 fi
 
-# 源码必须是干净的 —— 我们的整套做法建立在"不改 FAST_LIO"上面。
+# --- 3c. C++ 标准 -----------------------------------------------------------
+# 坑 5：上游 CMakeLists 里写死 -std=c++14（还写了三遍），Humble 的 rclcpp 要
+# C++17。ament 也会加 -std=c++17，两个 flag 同时在命令行上，GCC 取最后一个，
+# 谁在后面取决于 cmake 版本 —— 所以这个 bug 换台机器才现形。头上坑 5 有
+# 两台机器的完整 flag 对比。
+#
+# 只能改文件：它用的是 set(CMAKE_CXX_FLAGS "-std=c++14 -O3")，无 CACHE、
+# 直接赋值，从命令行 -D 传什么都会被这一行盖掉。
+#
+# 改了会不会变行为？不会 —— 开发机上编出来、跑通 119 秒回放的那个
+# fastlio_mapping，编的就是同一份源码、同一个 C++17。这一步只是把
+# "碰巧是 17" 变成 "确定是 17"。
+head2 "3c. C++ 标准（14 → 17）"
+
+CML="$DEST/CMakeLists.txt"
+if [ ! -f "$CML" ]; then
+    bad "$CML 不存在 —— 源码没取全"
+    exit 1
+fi
+
+if grep -q 'c++14\|CMAKE_CXX_STANDARD 14' "$CML"; then
+    # -std=c++0x（C++11）也在那一行里，但它不在最后，不影响结果，不动它 ——
+    # 改动越少，将来和上游对 diff 越容易看。
+    sed -i.sztu-bak \
+        -e 's/-std=c++14/-std=c++17/g' \
+        -e 's/set(CMAKE_CXX_STANDARD 14)/set(CMAKE_CXX_STANDARD 17)/' \
+        "$CML"
+    rm -f "$CML.sztu-bak"
+    if grep -q 'c++14\|CMAKE_CXX_STANDARD 14' "$CML"; then
+        bad "改完还有 c++14 残留，上游 CMakeLists 变了，去看一眼"
+        grep -n 'c++14\|CMAKE_CXX_STANDARD 14' "$CML"
+        exit 1
+    fi
+    ok "已把 CMakeLists.txt 的 C++ 标准改成 17"
+else
+    ok "C++ 标准已是 17，不用动"
+fi
+
+# 源码必须只有 3c 那一处改动 —— 我们的整套做法建立在"基本不改 FAST_LIO"上面。
 if [ -d "$DEST/.git" ]; then
-    dirty="$(git -C "$DEST" status --porcelain 2>/dev/null | wc -l)"
-    if [ "$dirty" -gt 0 ]; then
-        hmm "$DEST 里有 $dirty 个文件被改过"
-        say "   我们的做法是不改 FAST_LIO 的源码（配置全在"
-        say "   src/sztu_slam/config/fastlio_x2_chest.yaml）。改过的话，"
+    unexpected="$(git -C "$DEST" status --porcelain 2>/dev/null \
+                  | awk '{print $2}' | grep -v '^CMakeLists\.txt$' || true)"
+    if [ -n "$unexpected" ]; then
+        hmm "$DEST 里有计划外的改动："
+        echo "$unexpected" | while read -r f; do say "     $f"; done
+        say "   我们只改 CMakeLists.txt 的 C++ 标准（第 3c 步），别的配置全在"
+        say "   src/sztu_slam/config/fastlio_x2_chest.yaml。改了源码的话，"
         say "   换机器就复现不出来 —— 这些改动不在 git 里。"
     else
-        ok "源码干净，未被修改"
+        ok "源码干净（只有 3c 那一处改动）"
     fi
 fi
 
