@@ -153,15 +153,32 @@ def analyze(odom, up=None):
     # 每个位姿相对起点、沿垂直轴的投影。跨度就是整段轨迹的真实起伏。
     hs = [sum((p[1 + i] - p0[i]) * u[i] for i in range(3)) for p in odom]
     jumps = [(t, d) for t, d in steps if d > JUMP_M]
-    # 时间戳倒流。正常数据不会有；有就说明包被拼过、或者回放开了 --loop。
-    # 不查出来的话 duration 会算成负数，频率变成 0.0 Hz 这种没意义的数。
-    back = sum(1 for a, b in zip(odom, odom[1:]) if b[0] < a[0])
-    duration = odom[-1][0] - odom[0][0]
+
+    # 时间戳有两种坏法，后果完全不同，得分开报：
+    #
+    # 1. 个别孤立的离谱值。真机实测见过：FAST-LIO 启动后第 6 条里程计的
+    #    header.stamp 是 0.095176 —— 一个没换算成绝对时间的相对值，混在
+    #    正常的 1790597484 里。5 趟里出现 1 次，只在开头，位姿本身是好的
+    #    （那一趟闭环误差 0.22%）。这种要挑出来单独说，不能因为一条就把
+    #    1158 条的时长频率全判成不可信。
+    # 2. 成片倒流。回放开了 --loop、或者包是两段拼起来的。这种数据的时序
+    #    整个是假的，时长频率确实没意义。
+    #
+    # 判据：和中位数差出一天以上的就是第 1 种。没有哪一趟 LIO 会跑一天，
+    # 而"相对时间混进绝对时间"差的是五十年，区分度极大。
+    tm = sorted(p[0] for p in odom)[n // 2]
+    bogus = [(i, p[0]) for i, p in enumerate(odom) if abs(p[0] - tm) > 86400]
+    good = [p for p in odom if abs(p[0] - tm) <= 86400]
+    # 时序的结论只看剩下的好点；位姿仍然全用（坏的只是 stamp，不是位置）。
+    back = sum(1 for a, b in zip(good, good[1:]) if b[0] < a[0])
+    duration = (good[-1][0] - good[0][0]) if len(good) >= 2 else 0.0
+    rate = (len(good) - 1) / duration if duration > 0 else 0.0
 
     return {
         'n': n,
         'duration': duration,
         'backwards': back,
+        'bogus': bogus,
         'length': length,
         'loop_err': loop_err,
         'loop_err_pct': (loop_err / length * 100) if length > 0 else float('inf'),
@@ -171,7 +188,7 @@ def analyze(odom, up=None):
         'up_measured': up is not None,
         'max_step': max(d for _, d in steps),
         'jumps': jumps,
-        'rate': (n - 1) / duration if duration > 0 else 0.0,
+        'rate': rate,
     }
 
 
@@ -209,7 +226,7 @@ def main():
     problems = 0
 
     if r['backwards']:
-        # 频率、时长在这种数据上都是胡说，不如直接说数据有问题。
+        # 成片倒流：频率、时长在这种数据上都是胡说，不如直接说数据有问题。
         print(f'  {R}✗{N} 里程计 {r["n"]} 条，但有 {r["backwards"]} 处时间戳倒流')
         print('     下面的时长和频率不可信。常见原因：回放开了 --loop，')
         print('     或者这个包是两段拼起来的。')
@@ -217,6 +234,16 @@ def main():
     else:
         print(f'  里程计      {r["n"]} 条，{r["duration"]:.1f} s，'
               f'{r["rate"]:.1f} Hz')
+
+    if r['bogus']:
+        # 孤立的坏 stamp：位姿是好的，时序统计已经把它们排除了。
+        where = '、'.join(f'第 {i} 条 stamp={t:.6f}' for i, t in r['bogus'][:3])
+        more = f'（共 {len(r["bogus"])} 条）' if len(r['bogus']) > 3 else ''
+        print(f'  {Y}⚠{N} {len(r["bogus"])} 条里程计的 stamp 是离谱值：{where}{more}')
+        print('     这是 FAST-LIO 启动阶段偶发的没初始化的相对时间戳，位姿本身')
+        print('     是好的，上面的时长和频率已经把它们排除。轨迹不受影响。')
+        print(f'     {B}但接到导航栈之前必须挡掉{N} —— stamp≈0 会让 TF 查询失败。')
+        problems += 1
     print(f'  轨迹长度    {r["length"]:.2f} m')
     print(f'  最大单帧位移 {r["max_step"]:.3f} m')
 

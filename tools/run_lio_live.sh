@@ -258,7 +258,12 @@ if [ "$RVIZ" -eq 1 ]; then
     fi
 fi
 
-trap finish INT TERM EXIT
+# INT/TERM 收完尾必须**自己退出**。只写 `trap finish INT TERM` 的话，
+# finish 返回后控制流会回到监控循环，而循环里那句"节点还活着吗"看到的是
+# 刚被 finish 杀掉的进程，于是在报告后面再补一条 "fastlio_mapping 退了"
+# 的假告警 —— 一趟好好的数据看着像崩了。
+trap 'finish; exit 0' INT TERM
+trap finish EXIT
 
 # --- 3. 等 IMU 初始化 -------------------------------------------------------
 head2 "3. 等 IMU 初始化"
@@ -311,8 +316,15 @@ while true; do
     # 录制包还没落盘，数不了条数；直接量话题频率更实在。
     # PYTHONUNBUFFERED=1 是必须的：ros2 topic hz 是 Python，输出走管道时会
     # 块缓冲，被 timeout 的 SIGTERM 打断就什么都读不到。
-    hz="$(PYTHONUNBUFFERED=1 timeout 5 ros2 topic hz /Odometry --window 20 \
-          2>/dev/null | sed -n 's/.*average rate: \([0-9.]*\).*/\1/p' | tail -1)"
+    # 量不到就**重试一次再报**：ros2 topic hz 每次都要现起一个节点、做发现、
+    # 再攒够 window 条样本，机器人 CPU 忙的时候 5 秒内跑不完是常事。真机实测
+    # 出现过一次"量不到"的假告警，而那一刻里程计完全正常。
+    measure_hz() {
+        PYTHONUNBUFFERED=1 timeout 7 ros2 topic hz /Odometry --window 10 \
+            2>/dev/null | sed -n 's/.*average rate: \([0-9.]*\).*/\1/p' | tail -1
+    }
+    hz="$(measure_hz)"
+    [ -z "${hz:-}" ] && hz="$(measure_hz)"
     if [ -n "${hz:-}" ]; then
         # 低于 8 Hz 就明说，别让人事后看报告才发现
         if awk "BEGIN{exit !($hz < 8)}"; then
@@ -321,7 +333,8 @@ while true; do
             ok "${elapsed}s  /Odometry ${hz} Hz"
         fi
     else
-        hmm "${elapsed}s  量不到 /Odometry 的频率 —— 还没出里程计？"
+        hmm "${elapsed}s  两次都量不到 /Odometry 的频率"
+        say "     （量不到 ≠ 没输出。收尾时的报告才是准的，以它为准。）"
     fi
 
     if [ "$DURATION" -gt 0 ] && [ "$elapsed" -ge "$DURATION" ]; then
