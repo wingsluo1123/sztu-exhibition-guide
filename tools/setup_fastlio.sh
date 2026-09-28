@@ -38,6 +38,12 @@
 #     + "No SOURCES given to target: fastlio_mapping"，看着像 CMakeLists
 #     坏了。也不能用 --recurse-submodules：那会走 .gitmodules 里的 github
 #     地址，机器人不一定通。脚本第 3b 步显式用 gitcode 镜像优先去取。
+#
+# 坑 5：机器人的 /opt/ros/humble 里有厂商装的 livox_ros_driver2。
+#     这个脚本原先"系统里有就不编我们的占位包"，于是开发机（没装）编得过、
+#     机器人编不过，报一串 "using invalid field callback_variant_" 的模板
+#     错误 —— 看着像 rclcpp 的问题，其实是编译对象换了一个包。
+#     现在一律编我们自己的那份并用 overlay 盖住，两台机器结果才一样。
 
 set -u
 
@@ -287,8 +293,39 @@ fi
 
 head2 "4. 编译"
 
+# 坑 5：**永远用我们自己的占位包**，哪怕系统里已经有一个 livox_ros_driver2。
+#     这里原先写的是"系统里有就不编我们的"，结果开发机（没装）编得过、
+#     机器人（/opt/ros/humble 里有厂商装的一份）编不过，报一串
+#     "using invalid field callback_variant_" 的模板错误。
+#     编译结果取决于厂商往 /opt/ros 里放了什么，这本身就是个坑 ——
+#     一律用我们自己的那份，两台机器才一样。
+#     workspace 的 overlay 会盖住 /opt/ros 里的同名包，这是 colcon 的正常行为。
 pkgs=(livox_ros_driver2 fast_lio sztu_slam)
-[ -d /opt/ros/humble/share/livox_ros_driver2 ] && pkgs=(fast_lio sztu_slam)
+
+if [ -d /opt/ros/humble/share/livox_ros_driver2 ]; then
+    hmm "/opt/ros/humble 里已经有一个 livox_ros_driver2（厂商装的）"
+    say "   我们仍然编自己的占位包，并用 overlay 盖住它 —— 否则编译结果"
+    say "   取决于那份包的状态，换台机器就不一样。"
+    say "   如果机器人自己的节点要用真的 Livox 驱动，别在那些终端里"
+    say "   source 我们的 install/setup.bash。"
+fi
+
+# find_package 的结果会被 CMakeCache.txt 记住。上一趟如果解析到了
+# /opt/ros 里那份 livox_ros_driver2，光重跑 colcon 是**换不回来**的 ——
+# cmake 直接用缓存，不会重新找。所以缓存指向 workspace 之外时先删掉。
+CACHE="$WS/build/fast_lio/CMakeCache.txt"
+if [ -f "$CACHE" ]; then
+    cached="$(sed -n 's/^livox_ros_driver2_DIR:PATH=//p' "$CACHE" | head -1)"
+    case "${cached:-}" in
+        "$WS"/*) ;;                     # 已经是我们的，不用动
+        "")      ;;                     # 没这一项，不用管
+        *)
+            hmm "上一趟 cmake 解析到的是 $cached"
+            say "   删掉 build/fast_lio 让它重新找（否则缓存会一直用旧路径）"
+            rm -rf "$WS/build/fast_lio" "$WS/install/fast_lio"
+            ;;
+    esac
+fi
 
 say "   colcon build --packages-select ${pkgs[*]}"
 say ""
