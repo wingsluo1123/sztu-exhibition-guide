@@ -138,39 +138,72 @@ else
     hmm "没找到智元环境脚本 —— 如果这台就是机器人的开发计算单元，要查清楚"
 fi
 
-# ---------------------------------------- 0c. 域里有没有外来节点（坑 5）
-head2 "0c. DDS 域里有没有别人（坑 5：外来 /tf 会污染整个包）"
+# ---------------------------------------- 0c. 谁在发 /tf（坑 5）
+head2 "0c. 谁在发 /tf 和 /tf_static（坑 5：外来的会污染整个包）"
 
 # 这个坑是在开发机上真踩到的：ROS_DOMAIN_ID 没设（默认 0），结果局域网里
 # 另一台机器跑着一台 WidowX-250 机械臂 + RViz，它的 robot_state_publisher
-# 也在发 /tf 和 /tf_static。表现是 /tf 的速率莫名比录制时高、发布者数是 2。
+# 也在发 /tf 和 /tf_static。表现是 /tf 的速率莫名偏高、发布者数多了一个。
 #
-# 为什么必须在录之前挡住：/tf 和 /tf_static 是**全局共享**的话题，
+# 为什么要在录之前看一眼：/tf 和 /tf_static 是**全局共享**的话题，
 # 两台机器人的坐标树会混进同一个话题里。录进包之后：
 #   * 坐标树里多出一堆无关的 link，TF 查询可能解析到错的那棵树；
 #   * 事后没法分辨哪条 transform 是谁的 —— 包只能重录。
 # 而它的症状（TF 查询失败、外参看起来不对）全都指向标定，很容易白查几天。
-ros_nodes="$(timeout 10 ros2 node list 2>/dev/null)"
-if [ -z "$ros_nodes" ]; then
-    hmm "一个节点都看不到 —— 机器人的软件可能没起，或者 DDS 配置没加载"
+#
+# 这一节原来是"列出所有节点，不在白名单里的就算外来，并且拦住不让录"。
+# 那个做法是错的，在真机上直接翻车了：白名单是照着**仿真器**的命名写的
+# (/aima*)，而真机的节点叫 /soc0_* /soc1_* /soc2_* /mc_ros2_node /app_proxy
+# /hal_ethercat_* …… 38 个全被判成外来，把人拦在了机器人跟前。
+#
+# 教训有两条，都写下来免得再犯：
+#   1. 靠节点名猜"谁是自己人"做不到 —— 事先不可能知道真机的全部命名。
+#      改成只查真正的风险面：**谁在发 /tf 和 /tf_static**。就这两个话题
+#      会被污染，别的节点再多也不相干。
+#   2. 一个"我猜的"判据不配拦人。现场时间很贵，拦错一次的代价远大于
+#      漏报一次（漏报顶多是包里多几个无关坐标系，还能事后筛）。
+#      所以这一节只提醒、只把事实摆出来，判断交给站在机器人跟前的人。
+tf_pubs=""
+for t in /tf /tf_static; do
+    # ros2 topic info -v 的输出里，发布者段落形如：
+    #   Node name: robot_state_publisher
+    #   Node namespace: /wx250s
+    info="$(timeout 10 ros2 topic info -v "$t" 2>/dev/null)"
+    [ -z "$info" ] && continue
+    # 只取 Publishers 段：从 "Publisher count" 到 "Subscription count" 之间
+    pub_sec="$(echo "$info" | sed -n '/Publisher count/,/Subscription count/p')"
+    names="$(echo "$pub_sec" | grep 'Node name:'      | sed 's/.*Node name: *//')"
+    nss="$(echo "$pub_sec"   | grep 'Node namespace:' | sed 's/.*Node namespace: *//')"
+    n_pub="$(echo "$names" | grep -c .)"
+    say "  ${BOLD}$t${NC}  —— $n_pub 个发布者："
+    paste <(echo "$nss") <(echo "$names") 2>/dev/null \
+        | awk 'NF {ns=$1; sub(/\/$/,"",ns); printf "     %s/%s\n", ns, $2}' \
+        | tee -a "$LOG" >/dev/null
+    paste <(echo "$nss") <(echo "$names") 2>/dev/null \
+        | awk 'NF {ns=$1; sub(/\/$/,"",ns); printf "     %s/%s\n", ns, $2}'
+    tf_pubs="$tf_pubs$nss"$'\n'
+done
+
+# 只有一种情况值得主动喊：多个**不同的命名空间**在发 /tf。
+# 同一台机器人的多个节点一起发 /tf 是正常的（各发各的那一段链路），
+# 但两个不同的命名空间通常意味着两台机器人。
+distinct_ns="$(echo "$tf_pubs" | grep -v '^$' | grep -v '^/$' | sort -u | grep -c .)"
+total_tf_pub="$(echo "$tf_pubs" | grep -v '^$' | grep -c .)"
+if [ "$total_tf_pub" -eq 0 ]; then
+    hmm "没有任何人在发 /tf 或 /tf_static"
+    say "   包里会没有坐标树，SLAM 就没法把雷达的点转到机器人坐标系下。"
+    say "   如果机器人的软件还没起完，等一会再跑；已经起完还是这样，"
+    say "   就得靠关节状态 + URDF 自己算外参链（下面第 3 节会把关节话题一起录上）。"
+elif [ "$distinct_ns" -gt 1 ]; then
+    hmm "/tf 的发布者来自 ${distinct_ns} 个不同的命名空间 —— 确认一下是不是"
+    say "   局域网里有别的机器人和你同域（默认都是 ROS_DOMAIN_ID=0）。"
+    say "   要隔开： export ROS_DOMAIN_ID=<一个没人用的号，0-101>"
 else
-    # 自己人的判断依据：智元的节点都在 /aima* 或 aimrt 命名空间下。
-    # 标准的 tf 监听器和 ros2cli 自己的临时节点不算外来，放过。
-    foreign="$(echo "$ros_nodes" | grep -vE '^/(aima|aimrt|sztu)' \
-               | grep -vE 'transform_listener_impl|_ros2cli_')"
-    n_foreign="$(echo "$foreign" | grep -c .)"
-    if [ "$n_foreign" -gt 0 ]; then
-        bad "域里有 ${n_foreign} 个不认识的节点 —— 别在这个状态下录包"
-        say "$(echo "$foreign" | sed 's/^/     /')"
-        say ""
-        say "   ${BOLD}先把域隔开，再重跑本脚本：${NC}"
-        say "     export ROS_DOMAIN_ID=<一个没人用的号，0-101>"
-        say "   或者把上面那些节点所在的机器停掉／断网。"
-        say "   只录不含 /tf 的话题也能绕过，但那样包里就没有坐标树了。"
-    else
-        ok "域里只有自己的节点（共 $(echo "$ros_nodes" | grep -c .) 个）"
-    fi
+    ok "发 /tf 的都在同一个命名空间下，看起来是同一台机器"
 fi
+say ""
+say "  ${BOLD}上面这些节点如果你不认识，先别录${NC} —— 别人的坐标树混进来之后"
+say "  没法再分开，包只能重录。都是自己的就往下走。"
 
 # ----------------------------------------------- 1. 话题体检（坑 2、坑 3）
 head2 "1. 要录的话题在不在、出不出数据（坑 2、坑 3）"
