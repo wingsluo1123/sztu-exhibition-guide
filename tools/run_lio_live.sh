@@ -6,11 +6,13 @@
 # 拉起的东西一样：
 #   1. fastlio_mapping        —— 建图和里程计
 #   2. cloud_to_velodyne      —— 点云字段改名/改类型（没它 FAST-LIO 读垃圾内存）
-#   3. ros2 bag record        —— 可选，--map 时连 /cloud_registered 一起录
+#   3. lio_odom_bridge        —— 可选，--bridge 时把位姿发到厂商的导航入口
+#   4. ros2 bag record        —— 可选，--map 时连 /cloud_registered 一起录
 #
 # 用法:
 #   tools/run_lio_live.sh                # 起来，一直跑，Ctrl-C 停
 #   tools/run_lio_live.sh --map          # 连点云一起录，之后能拼地图（~800 KB/帧）
+#   tools/run_lio_live.sh --bridge       # 顺便发 /slam/lidar_odom（**会影响导航**，见坑 6）
 #   tools/run_lio_live.sh --no-record    # 连 /Odometry 都不录，只看实时频率
 #   tools/run_lio_live.sh --rviz         # 顺便开 rviz
 #   tools/run_lio_live.sh -t 120         # 跑 120 秒自动收尾（默认一直跑）
@@ -42,6 +44,13 @@
 # 坑 5：别把 export 写进 .bashrc。
 #     传输配置带 useBuiltinTransports=false，会改掉这台机器上**每个**ROS
 #     节点的传输方式，包括机器人自己那些。只在本脚本的进程里生效才安全。
+#
+# 坑 6：--bridge 不是默认的，因为它**会被导航栈读到**。
+#     /slam/lidar_odom 是厂商 slam_config.yaml 里定义的导航入口，机器人上
+#     有 5 个订阅方。发它就等于给导航喂位姿 —— 如果那时候导航有任务在跑，
+#     机器人可能会动。所以：
+#       * 第一次开 --bridge，先确认周围有空间、有人能按急停；
+#       * 不开 --bridge 时这个脚本和以前完全一样，只发 /Odometry，没人订阅。
 
 set -u
 
@@ -57,14 +66,17 @@ WS="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 RVIZ=0
 MAP=0
 RECORD=1
+BRIDGE=0
 DURATION=0
 RAW_TOPIC="/aima/hal/sensor/lidar_chest_front/lidar_pointcloud"
 IMU_TOPIC="/aima/hal/sensor/lidar_chest_front/imu"
+NAV_TOPIC="/slam/lidar_odom"
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --rviz)      RVIZ=1 ;;
         --map)       MAP=1 ;;
+        --bridge)    BRIDGE=1 ;;
         --no-record) RECORD=0 ;;
         -t|--time)   DURATION="$2"; shift ;;
         -h|--help)
@@ -117,6 +129,16 @@ else
     bad "没有配置文件 $CFG（sztu_slam 没编译？）"; fatal=1
 fi
 
+BR_EXE="$WS/install/sztu_slam/lib/sztu_slam/lio_odom_bridge"
+if [ "$BRIDGE" -eq 1 ]; then
+    if [ -x "$BR_EXE" ]; then
+        ok "lio_odom_bridge"
+    else
+        bad "没有 lio_odom_bridge —— colcon build --packages-select sztu_slam"
+        fatal=1
+    fi
+fi
+
 # 坑 1
 DDS_XML="$WS/install/sztu_slam/share/sztu_slam/config/fastdds_large_cloud.xml"
 if [ -f "$DDS_XML" ]; then
@@ -150,6 +172,39 @@ for t in /lio/points /Odometry; do
     fi
 done
 
+if [ "$BRIDGE" -eq 1 ]; then
+    # 这个话题和上面两个不一样：有别人在发的话，不一定是我们上一趟的残留，
+    # 也可能是厂商的 LocalizationModule 真起来了（授权开通之后就会）。
+    # 两个都发同一个话题，导航会收到两套互相矛盾的位姿，而且不报错。
+    n="$(ros2 topic info "$NAV_TOPIC" 2>/dev/null \
+         | sed -n 's/.*Publisher count: \([0-9]*\).*/\1/p' | head -1)"
+    if [ -n "${n:-}" ] && [ "$n" -gt 0 ]; then
+        bad "$NAV_TOPIC 已经有 $n 个发布者"
+        say "   要么是上一趟的 lio_odom_bridge 没收干净:"
+        say "     pkill -INT -f lio_odom_bridge"
+        say "   要么是厂商的 LocalizationModule 起来了（授权开通了？）——"
+        say "   那就别用 --bridge，厂商自己的实现优先，我们这层只是替代品。"
+        say "     aima em list-apps | grep slam"
+        fatal=1
+    fi
+
+    # 转接层每帧都要查这条链（经腰关节，是动态的）。查不到就一帧都发不出去，
+    # 所以在这里先探一次 —— 比跑完才发现"转发 0 条"省事得多。
+    TF_PROBE="$(mktemp)"
+    timeout 8 ros2 run tf2_ros tf2_echo base_link lidar_imu_chest_front \
+        > "$TF_PROBE" 2>&1 || true
+    if grep -q 'Translation' "$TF_PROBE"; then
+        ok "TF base_link -> lidar_imu_chest_front（转接层要每帧查它）"
+    else
+        bad "查不到 TF base_link -> lidar_imu_chest_front"
+        say "   发 TF 的节点没起来。这条链经过腰关节，需要机器人的"
+        say "   joint/tf 那些节点活着。没有它转接层一帧都发不出去。"
+        say "   先看:  ros2 run tf2_tools view_frames"
+        fatal=1
+    fi
+    rm -f "$TF_PROBE"
+fi
+
 if [ "$fatal" -ne 0 ]; then
     say ""
     bad "上面的问题先解决。"
@@ -170,6 +225,15 @@ report() {
     head2 "本趟结果"
     if grep -q '转换 [0-9]* 帧' "$RUN_DIR/adapter.log" 2>/dev/null; then
         say "  $(grep -o '转换 [0-9]* 帧，失败 [0-9]* 帧' "$RUN_DIR/adapter.log" | tail -1)"
+    fi
+    if [ "$BRIDGE" -eq 1 ]; then
+        if [ -s "$RUN_DIR/bridge.log" ]; then
+            # 转接层的收尾统计是几行 print，直接照搬；它自己会标哪条不正常。
+            grep -E '转发|丢弃|没转发|重力方向实测完成' "$RUN_DIR/bridge.log" \
+                | sed 's/^/  /'
+        else
+            hmm "  bridge.log 是空的 —— 转接层没起来？"
+        fi
     fi
     for pat in 'Failed\|error\|Error' 'No point\|Too few' 'wait for imu'; do
         hits="$(grep -i "$pat" "$RUN_DIR/fastlio.log" 2>/dev/null | sort -u | head -3)"
@@ -232,6 +296,16 @@ ok "fastlio_mapping (pid ${pids[-1]}) -> fastlio.log"
 pids+=($!)
 ok "cloud_to_velodyne (pid ${pids[-1]}) -> adapter.log"
 
+if [ "$BRIDGE" -eq 1 ]; then
+    # 转接层自己也要静测 2 秒 IMU 定重力方向，和 FAST-LIO 的静止要求重合，
+    # 所以和它一起起、一起等，不用多站一次。
+    "$BR_EXE" > "$RUN_DIR/bridge.log" 2>&1 &
+    pids+=($!)
+    ok "lio_odom_bridge (pid ${pids[-1]}) -> bridge.log"
+    hmm "${BOLD}正在往 $NAV_TOPIC 发位姿 —— 导航栈读的就是这个话题${NC}"
+    say "     确认周围有空间、有人能按急停（见脚本头部坑 6）"
+fi
+
 if [ "$RECORD" -eq 1 ]; then
     # 连 IMU 一起录，是为了让报告能自己算出"哪个轴朝上"。
     # camera_init 不是重力对齐的（这颗 IMU 的 X 轴朝上），lio_report.py 要拿
@@ -239,6 +313,10 @@ if [ "$RECORD" -eq 1 ]; then
     # IMU 200 Hz 但消息很小，录它的开销可以忽略。
     REC_TOPICS=(/Odometry "$IMU_TOPIC")
     [ "$MAP" -eq 1 ] && REC_TOPICS+=(/cloud_registered)
+    # --bridge 时把转接层的输出和 TF 一起录下来。这一趟要验的恰恰是"动态 TF
+    # 有没有真正起作用"，而那件事只能事后拿 /tf 和 /slam/lidar_odom 对着看
+    # （弯腰时 base_link 的位姿该不动）。两个话题都很小。
+    [ "$BRIDGE" -eq 1 ] && REC_TOPICS+=("$NAV_TOPIC" /tf /tf_static)
     ros2 bag record -o "$RUN_DIR/odom" "${REC_TOPICS[@]}" \
         > "$RUN_DIR/record.log" 2>&1 &
     pids+=($!)
@@ -292,6 +370,15 @@ if [ "$imu_ok" -eq 1 ]; then
 else
     hmm "30 秒还没看到 IMU Initial Done"
     say "   点云或 IMU 没喂进去。看 $RUN_DIR/fastlio.log 和 adapter.log。"
+fi
+
+if [ "$BRIDGE" -eq 1 ]; then
+    say ""
+    say "${BOLD}--bridge 这一趟要特意做一件事：弯腰，或者转一下腰。${NC}"
+    say "  判据：$NAV_TOPIC 里 base_link 的位姿**不该跟着动**。"
+    say "  动了就说明杠杆臂被当成常数了，动态 TF 没起作用 —— 这一条"
+    say "  开发机上用静态假 TF 是测不出来的，只能在机器人上看。"
+    say "  另开一个终端看:  ros2 topic echo $NAV_TOPIC --field pose.pose.position"
 fi
 
 # --- 4. 实时监控 ------------------------------------------------------------
