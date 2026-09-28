@@ -50,12 +50,18 @@
 #          全像标定问题。这个坑在开发机上真踩到过（局域网里有台 WidowX-250
 #          机械臂的 robot_state_publisher 在发 /tf）。
 #
+#   坑 6：timeout 必须加 --foreground，否则屏幕上那句"提前停：Ctrl-C"是
+#          骗人的 —— 不加的话 timeout 会把子进程放进新的进程组，Ctrl-C 的
+#          SIGINT 只发给终端前台进程组，打不到 ros2 bag record。现场表现是
+#          按了没反应、终端像死了。这条是在真机上被撞到的，详见下面录制那段。
+#
 # 用法:
-#   tools/record_bag.sh                    # 默认录 90 秒
+#   tools/record_bag.sh                    # 默认录 90 秒，不压缩
 #   tools/record_bag.sh -d 180             # 录 180 秒
 #   tools/record_bag.sh -d 120 -o loop_1f  # 指定包名
 #   tools/record_bag.sh --dry-run          # 只体检不录（强烈建议先跑这个）
 #   tools/record_bag.sh --with-camera      # 连相机一起录（很占空间，见下）
+#   tools/record_bag.sh --compress         # 磁盘紧张时才用，停止会慢几分钟
 #
 # 刻意不用 set -e：体检要一次列全问题，不能第一项失败就退出。
 
@@ -67,6 +73,7 @@ DURATION=90
 OUTNAME=""
 DRY_RUN=0
 WITH_CAMERA=0
+COMPRESS=0
 BAG_ROOT="${SZTU_BAG_DIR:-$HOME/sztu_bags}"
 
 while [ $# -gt 0 ]; do
@@ -75,10 +82,22 @@ while [ $# -gt 0 ]; do
         -o|--output)   OUTNAME="$2";  shift 2 ;;
         --dry-run)     DRY_RUN=1;     shift ;;
         --with-camera) WITH_CAMERA=1; shift ;;
+        --compress)    COMPRESS=1;    shift ;;
         -h|--help)     sed -n '2,50p' "$0"; exit 0 ;;
         *) echo "未知参数: $1（-h 看用法）"; exit 1 ;;
     esac
 done
+
+# 默认**不压缩**。原来默认开 zstd file 压缩，那是个设计错误：
+#   * 磁盘根本不紧张（真机实测可用 397 GB，录 120 秒才 ~1.2 GB）；
+#   * 而代价是停止录制时要把整个包压一遍，几分钟里终端毫无动静，
+#     现场完全分不清是"在压缩"还是"卡死了" —— 这正是最不该有的歧义，
+#     因为人就站在机器人跟前，等不起也猜不起。
+# 空间真紧张时再用 --compress，届时会明确提示收尾会慢。
+COMPRESS_ARGS=()
+if [ "$COMPRESS" -eq 1 ]; then
+    COMPRESS_ARGS=(--compression-mode file --compression-format zstd)
+fi
 
 [ -z "$OUTNAME" ] && OUTNAME="sztu_$(date +%Y%m%d_%H%M%S)"
 BAG_DIR="$BAG_ROOT/$OUTNAME"
@@ -250,7 +269,12 @@ est_total_mb="$(awk -v r="$est_mb_s" -v d="$DURATION" 'BEGIN{printf "%.0f", r*d}
 
 say "  可用: ${avail_mb} MB"
 say "  预估: ${est_total_mb} MB（${est_mb_s} MB/s × ${DURATION}s，未压缩）"
-say "  实际会用 zstd 压缩，点云一般能压到 40-60%"
+if [ "$COMPRESS" -eq 1 ]; then
+    say "  开了 --compress，点云一般能压到 40-60%；代价是停止时要压几分钟"
+else
+    say "  默认不压缩（磁盘够就别压，压缩会让停止录制卡好几分钟）"
+    say "  空间紧张再加 --compress"
+fi
 
 if [ "$est_total_mb" -gt 0 ] && [ "$avail_mb" -gt 0 ]; then
     if [ "$est_total_mb" -gt "$((avail_mb * 7 / 10))" ]; then
@@ -351,6 +375,12 @@ say "  4. 中途停 2-3 次，各停几秒 —— 用来检查静止时会不会
 say "  5. 走慢一点，正常行走速度就行，别追求快。"
 say ""
 say "录制会在 ${DURATION} 秒后自动停止。提前停： Ctrl-C（一次就好，别连按）"
+say "按下后会看到 rosbag2 打「Writing remaining messages / Recording stopped」，"
+say "几秒内结束，然后自动进入校验。没看到这两句就是没停下来，别急着连按。"
+if [ "$COMPRESS" -eq 1 ]; then
+    say "${YELLOW}你开了 --compress：停止后要把整个包压一遍，可能要几分钟，"
+    say "期间终端不动是正常的，别去 kill 它。${NC}"
+fi
 say ""
 for i in 5 4 3 2 1; do echo -n "  $i... "; sleep 1; done
 echo
@@ -358,18 +388,38 @@ say "录制中..."
 
 # 坑 4：必须 SIGINT，rosbag2 靠它写 metadata.yaml 并正常关 sqlite3。
 # 被 KILL 打死的包没有 metadata，ros2 bag play 打不开。
-timeout -s INT "$DURATION" \
+#
+# 坑 6：timeout 必须加 --foreground，否则 Ctrl-C 根本停不下来。
+#   不加的话 timeout 会 setpgid(0,0) 把自己和子进程放进一个**新的进程组**，
+#   而 Ctrl-C 的 SIGINT 只发给终端的**前台**进程组 —— 打不到 ros2 bag record。
+#   现场表现：按了 Ctrl-C 什么都没发生，终端像死了一样，只能干等到时间到。
+#   这条是在真机上被用户撞到的（脚本自己还在屏幕上写着"提前停：Ctrl-C"，
+#   而那句话是错的）。加 --foreground 后 timeout 不再换进程组，Ctrl-C 直达。
+#
+# tee 要屏蔽 SIGINT：它和 ros2 bag record 在同一个前台进程组里，Ctrl-C 会
+#   一起打到它。tee 先死会让管道断掉，rosbag2 收尾时写日志触发 SIGPIPE，
+#   可能在写出 metadata.yaml 之前就被打死 —— 那就前功尽弃了。
+#   用 trap '' INT 让 tee 扛住，继续把收尾日志抽干。
+#   顺带还有个关键作用：bash 判断"要不要因为 Ctrl-C 中止整个脚本"，看的是
+#   管道**最后一个**进程是不是死于 SIGINT。这个 tee 子 shell 屏蔽了 INT、
+#   正常退出 0，于是 bash 不会中止脚本 —— 第 5 节的逐话题校验才跑得到。
+#   没有它的话，Ctrl-C 停的包永远不会被当场校验，而那正是本脚本的意义。
+timeout --foreground -s INT "$DURATION" \
     ros2 bag record \
-        --compression-mode file \
-        --compression-format zstd \
+        "${COMPRESS_ARGS[@]}" \
         -o "$BAG_DIR" \
-        "${REC[@]}" 2>&1 | tee -a "$LOG"
+        "${REC[@]}" 2>&1 | { trap '' INT; tee -a "$LOG"; }
 
-# timeout 超时返回 124；这里 124 是"正常录满"，不是错误
+# 三个退出码都算"正常收尾"，别吓唬人：
+#   124  timeout 到点了 —— 录满预定时长，这是最常见的情况
+#   0    ros2 bag record 自己干净退出（Ctrl-C 时 rclpy 接管信号后通常是这个）
+#   130  = 128+SIGINT。timeout 转发完 SIGINT 会用同一个信号自杀，
+#          于是 128+2 冒到这里。这是 Ctrl-C 的正常路径，不是故障。
+# 真正说明问题的是下面第 5 节的逐话题条数，不是退出码。
 rec_rc=${PIPESTATUS[0]}
 say ""
-if [ "$rec_rc" -eq 124 ] || [ "$rec_rc" -eq 0 ]; then
-    ok "录制结束"
+if [ "$rec_rc" -eq 124 ] || [ "$rec_rc" -eq 0 ] || [ "$rec_rc" -eq 130 ]; then
+    ok "录制结束$([ "$rec_rc" -eq 130 ] && echo "（你按了 Ctrl-C）")"
 else
     hmm "rosbag2 退出码 $rec_rc —— 包可能不完整，看下面的校验"
 fi
