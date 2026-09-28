@@ -55,6 +55,16 @@
 #          SIGINT 只发给终端前台进程组，打不到 ros2 bag record。现场表现是
 #          按了没反应、终端像死了。这条是在真机上被撞到的，详见下面录制那段。
 #
+#   坑 7（最阴险）：只要有一个话题的消息类型 rosbag2 加载不了，它的**话题
+#          发现线程**就整个崩掉并无限重试，崩溃点之后的话题一个都订阅不上。
+#          真机上就是 /aima/hal/joint/norealtime/*_joint/state 这两个
+#          （类型 aimdk_msgs/JointNoRealTimeStateArray，C++ typesupport 缺失）
+#          把雷达点云、雷达 IMU、/tf 全带下水 —— 录出来 0 条。
+#          最要命的是它伪装得像 QoS 问题：第 1 节明明测到雷达 11.2 Hz 在出数据,
+#          录出来却是空的。真正的线索是日志里刷屏的
+#          "Failure in topics discovery. ... typesupport library ..."。
+#          防御手段见第 3b 节：正式录之前先试录 4 秒，把坏类型剔出去。
+#
 # 用法:
 #   tools/record_bag.sh                    # 默认录 90 秒，不压缩
 #   tools/record_bag.sh -d 180             # 录 180 秒
@@ -339,11 +349,88 @@ for t in "${TOPICS[@]}"; do
 done
 
 say ""
-say "最终录制 ${#REC[@]} 个话题："
+say "候选 ${#REC[@]} 个话题（下一步试录会剔掉 rosbag2 加载不了的）："
 for t in "${REC[@]}"; do say "    $t"; done
 
 if [ "${#REC[@]}" -eq 0 ]; then
     bad "一个话题都不存在 —— 先解决坑 1（DDS 配置）和感知模块开通"
+fi
+
+# ------------------------------------------- 3b. 试录 4 秒（坑 7）
+# 坑 7 的由来见文件头。一句话：只要有一个话题的消息类型 rosbag2 加载不了，
+# 它的**话题发现线程**就会整个崩掉并无限重试，崩溃点之后的话题**一个都订阅不上**。
+# 表现极具迷惑性：第 1 节明明测到雷达 11.2 Hz 在出数据，录出来却是 0 条。
+#
+# 为什么要真的试录，而不是用 python 的 get_message() 查一下：
+# 那查的是 Python typesupport，rosbag2 用的是 C++ 的，两者可以一个有一个没有。
+# 唯一可信的检查就是让 rosbag2 自己跑一遍。4 秒换一次 120 秒的白走，值。
+if [ "${#REC[@]}" -gt 0 ]; then
+    head2 "3b. 试录 4 秒（坑 7：一个坏类型会让所有话题都录不上）"
+
+    PROBE_DIR="$BAG_ROOT/.typeprobe_$$"
+    rm -rf "$PROBE_DIR"
+    probe_out="$(timeout --foreground -s INT 4 \
+        ros2 bag record -o "$PROBE_DIR" "${REC[@]}" 2>&1)"
+    rm -rf "$PROBE_DIR"
+
+    # 错误原文： ... typesupport library for message type aimdk_msgs/JointNoRealTimeStateArray. ...
+    # 注意它印的是两段式 pkg/Type，而 ros2 topic list -t 给的是三段式 pkg/msg/Type
+    bad_types="$(echo "$probe_out" \
+        | sed -n 's|.*typesupport library for message type \([A-Za-z0-9_/]*\).*|\1|p' \
+        | sort -u)"
+
+    if [ -z "$bad_types" ]; then
+        ok "所有话题的消息类型 rosbag2 都能加载"
+    else
+        topic_types="$(ros2 topic list -t 2>/dev/null)"
+        drop_list=()
+        for t in "${REC[@]}"; do
+            ty="$(echo "$topic_types" | grep -F "$t [" \
+                  | sed -n 's|.*\[\(.*\)\]|\1|p' | head -1)"
+            [ -z "$ty" ] && continue
+            short="${ty/\/msg\//\/}"
+            if echo "$bad_types" | grep -qxF "$short" \
+               || echo "$bad_types" | grep -qxF "$ty"; then
+                drop_list+=("$t")
+            fi
+        done
+
+        hmm "有消息类型 rosbag2 加载不了："
+        while IFS= read -r ty; do say "    $ty"; done <<< "$bad_types"
+
+        if [ "${#drop_list[@]}" -eq 0 ]; then
+            bad "但对不上是哪个话题 —— 不敢往下录"
+            say "   照录的话发现线程会崩，崩溃点之后的话题（很可能包括雷达）"
+            say "   一条都录不上，而且录的时候看不出来。"
+            say "   手动排查： ros2 topic list -t | grep -F '${bad_types%%$'\n'*}'"
+        else
+            say ""
+            say "   ${BOLD}把下面这些话题剔出录制清单${NC}（它们毒死了发现线程）："
+            for t in "${drop_list[@]}"; do say "    ✗ $t"; done
+            NEW_REC=()
+            for t in "${REC[@]}"; do
+                skip=0
+                for d in "${drop_list[@]}"; do [ "$t" = "$d" ] && skip=1; done
+                [ "$skip" -eq 0 ] && NEW_REC+=("$t")
+            done
+            REC=("${NEW_REC[@]}")
+            ok "剔除后还剩 ${#REC[@]} 个话题"
+            say ""
+            say "   这不是可有可无的取舍：留着它们，${BOLD}雷达点云会录成 0 条${NC}。"
+            say "   剔掉的是关节话题，SLAM 用不到 —— /tf 和 /tf_static 才是要紧的，"
+            say "   那两个不受影响。"
+        fi
+
+        # 剔完之后必须确认雷达还在，否则录了也白录
+        if ! printf '%s\n' "${REC[@]}" \
+             | grep -qx '/aima/hal/sensor/lidar_chest_front/lidar_pointcloud'; then
+            bad "剔除后连点云都没了 —— 没有点云就没有 SLAM，录了没意义"
+        fi
+
+        say ""
+        say "${BOLD}最终录制 ${#REC[@]} 个话题：${NC}"
+        for t in "${REC[@]}"; do say "    $t"; done
+    fi
 fi
 
 # ------------------------------------------------------------ 判断能不能录
@@ -457,7 +544,27 @@ if [ "${#zero_topics[@]}" -gt 0 ]; then
     bad "下面这些话题录了 0 条："
     for t in "${zero_topics[@]}"; do say "    ✗ $t"; done
     say ""
-    say "   ${BOLD}人还在现场的话现在就能补救${NC}。常见原因："
+    say "   ${BOLD}人还在现场的话现在就能补救${NC}。"
+
+    # 先查发现线程有没有崩 —— 崩了的话上面那串 0 条基本都是它害的，
+    # 别让人去查 QoS。真机上吃过这个亏：第 1 节测到雷达 11.2 Hz 在出数据,
+    # 录出来 0 条，看着像 QoS 不兼容，其实是一个坏类型把发现线程打死了。
+    disc_fail="$(grep -c 'Failure in topics discovery' "$LOG" 2>/dev/null || echo 0)"
+    if [ "$disc_fail" -gt 0 ]; then
+        say ""
+        say "   ${RED}${BOLD}已定位：rosbag2 的话题发现线程崩了 $disc_fail 次（坑 7）${NC}"
+        grep -o 'message type [A-Za-z0-9_/]*' "$LOG" 2>/dev/null | sort -u \
+            | sed 's/^/     加载不了的类型： /' | while IFS= read -r l; do say "$l"; done
+        say "   发现线程一崩，崩溃点之后的话题就一个都订阅不上 —— 上面那串 0 条"
+        say "   多半都是被它连累的，${BOLD}不是 QoS 问题，别往那边查${NC}。"
+        say "   第 3b 节的试录本该挡住它；它没挡住说明试录的 4 秒里没暴露出来。"
+        say "   补救：把上述类型对应的话题从清单里去掉再录。"
+        say ""
+        say "   其他可能的原因："
+    else
+        say "   常见原因："
+    fi
+
     say "   · /tf_static 0 条：它是 latched 的，只在节点启动时发一次。"
     say "     如果录制开始得比发布者晚，就永远收不到。"
     say "     补救：重启一下发布它的节点，或者单独录一遍 /tf_static。"
