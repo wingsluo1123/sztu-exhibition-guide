@@ -203,6 +203,46 @@ if [ "$INFO_ONLY" -eq 1 ]; then
     exit $([ "$fatal" -gt 0 ] && echo 1 || echo 0)
 fi
 
+head2 "3b. 这个 DDS 域里有没有活着的发布者"
+
+# 回放不会让机器人动 —— 包里全是 /state、传感器和 /tf 这些**观测量**，
+# 没有任何指令话题（cmd_vel / command / goal 一概没录）。ros2 bag play
+# 只是把消息重新发一遍，它够不着运动控制。
+#
+# 但有另一个危险，而且更容易中招：在机器人上、或和机器人同一个
+# ROS_DOMAIN_ID 的机器上回放，会把包里的 /tf、/tf_static、关节 /state
+# 和机器人**正在发的同名话题**混到一起。两套坐标树叠在一个话题上，
+# 机器人自己的导航和感知会读到互相矛盾的变换。这就是录制时的坑 5，
+# 只是这回污染源是我们自己。
+#
+# 所以：查一下要回放的关键话题现在有没有活的发布者。有 = 这个域里有别人
+# 在跑，不能放。
+live_pubs=""
+for t in /tf /tf_static /aima/hal/sensor/lidar_chest_front/lidar_pointcloud; do
+    n="$(ros2 topic info "$t" 2>/dev/null \
+         | sed -n 's/.*Publisher count: \([0-9]*\).*/\1/p' | head -1)"
+    [ -n "$n" ] && [ "$n" -gt 0 ] && live_pubs="$live_pubs  $t（$n 个发布者）"$'\n'
+done
+
+if [ -n "$live_pubs" ]; then
+    bad "这个 DDS 域里已经有人在发要回放的话题："
+    printf '%s' "$live_pubs" | while IFS= read -r l; do say "$l"; done
+    say ""
+    say "   回放会让包里的数据和它们${BOLD}混进同一个话题${NC}，两套坐标树叠在一起。"
+    say "   （放心：机器人不会因此走动 —— 包里没有任何指令话题，只有观测量。"
+    say "     问题是污染，不是运动。）"
+    say ""
+    say "   两条出路，挑一条："
+    say "   · ${BOLD}把包拷到开发机上放${NC}（推荐，回放本来就是为了不占机器人）"
+    say "       scp -r <机器人>:~/sztu_bags/<包名> ~/sztu_bags/"
+    say "   · 换一个域，和机器人隔开："
+    say "       export ROS_DOMAIN_ID=42   # 然后在同一个终端里再跑本脚本"
+    say ""
+    say "   确认这些发布者就是上一次回放没退干净、想照放： --force"
+else
+    ok "域里没有别人在发这些话题，可以放"
+fi
+
 if [ "$fatal" -gt 0 ] && [ "$FORCE" -eq 0 ]; then
     head2 "先别回放"
     say "有 ${fatal} 项致命问题（见上面的 ✗）。"
