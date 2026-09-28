@@ -136,6 +136,38 @@ source 之后跑全量测试：**187 passed，0 failed，0 skipped，0 error。*
 > 回放时自动可用。手填的值留在这里只作为对照和兜底。
 >
 > **结论：C 类"外参"这条彻底结掉，不用问售后。** B4 的第三个问题删除。
+>
+> ---
+>
+> **第四次（终）：已从真包里取出，换成全精度值（2026-09-28）。**
+>
+> 上面那组数是照着 `tf2_echo` 终端输出的 3 位小数抄的。真包录回来之后，
+> 直接从 `/tf_static` 的序列化消息里反出了全精度值 —— 差 0.0004 m，
+> 纯粹是显示精度，判断没有错，但配置文件该用准的。
+>
+> 包里 `/tf_static` 共 12 条静态变换，雷达链路两条都在：
+>
+> ```
+> torso_link        -> lidar_chest_front        T=[0.102633, 0, 0.181587]
+> lidar_chest_front -> lidar_imu_chest_front    T=[-0.011192, 0.004587, 0.015678]
+>                                               Q=[0.494691, -0.506001, -0.498742, 0.500500]
+> ```
+>
+> 正交性 `|R·Rᵀ−I|max = 6.1e-8`，`det(R) = 1.000000`。求逆后给 LIO：
+>
+> ```yaml
+> extrinsic_T: [0.004275, -0.015752, -0.011212]
+> extrinsic_R: [-0.0096, -0.9999,  0.0131,
+>               -0.0014,  0.0131,  0.9999,
+>               -1.0,     0.0095, -0.0015]
+> ```
+>
+> 偏离理想轴置换 `[0 -1 0; 0 0 1; -1 0 0]` 最大 0.0131（约 0.75°）——
+> 这是真实标定残差，**配置里用实测值，别用整数矩阵**。整数矩阵只适合
+> "先跑通再说"。
+>
+> 这一条同时验证了上面那句"录包带上 `/tf_static` 外参就在包里"：
+> 已在真包上确认属实。
 
 **另有一条线索（不是结论）**：仿真器二进制里**有** `RaycasterPointCloudPublisher<sensor_msgs::msg::PointCloud2>` 和 `RaycasterGridMapPublisher` 这两个类，只是出厂的 X2 模型里没有 `raycaster_lidar` 这个元素（启动日志打 `raycaster_lidar not found, disable raycaster publishing`）。往模型里加一个 `raycaster_lidar` 也许就能把点云开出来，那样连点云都能离线验证。**没试过。**
 
@@ -383,11 +415,24 @@ SLAM 那层没起。** `record_bag.sh --dry-run` 在真机上的探测（8 秒�
   IMU 是 BEST_EFFORT。`sensor_probe.py` 因为是照抄发布者 QoS，没受影响 ——
   这正是"镜像"这个做法的价值：它不需要我猜对。
   `record_bag.sh` 头部的坑 2/坑 3 描述要跟着改。
-* **两颗机身 IMU 的 `frame_id` 都是 `base_link`。** 躯干和胸部两个物理位置
-  不同的 IMU 报同一个坐标系，至少有一个是错的（URDF 里它们分别对应
-  `imu_in_torso_link` 和另一处）。**用它们做任何位姿解算之前必须先搞清楚。**
-  好在 LIO 要用的是雷达自带那颗，它的 `frame_id` 是正确的
-  `lidar_imu_chest_front`，所以不阻塞主线。
+* **两颗机身 IMU 的 `frame_id` 都是 `base_link` —— 已坐实是错的（厂商 bug）。**
+  躯干和胸部两个物理位置不同的 IMU 报同一个坐标系，至少有一个是错的。
+  真包录回来之后这条从"疑点"变成"结论"：包里 `/tf_static` 明确发布了
+  三条机身 IMU 的坐标系，
+  ```
+  torso_link      -> imu_in_torso_link
+  pelvis          -> imu_in_pelvis_link
+  head_pitch_link -> imu_in_head_link
+  ```
+  也就是说**机器人自己的坐标树里这几颗 IMU 各有专属 frame，而话题的
+  `header.frame_id` 却统一填了 `base_link`** —— 两处自相矛盾，坐标树是对的，
+  话题的 `frame_id` 是错的。
+  后果：任何按 `frame_id` 去查 TF 的代码，都会把 IMU 当成装在 `base_link`
+  原点上，杆臂被当成 0。**用这两颗 IMU 做位姿解算前必须手动指定正确的
+  frame，不能信 `header.frame_id`。**
+  不阻塞主线：LIO 用的是雷达自带那颗，它的 `frame_id` 是正确的
+  `lidar_imu_chest_front`。
+  这条可以作为一个具体问题去问售后（比问"外参在哪"精确得多）。
 
 
 （`aima em` 管模块生命周期这件事是从 FAQ 和 8.1 节反推的，SLAM 的 app 名字没有文档——所以脚本探测了 `list-app`/`list-apps`/`list`/`ls`/`status`/`ps` 一串只读子命令。）

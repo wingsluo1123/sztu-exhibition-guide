@@ -38,7 +38,7 @@
 #          "no new messages"。拿它判断"传感器有没有出数据"会得到错误结论。
 #          所以这里用 tools/sensor_probe.py（它按发布者 QoS 逐话题镜像订阅，
 #          不需要我们事先猜对发布端是什么——见坑 2 那个猜错的例子）。
-
+#
 #
 #   坑 4：停止录制必须发 SIGINT，不能 SIGKILL。rosbag2 要靠收到 INT 才会
 #          把 metadata.yaml 写完并正常关闭 sqlite3。被 -9 打死的包缺 metadata,
@@ -93,7 +93,7 @@ while [ $# -gt 0 ]; do
         --dry-run)     DRY_RUN=1;     shift ;;
         --with-camera) WITH_CAMERA=1; shift ;;
         --compress)    COMPRESS=1;    shift ;;
-        -h|--help)     sed -n '2,50p' "$0"; exit 0 ;;
+        -h|--help)     awk 'NR>1{if(/^#/){sub(/^# ?/,"");print}else{exit}}' "$0"; exit 0 ;;
         *) echo "未知参数: $1（-h 看用法）"; exit 1 ;;
     esac
 done

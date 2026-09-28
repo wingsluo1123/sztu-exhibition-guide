@@ -15,9 +15,13 @@
 #   tools/replay_bag.sh <包> -s 30       # 跳过前 30 秒
 #   tools/replay_bag.sh <包> --force     # 缺关键话题也照放
 #
-# ⚠️ 诚实说明：这个脚本还没在真包上跑过 —— 现在手上还没有真包。
-#    它检查的每一项都是"已知会出问题的点"，但只有等第一份包录回来
-#    才能确认它自己没写错。第一次用的时候请连着 --info 一起看。
+# ✅ 已在真包上验证（2026-09-28）：X2 真机录的 119 秒包，1.1 GiB / 39.2 万条
+#    消息 / 11 个话题，`--info` 跑出 0 项致命。包里的关键事实：
+#      · 点云 1205 条 @ 10.1 Hz，雷达 IMU 23885 条 @ 200 Hz
+#      · /tf_static 3 条，含 12 条静态变换 —— 雷达↔自带 IMU 的外参就在里面,
+#        所以回放时不用手填 extrinsic（见 ROADMAP「前提 4」第四次更正）
+#      · QoS 不是一刀切：点云和雷达 IMU 是 RELIABLE，两颗机身 IMU 和
+#        所有关节状态是 BEST_EFFORT。第 3 节会逐话题列出来，照着配订阅端。
 #
 # 刻意不用 set -e：检查要一次列全问题。
 
@@ -46,7 +50,7 @@ while [ $# -gt 0 ]; do
         -l|--loop)  LOOP=1; shift ;;
         --info)     INFO_ONLY=1; shift ;;
         --force)    FORCE=1; shift ;;
-        -h|--help)  sed -n '2,28p' "$0"; exit 0 ;;
+        -h|--help)  awk 'NR>1{if(/^#/){sub(/^# ?/,"");print}else{exit}}' "$0"; exit 0 ;;
         -*) echo "未知参数: $1（-h 看用法）"; exit 1 ;;
         *)  BAG="$1"; shift ;;
     esac
