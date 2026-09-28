@@ -21,6 +21,7 @@ VOLATILE，不要镜像成 TRANSIENT_LOCAL —— 否则一订阅就会先收到
 import array
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import (
     QoSProfile,
@@ -151,11 +152,15 @@ def main(args=None):
     node = CloudToVelodyne()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
+        # Ctrl-C 走哪条取决于信号是被 rclpy 的处理器先接走还是 Python 先接走。
+        # 只 catch KeyboardInterrupt 的话，前一种情况会吐一整段 traceback。
         pass
     finally:
-        node.get_logger().info(
-            f'转换 {node.n_ok} 帧，失败 {node.n_fail} 帧')
+        # 用 print 不用 get_logger()：这时 context 已经拆了，往 rosout 发会
+        # 每行附赠一句 "Failed to publish log message to rosout"，把数字淹掉。
+        print(f'[cloud_to_velodyne] 转换 {node.n_ok} 帧，失败 {node.n_fail} 帧',
+              flush=True)
         if rclpy.ok():
             node.destroy_node()
             rclpy.shutdown()
