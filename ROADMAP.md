@@ -407,6 +407,52 @@ SLAM 那层没起。** `record_bag.sh --dry-run` 在真机上的探测（8 秒�
 3. **不必再为"要不要走 DIY"纠结** —— 原始数据齐全，DIY 路线现在是可选项而
    不是退路。
 
+#### 点云字段排布与时间同步（2026-09-28，从真包里解出）
+
+配 FAST-LIO2 / Point-LIO 直接要这些，**别照抄网上的 RoboSense 模板**：
+
+```
+point_step = 32 字节   height=1（无序点云）  is_dense=True   25638 点/帧 @ 10.0 Hz
+  offset  0   x          FLOAT32
+  offset  4   y          FLOAT32
+  offset  8   z          FLOAT32
+  offset 12   （4 字节填充，无字段）
+  offset 16   intensity  FLOAT32
+  offset 20   ring       UINT16
+  offset 24   timestamp  FLOAT64
+```
+
+**最要紧的一条：`timestamp` 是「相对帧起始的纳秒」，不是绝对秒。**
+实测取值 498000 ~ 95009000，跨度 94.68 ms ≈ 一个帧周期（10 Hz）。
+FAST-LIO2 的 RoboSense 分支里写的是
+
+```cpp
+added_pt.curvature = (pl_orig.points[i].timestamp - pl_orig.points[0].timestamp) * 1000.f;  // 秒 -> 毫秒
+```
+
+它假设该字段是**绝对秒**。直接套用会把 94511000 当成秒再乘 1000，得到
+9.45e10 ms 的畸变时间 —— 运动补偿会彻底崩掉，而且不会报错，只表现为
+建图糊掉。**这里要改成除以 1e6（ns → ms）。** 这是必踩的坑，先记下。
+
+好消息是逐点时间戳**存在**，所以运动畸变可以补偿；`ring` 也有，需要按线
+组织的算法（LIO-SAM 等）同样能用。
+
+**时间同步：三个传感器同一个时钟，不需要额外对齐。**
+
+| 话题 | `recv − header.stamp` 中位 | 含义 |
+|---|---|---|
+| 点云 | 101.16 ms | 正好一个帧周期 → `header.stamp` 是**帧起始**时刻 |
+| 雷达 IMU | 0.28 ms | 实时 |
+| 躯干 IMU | 0.26 ms | 实时 |
+
+点云那 101 ms 不是时钟偏差，是攒满一帧才发出来。1205 帧里帧间隔中位
+100.00 ms、最大 104.23 ms，**丢帧 0 次**。
+
+> 注意一个观测陷阱：包最开头 12 帧的 `recv − stamp` 从 1148 ms 递减到
+> 102 ms，看着像严重的时钟漂移。那是 TRANSIENT_LOCAL 的历史消息在录制
+> 一开始集中涌出来，不是时钟问题。判断时间同步要**跳过开头几帧**，
+> 否则会误判成标定/同步故障。
+
 **两条要更正的既有判断：**
 
 * **"X2 的传感器话题全是 BEST_EFFORT"是错的。** 这条是照官方

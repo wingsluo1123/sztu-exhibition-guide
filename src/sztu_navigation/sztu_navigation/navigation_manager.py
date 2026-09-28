@@ -118,8 +118,27 @@ class NavigationManager(Node):
 
     def lidar_callback(self, msg: PointCloud2):
         """Lidar callback: simple obstacle detection"""
-        # TODO: Implement point cloud parsing and obstacle detection
-        # Currently placeholder, need to parse PointCloud2 data
+        # TODO: 实现点云解析和障碍检测。
+        # 字段排布已从真机包里解出（2026-09-28，见 ROADMAP「点云字段排布」），
+        # 不用再猜，也不要用 read_points 的默认假设：
+        #   point_step = 32   height = 1（无序）  25638 点/帧 @ 10 Hz
+        #   x/y/z FLOAT32 @ 0/4/8，offset 12 是 4 字节填充，
+        #   intensity FLOAT32 @16，ring UINT16 @20，timestamp FLOAT64 @24
+        # 只做避障的话读 x/y/z 就够，按 32 字节步进即可：
+        #   struct.unpack_from('<fff', msg.data, i * 32)
+        # 两个坑：
+        #   1. frame_id 是 lidar_chest_front，不是 base_link。雷达装在
+        #      torso_link 上、且中间隔着受驱动的腰关节，必须查 /tf（动态），
+        #      不能当成固定变换。
+        #      （实测 torso_link -> lidar_chest_front 是静态的，但
+        #        base_link -> lidar_chest_front 整条链是动态的。）
+        #   2. 发布端是 RELIABLE/TRANSIENT_LOCAL。避障订阅端的 durability
+        #      要用 VOLATILE，不要镜像成 TRANSIENT_LOCAL —— 否则一订阅就会
+        #      收到一批**过期的历史点云**。真包里实测过：录制刚开始的 12 帧
+        #      是历史突发，最老的一帧比当前时刻早 1.15 秒。
+        #      拿 1 秒前的点云做避障是危险的。
+        #      （reliability 用 RELIABLE 或 BEST_EFFORT 都能和它兼容；
+        #        真正要改的是 durability。）
         pass
 
     # --- 目标设置（非阻塞）--------------------------------------------------
