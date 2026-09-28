@@ -34,5 +34,6 @@
         "editor.codeActionsOnSave": {
             "source.organizeImports": "explicit"
         }
-    }
+    },
+    "ROS2.distro": "humble"
 }
