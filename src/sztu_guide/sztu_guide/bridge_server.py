@@ -95,7 +95,18 @@ class BridgeServer(Node):
             source=locomotion_source,
             priority=int(locomotion_priority),
         )
-        self.locomotion.register_input_source()
+        # Registration result was previously discarded. If it fails, every
+        # teleop command is silently dropped by MC and the operator sees a
+        # robot that simply ignores the joystick -- worth a log line.
+        if not self.locomotion.register_input_source():
+            self.get_logger().error(
+                'Locomotion input source registration FAILED -- MC will '
+                'discard all velocity commands. Teleop will not move the robot.')
+        elif not self.locomotion.registration_confirmed:
+            self.get_logger().warn(
+                'Locomotion input source not confirmed by MC (empty response). '
+                'Teleop is enabled anyway; if the robot does not move, check '
+                'the MC log for "Input Source is not enabled" first.')
 
         # Interaction controllers (in-process; do NOT also start the standalone
         # tts/emotion/gesture nodes, or node names will collide).

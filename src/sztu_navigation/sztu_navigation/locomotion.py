@@ -33,7 +33,9 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
-from aimdk_msgs.msg import McInputAction, McLocomotionVelocity, MessageHeader
+from aimdk_msgs.msg import (
+    CommonState, McInputAction, McLocomotionVelocity, MessageHeader,
+)
 from aimdk_msgs.srv import SetMcInputSource
 
 
@@ -63,6 +65,45 @@ VELOCITY_DEADBAND = 0.005
 BUILTIN_PRIORITIES = {
     'rc': 80, 'vr': 70, 'app_proxy': 60, 'interaction': 50, 'pnc': 40,
 }
+
+# _classify_response 的三种结论
+RESP_OK = 'ok'                    # MC 明确说成功了
+RESP_UNCONFIRMED = 'unconfirmed'  # MC 没说失败，但也没给出可判读的成功
+RESP_FAIL = 'fail'                # MC 明确说失败了
+
+# 明确表示"没办成"的 state。落在这里面的一律判失败，即使 header.code 是 0
+# （两者矛盾时以 state 为准：code 不填就是 0，而 FAILURE 这种值不会是默认值，
+# 一定是 MC 主动写进去的）。
+NEGATIVE_STATES = frozenset({
+    CommonState.FAILURE, CommonState.ABORTED, CommonState.TIMEOUT,
+    CommonState.INVALID, CommonState.IN_MANUAL, CommonState.NOT_READY,
+})
+
+
+def _classify_response(code: int, state: int) -> str:
+    """
+    判断 SetMcInputSource 的响应到底算成功、失败，还是根本没法判。
+
+    为什么需要第三种结论：在 x86 仿真运控上实测，这个服务的响应**每个字段
+    都是零** —— header.code=0、state.value=0(UNKNOWN)、task_id=0、stamp=0，
+    也就是 MC 压根没往响应里写东西。于是 code==0 有两种读法：
+
+        a) 真的成功了（MC 填了 0 表示无错）
+        b) MC 什么都没写，我们读到的是默认构造出来的空消息
+
+    这两种在字节层面完全一样，分不出来。原来的代码只看 code==0 就返回成功，
+    等于把 (b) 当成了 (a)。
+
+    UNKNOWN(0) 之外的未知 state 也归到 unconfirmed 而不是 fail：真机的响应
+    长什么样我们还没见过，猜错了方向宁可放行加告警，也不要把导航彻底堵死。
+    """
+    if code != 0:
+        return RESP_FAIL
+    if state in NEGATIVE_STATES:
+        return RESP_FAIL
+    if state in (CommonState.SUCCESS, CommonState.RUNNING):
+        return RESP_OK
+    return RESP_UNCONFIRMED
 
 
 class LocomotionController(Node):
@@ -117,10 +158,33 @@ class LocomotionController(Node):
         self._last_command = 0.0
         self._published_since_command = False
         self.ready = False
+        # ready 只表示"注册流程走完了、没有明确失败"，不表示 MC 真的接受了。
+        # 这两件事必须分开，原因见 register_input_source 的注释。
+        self.registration_confirmed = False
+        self._unconfirmed = False
 
     # --- 输入源注册 -------------------------------------------------------
     def register_input_source(self) -> bool:
-        """注册并启用自定义输入源；可跨进程重启重复调用。"""
+        """
+        注册并启用自定义输入源；可跨进程重启重复调用。
+
+        返回 True 只意味着"没有收到明确的失败"，**不等于 MC 真的启用了这个
+        输入源**。想知道是不是真的确认了，看 ``registration_confirmed``。
+
+        为什么要分成两个标志：仿真运控的响应是全零的，"成功"和"MC 什么都没填"
+        在字节层面分不出来（详见 ``_classify_response``）。原来的代码只看
+        ``code == 0`` 就打印"走跑输入源就绪"并返回 True，属于把后者当成了前者
+        —— 这正是这个类本来要防的那类静默失败，只不过换了个位置重新出现。
+
+        为什么"分不清"的时候还要继续走、还要保持 ``ready = True``：真机上响应
+        是什么形状我们还没见过。如果在这里判失败，而真机也返回全零，
+        ``navigation_manager`` 会因为 ``locomotion_ready`` 为假而拒绝一切导航
+        （见 navigation_manager.py 里的就绪检查），比现在更糟。所以选择放行 +
+        如实告警，而不是替真机下结论。
+        """
+        self._unconfirmed = False
+        self.registration_confirmed = False
+
         if not self.input_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error(
                 f'{INPUT_SOURCE_SERVICE} 不可用 —— 未注册输入源，'
@@ -140,9 +204,27 @@ class LocomotionController(Node):
             return False
 
         self.ready = True
-        self.get_logger().info(
-            f'走跑输入源就绪: {self.source} '
-            f'(priority={self.priority}, timeout={self.source_timeout_ms}ms)')
+        self.registration_confirmed = not self._unconfirmed
+
+        if self.registration_confirmed:
+            self.get_logger().info(
+                f'走跑输入源已确认就绪: {self.source} '
+                f'(priority={self.priority}, timeout={self.source_timeout_ms}ms)')
+        else:
+            self.get_logger().warn(
+                f'走跑输入源 {self.source} 已提交，但 MC 没有回一个可判读的'
+                '响应（state=UNKNOWN），无法确认它真的启用了。'
+                '若机器人不动，先去 MC 日志里搜 "Input Source is not enabled"。')
+
+        # 订阅者数量是一个便宜且决定性的旁证：一个都没有就说明速度指令
+        # 根本没人收（话题名写错、类型不匹配、QoS 不兼容都会这样）。
+        # SDK 自己的 relocate.py 也是这么自检的。
+        # 刚注册完 DDS 发现可能还没跑完，所以只告警不拦截。
+        if self.publisher.get_subscription_count() == 0:
+            self.get_logger().warn(
+                '没有任何节点订阅走跑速度话题 —— 指令发出去不会有人收。'
+                '（刚启动时也可能只是 DDS 发现还没完成）')
+
         return True
 
     def _set_input_source(self, action: int) -> bool:
@@ -166,11 +248,16 @@ class LocomotionController(Node):
                 if response is None:
                     return False
                 code = response.response.header.code
-                if code != 0:
+                state = response.response.state.value
+                verdict = _classify_response(code, state)
+                if verdict == RESP_FAIL:
                     self.get_logger().error(
                         f'SetMcInputSource(action={action}) 返回 code={code}, '
-                        f'state={response.response.state.value}')
-                return code == 0
+                        f'state={state}')
+                    return False
+                if verdict == RESP_UNCONFIRMED:
+                    self._unconfirmed = True
+                return True
             # 这一轮超时了：把没回来的请求摘掉，否则 8 轮下来会攒一堆
             # 悬挂的 pending request。
             self._discard(future)

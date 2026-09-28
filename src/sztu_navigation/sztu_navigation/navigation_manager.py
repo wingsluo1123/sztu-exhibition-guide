@@ -72,6 +72,13 @@ class NavigationManager(Node):
             self.get_logger().error(
                 '走跑输入源注册失败 —— 本节点无法驱动机器人。'
                 '导航请求会被直接拒绝，而不是假装在走。')
+        elif not self.locomotion.registration_confirmed:
+            # 注册没报错，但 MC 也没确认（响应全零）。照常接受导航请求，
+            # 只是把这件事说出来：万一机器人"接了任务但不动"，这行日志
+            # 就是第一个该看的地方。
+            self.get_logger().warn(
+                '走跑输入源注册未被 MC 确认 —— 导航照常受理，但如果机器人'
+                '收了目标点却不动，先查这里，不要先怀疑控制律。')
 
         # AimDK 建议 50 Hz 连发；输入源 timeout 是 1000 ms，断流就丢控制权。
         self.locomotion_timer = self.create_timer(0.02, self.locomotion.tick)
