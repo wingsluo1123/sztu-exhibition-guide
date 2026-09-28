@@ -1,0 +1,123 @@
+# FAST-LIO2 配置：X2 胸前雷达 + 雷达自带 IMU
+#
+# 每个值都是从真机包 loop_lf（2026-09-28，119 s / 1205 帧）里量出来的，
+# 不是照抄官方模板。官方那五份（avia/horizon/mid360/ouster64/velodyne）
+# **没有一份适合这颗雷达**，直接拿 velodyne.yaml 改会踩至少四个坑：
+#
+#   scan_line 32  -> 实测 96 线（ring 0..95）。配小了不只是丢线：
+#                    preprocess.cpp 的回退分支会写 is_first[ring]，
+#                    数组长度就是 scan_line —— 这是越界写，堆损坏。
+#   fov_degree 360 -> 实测水平 ±61°、垂直 ±44.5°，是个 120°×90° 的窄视场雷达。
+#   det_range 100  -> 实测最远 11.43 m，中位 3.76 m。
+#   blind 2.0      -> 会扔掉 27% 的点。这颗雷达一半的有效距离都在 4 m 以内。
+#   timestamp_unit 2 -> 逐点时间是**纳秒**，必须配 3。
+#
+# 输入点云不是原始话题，是 sztu_slam 的 cloud_to_velodyne 转出来的：
+# 原始字段叫 timestamp（FLOAT64），FAST-LIO 按名字找 time（FLOAT32），
+# 找不到就读未初始化内存。原因见 sztu_slam/cloud_format.py 的模块注释。
+#
+# 用法见 tools/run_lio_replay.sh。
+
+/**:
+    ros__parameters:
+        feature_extract_enable: false
+        # 25600 点/帧，取 1/3 约 8500 点。CPU 吃紧就加大到 4~6；
+        # 想要更细的图就减到 2（室内 12 m 量程，点数本来就不多）。
+        point_filter_num: 3
+        max_iteration: 3
+        # 官方 velodyne/mid360 都用 0.5 —— 那是室外/大场景的尺度。
+        # 展厅室内、雷达量程只有 12 m，0.5 m 的体素会把门框和展台边缘抹平。
+        filter_size_surf: 0.25
+        filter_size_map: 0.25
+        # ikd-Tree 的局部地图立方体边长。官方 1000 m 是给室外留的，
+        # 室内用不上，白占内存。
+        cube_side_length: 100.0
+        runtime_pos_log_enable: false
+        # 只有 /map_save 这个服务会用到它（相对当前工作目录）。
+        # **它不是收尾时存图的路径**，收尾那条路见下面 pcd_save 段。
+        map_file_path: "./sztu_map.pcd"
+
+        common:
+            # cloud_to_velodyne 的输出，不是原始雷达话题
+            lid_topic: "/lio/points"
+            # 用雷达自带的那颗 IMU（200 Hz）。**不要用机身那两颗**：
+            # 它们的 header.frame_id 都写着 base_link，而包里 /tf_static 显示
+            # 它们其实在 imu_in_torso_link / imu_in_pelvis_link 两个不同位置
+            # —— 厂商 bug，外参无从下手。雷达这颗的 frame_id 是对的。
+            imu_topic: "/aima/hal/sensor/lidar_chest_front/imu"
+            # 实测三个传感器同一个时钟：雷达 IMU 的 recv−stamp 中位 0.28 ms,
+            # 躯干 IMU 0.26 ms。不需要软件对齐。
+            time_sync_en: false
+            time_offset_lidar_to_imu: 0.0
+
+        preprocess:
+            # 2 = velodyne 分支。我们这颗不是 velodyne，但把点云转成
+            # velodyne_ros::Point 布局之后走的就是这条路径。
+            lidar_type: 2
+            # 实测 ring 0..95。这个值只能 >= 96，不能小。
+            scan_line: 96
+            scan_rate: 10
+            # 0=秒 1=毫秒 2=微秒 3=纳秒。cloud_to_velodyne 输出纳秒，
+            # 两边必须一致，test_cloud_format.py 里有测试钉着输出单位。
+            timestamp_unit: 3
+            # 官方给 velodyne 配 2.0 m。这颗雷达实测有 27% 的点在 2 m 以内,
+            # 照抄会把它们全扔掉。0.3 m 只挡掉机身自身的反射（最近点 0.32 m）。
+            blind: 0.3
+
+        mapping:
+            acc_cov: 0.1
+            gyr_cov: 0.1
+            b_acc_cov: 0.0001
+            b_gyr_cov: 0.0001
+            # 实测水平视场 ±61°（跨度 117~123°）。不是 360。
+            fov_degree: 120.0
+            # 实测最远 11.43 m。留一点余量到 15。
+            det_range: 15.0
+            # 外参是标定过的实测值（见下），不需要在线估计。
+            # 想交叉验证标定质量可以临时开成 true，然后比对它收敛到哪儿 ——
+            # 但别在正式建图时开：这个包只有 119 秒，激励不足，
+            # 在线估计有可能比给定值更差。
+            extrinsic_est_en: false
+            # 雷达在 IMU 系下的位姿（注意方向：和 tf2_echo 的输出相反）。
+            # 来自真包 /tf_static 的全精度值：
+            #   lidar_chest_front -> lidar_imu_chest_front
+            #     T = [-0.011192, 0.004587, 0.015678]
+            #     Q = [0.494691, -0.506001, -0.498742, 0.500500]  (xyzw)
+            # 求逆后即下面两项。|R·Rᵀ−I|max = 4.4e-16，det = 1.000000000。
+            # 偏离理想轴置换 [0 -1 0; 0 0 1; -1 0 0] 最大 0.0131（约 0.75°）
+            # —— 那是真实标定残差，所以**用实测值，别用整数矩阵**。
+            extrinsic_T: [0.004274626, -0.015752147, -0.011211537]
+            extrinsic_R: [-0.009561159, -0.999868993,  0.013060643,
+                          -0.001387539,  0.013074494,  0.999913562,
+                          -0.999953328,  0.009542210, -0.001512365]
+
+        publish:
+            # 发 /path 方便在 rviz 里一眼看出轨迹有没有跑飞
+            path_en: true
+            scan_publish_en: true
+            dense_publish_en: true
+            scan_bodyframe_pub_en: false
+            # 全局地图整份重发，每次都是几百万点。只在 rviz 里要看整张图时才开。
+            # 注意它还有个副作用，见下面 pcd_save 的第 2 条。
+            map_en: false
+
+        pcd_save:
+            # 回放跑完存一份点云地图 —— 这是"SLAM 到底能不能用"的直接证据。
+            #
+            # 两个坑，都是读源码才知道的：
+            #
+            # 1. 地图写到 **src/fast_lio/PCD/scans.pcd**，是编译期写死的
+            #    ROOT_DIR（CMakeLists: -DROOT_DIR=${CMAKE_CURRENT_SOURCE_DIR}），
+            #    **不看上面的 map_file_path**。而且只在收到 SIGINT、
+            #    rclcpp::spin 返回之后才写 —— 所以停这个节点必须用 Ctrl-C /
+            #    SIGINT，SIGKILL 会让整张图白跑。
+            #    （tools/run_lio_replay.sh 已经按这个规矩收尾。）
+            #
+            # 2. `/map_save` 服务写的是另一个缓冲区 pcl_wait_pub，而那个缓冲区
+            #    只有 publish.map_en 为 true 时才会被填。map_en 是 false 时
+            #    调 /map_save，它会写出一个**空的 pcd 并返回 success: true、
+            #    message: "Map saved."** —— 一个假成功。别信它，用第 1 条那条路。
+            pcd_save_en: true
+            # -1 = 全程攒在内存里，收尾一次性写出。119 秒的包约 8.5 万×1205 点,
+            # 内存没问题。真机长时间建图要改成正数（每 N 帧落一次盘）。
+            interval: -1

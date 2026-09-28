@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>livox_ros_driver2</name>
+  <version>0.0.0</version>
+
+  <!--
+    注意：这个包的名字是 livox_ros_driver2，但它不是 Livox 的驱动，
+    只有两个消息定义（CustomMsg / CustomPoint）。目录故意叫
+    livox_ros_driver2_stub 以示区别，见同目录 README.md。
+
+    为什么需要它：FAST-LIO2 的 CMakeLists 里写着
+    find_package(livox_ros_driver2 REQUIRED)，因为它支持 Livox 的
+    AVIA/HORIZON/MID360。我们用的是 X2 胸前那颗 96 线雷达，走 PointCloud2,
+    永远不会用到 AVIA 分支 —— 但编译期这个依赖必须能被满足。
+
+    另一条路是改 FAST_LIO 的源码把这个依赖删掉（要动 4 个文件）。
+    没走那条路：FAST_LIO 是 GPLv2，让它的源码保持字节不变，
+    我们既不用维护 fork，也不用随仓库分发它的任何代码或补丁。
+  -->
+  <description>
+    livox_ros_driver2 的接口占位包，只提供 CustomMsg/CustomPoint 两个消息，
+    用于满足 FAST-LIO2 的编译期依赖。不含任何驱动功能。
+  </description>
+  <maintainer email="robotics@sztu.edu.cn">agi</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <depend>std_msgs</depend>
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

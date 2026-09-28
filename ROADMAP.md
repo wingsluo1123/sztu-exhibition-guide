@@ -334,11 +334,21 @@ except OSError as e:
 
 还有 `slam_manager` **没有任何对外接口**——建图/重定位只能靠 Python import 调用，而 `remote.launch.py` 把它当独立节点起，起来什么也不做。这个要不要补接口，取决于 B 类的结论（模块没开通的话补了也没用），建议等 B1。
 
-### A5. 给 sztu_slam 补测试
+### A5. 给 sztu_slam 补测试 —— 部分完成
 
-`src/sztu_slam/test/` 现在只有 3 个 lint 包装文件，**零功能测试，也没有 conftest.py**，所以 `sztu_interaction` 那套假 `aimdk_msgs` 根本没接进来。A4 的改动需要它才能验证。
+`src/sztu_slam/test/` 原来只有 3 个 lint 包装文件，**零功能测试，也没有
+conftest.py**，所以 `sztu_interaction` 那套假 `aimdk_msgs` 根本没接进来。
+A4 的改动需要它才能验证。
 
-参照 `src/sztu_guide/test/conftest.py` 抄一份即可。
+已补上 `test_cloud_format.py`（30 个测试，全过）。它**故意不需要 ROS**
+—— `cloud_format.py` 是纯 numpy，所以字节布局这种最容易写错又最难在真机上
+调试的东西，可以在开发机上直接跑。其中 5 个测试直接读真包
+`~/下载/sztu_bags/loop_lf`，包不在时自动 skip；它们钉住的是**我们对这颗
+雷达的假设本身**（字段排布、ns 相对时间、`ring_max == 95`、每帧都需重排序），
+将来换雷达或厂商改固件，这 5 个会先红。
+
+**还差的**：`slam_manager` 的测试（A4 那些假成功要靠它验证），以及
+`conftest.py`（参照 `src/sztu_guide/test/conftest.py` 抄一份即可）。
 
 ### A6. 文档纠偏
 
@@ -424,18 +434,55 @@ point_step = 32 字节   height=1（无序点云）  is_dense=True   25638 点/�
 
 **最要紧的一条：`timestamp` 是「相对帧起始的纳秒」，不是绝对秒。**
 实测取值 498000 ~ 95009000，跨度 94.68 ms ≈ 一个帧周期（10 Hz）。
-FAST-LIO2 的 RoboSense 分支里写的是
+
+网上流传的 RoboSense 适配（FAST-LIO2 的第三方 fork）里写的是
 
 ```cpp
 added_pt.curvature = (pl_orig.points[i].timestamp - pl_orig.points[0].timestamp) * 1000.f;  // 秒 -> 毫秒
 ```
 
-它假设该字段是**绝对秒**。直接套用会把 94511000 当成秒再乘 1000，得到
-9.45e10 ms 的畸变时间 —— 运动补偿会彻底崩掉，而且不会报错，只表现为
-建图糊掉。**这里要改成除以 1e6（ns → ms）。** 这是必踩的坑，先记下。
+它假设该字段是**绝对秒**。套到这颗雷达上会把 94511000 当成秒再乘 1000，
+得到 9.45e10 ms 的畸变时间 —— 运动补偿彻底崩掉，而且不报错，只表现为
+建图糊掉。
+
+> **更正（同日）**：先前这里写的是"要改成除以 1e6"。不用改代码。
+> hku-mars 的**官方 ROS2 分支**有 `preprocess.timestamp_unit` 参数
+> （0=秒 1=毫秒 2=微秒 3=纳秒），配 `3` 就对了。我们用官方分支 +
+> `timestamp_unit: 3`，FAST_LIO 的源码一个字节都不动 —— 这同时避开了
+> GPLv2 的分发边界和"维护一个 fork"的长期成本。
 
 好消息是逐点时间戳**存在**，所以运动畸变可以补偿；`ring` 也有，需要按线
 组织的算法（LIO-SAM 等）同样能用。
+
+**但逐点时间不是单调的。** 1205 帧**每一帧都需要重排序**（最多 252 处
+逆序）。FAST-LIO 的 `UndistortPcl` 会按 curvature 排序，可是
+`sync_packages` 用**未排序**的 `points.back().curvature` 算
+`lidar_end_time`（laserMapping.cpp:406）—— 实测最后一个点比帧内最大值
+早 166 µs，按步速 1 m/s 折合 0.17 mm。量级可忽略，但这是个被违反的
+前提假设，所以在适配节点里直接排好序，不留着。
+
+#### 这颗雷达的其余实测参数（2026-09-28）
+
+配置文件 `src/sztu_slam/config/fastlio_x2_chest.yaml` 里每个值都来自这里，
+**官方那五份模板没有一份能直接用**：
+
+| 量 | 实测 | 照抄 velodyne.yaml 的后果 |
+|---|---|---|
+| 线数 | `ring` 0..95，共 96 线 | 配 32 时 `preprocess.cpp` 会写 `is_first[ring]`，数组长度就是 `scan_line` —— **越界写，堆损坏** |
+| 视场 | 水平 ±61°、垂直 ±44.5°（120°×90°） | 配 360 |
+| 量程 | 最远 11.43 m，中位 3.76 m | 配 100 |
+| 盲区 | 最近点 0.32 m，**27% 的点在 2 m 以内** | 配 2.0 会把这 27% 全扔掉 |
+| 重力方向 | 静止时在 IMU 的 **+X** 上 | — |
+| 开头静止 | 约 2 s，够 IMU 初始化 | — |
+
+**存图有两个坑，都是读源码才知道的：**
+
+1. 点云地图写到编译期写死的 `src/fast_lio/PCD/scans.pcd`（CMakeLists 的
+   `-DROOT_DIR`），**不看 `map_file_path`**；而且只在 `rclcpp::spin()`
+   返回**之后**才写。所以停它必须用 SIGINT，`kill -9` 等于整趟白跑。
+2. `/map_save` 服务写的是另一个缓冲区 `pcl_wait_pub`，那个缓冲区只在
+   `publish.map_en` 为 true 时才被填。`map_en: false` 时调 `/map_save`，
+   它会写出一个**空 pcd 并返回 `success: true, "Map saved."`** —— 假成功。
 
 **时间同步：三个传感器同一个时钟，不需要额外对齐。**
 
@@ -452,6 +499,57 @@ added_pt.curvature = (pl_orig.points[i].timestamp - pl_orig.points[0].timestamp)
 > 102 ms，看着像严重的时钟漂移。那是 TRANSIENT_LOCAL 的历史消息在录制
 > 一开始集中涌出来，不是时钟问题。判断时间同步要**跳过开头几帧**，
 > 否则会误判成标定/同步故障。
+
+#### DIY SLAM 的落地方案：FAST-LIO2（2026-09-28，已实现，未在真机验证）
+
+**算法选 FAST-LIO2，不选 Point-LIO** —— 理由很实在：hku-mars 给 FAST_LIO
+维护了**官方 ROS2 分支**，Point-LIO 只有 `master` 和
+`point-lio-with-grid-map` 两个分支，**没有 ROS2 分支**。有了真机包之后，
+以后想在同一份数据上对比 Point-LIO，成本只是再跑一遍。
+
+**怎么带到机器人上：不进我们的仓库。** FAST_LIO 是第三方 GPLv2 代码。
+`tools/setup_fastlio.sh` 现场 clone 并锁定 commit
+`a4743b0`（gitcode 镜像与 github 上游在这个 commit 上字节一致，已核对
+`ls-remote`；gitcode 放前面，因为机器人肯定通 gitcode）。源码落在
+`src/fast_lio/`，已 gitignore。**代价：真机这一步需要网络。**
+
+**零修改是靠一个占位包做到的。** FAST_LIO 的 CMakeLists 有
+`find_package(livox_ros_driver2 REQUIRED)`（它支持 Livox AVIA/MID360）。
+我们这颗雷达发标准 PointCloud2，走 velodyne 分支，永远不碰那条路，但编译期
+这个依赖得满足。`src/livox_ros_driver2_stub/` 只有两个消息定义顶上去 ——
+**已用真实编译验证**：`find_package` 解析到占位包，头文件编译通过，
+FAST-LIO 碰到的每个字段都能往返（`point_num` / `line` / `tag` /
+`offset_time`）。不装真 Livox 驱动，是因为它要 Livox-SDK2，而且它的
+`build.sh` 会覆写 `package.xml`；两者也不能在一个 workspace 里共存
+（包名撞车，`setup_fastlio.sh` 会检查）。
+
+**点云要过一层适配**（`sztu_slam/cloud_to_velodyne`）。原因不是"字段名不
+好看"，而是 `pcl::fromROSMsg` **按名字**匹配字段，不按 offset：
+`velodyne_ros::Point` 没有构造函数，FAST-LIO 找不到 `time` 字段时那个成员
+就是**未初始化内存**，接着拿它算 curvature、拿 `ring` 去索引
+`is_first[ring]` —— 一路读垃圾值到越界写。适配节点把点云原地改写成
+32 字节的 `velodyne_ros::Point` 布局（x@0 y@4 z@8 pad@12 intensity@16
+time@20 ring@24, EIGEN_ALIGN16），正好命中 PCL 的 memcpy 快路径。
+
+**在真包上验证到哪一步了**（`loop_lf`，1205 帧）：
+
+* 适配节点跑通，1195 帧输出，**每一帧的点数都和源一致**，
+  `row_step`/`data` 长度自洽，无重复 stamp。缺的 10 帧是位置 0~10 ——
+  录制端的发现窗口，正好撞上包自己开头那段历史涌出，不是运行中丢帧。
+* 第一帧自检打出的每个数（96 线 / ns 相对 / 跨度 94.85 ms /
+  float32 量化误差 0.0 ns / 需要重排序）都和独立从包里量出的配置值吻合。
+* `sztu_slam` 30 个单测全过（含 5 个跑真包的，没有 skip），flake8 干净。
+* **FAST-LIO 本体还没编译过，更没跑过** —— 卡在 `ros-humble-pcl-ros`
+  没装（不在 `ros-humble-desktop` 里），装它要 sudo 密码。这是下一步唯一
+  的阻塞项，开发机和机器人都要装。
+
+**还没接上的一处**：FAST-LIO 发 `/Odometry`（frame `camera_init` → `body`），
+而我们的导航读 `/slam/lidar_odom`。remap 还没做。
+
+**两个配套工具**：`tools/run_lio_replay.sh` 拉起整条链路并按 SIGINT 规矩
+收尾；`tools/lio_report.py` 从录下的 `/Odometry` 算轨迹长度、位姿跳变、
+垂直漂移和**闭环误差**（`loop_lf` 是绕一圈回到起点的，首尾距离就是闭环
+误差，能直接写进报告）。判据：闭环误差 ≤2% 算好，>5% 不够展厅导航用。
 
 **两条要更正的既有判断：**
 

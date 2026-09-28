@@ -50,3 +50,7 @@ src/sztu_description/meshes/*
 !src/sztu_description/meshes/.gitkeep
 src/sztu_description/urdf/*
 !src/sztu_description/urdf/.gitkeep
+
+# FAST-LIO2：第三方（GPLv2），由 tools/setup_fastlio.sh 现场 clone 并锁定
+# commit，不入库。见 src/livox_ros_driver2_stub/README.md。
+src/fast_lio/
