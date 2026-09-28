@@ -23,6 +23,18 @@ __pycache__/
 *.swo
 *~
 
+# VSCode C/C++ 扩展生成的东西。settings.json 是共享配置，要入库；
+# 下面这些不是：browse.vc.db* 是本机的二进制符号索引（几十 MB），
+# c_cpp_properties.json 里是本机的绝对 include 路径，换台机器就不对了。
+.vscode/browse.vc.db*
+.vscode/c_cpp_properties.json
+.vscode/ipch/
+
+# 数据包：真机录的传感器数据，一个包几百 MB 到几 GB，不入库。
+# 默认录到 ~/sztu_bags（见 tools/record_bag.sh），放项目里的也挡掉。
+bags/
+*.db3
+
 # OS
 .DS_Store
 Thumbs.db
