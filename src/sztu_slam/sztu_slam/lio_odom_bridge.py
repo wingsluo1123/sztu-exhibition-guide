@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+r"""
+把 FAST-LIO 的 /Odometry 接到导航栈的 /slam/lidar_odom
+
+为什么要这一层、三处换算分别在解决什么，都写在 odom_transform.py 的模块
+注释里，这里不重复。这个文件只负责取数据、查 TF、发消息。
+
+这个话题为什么是它
+------------------
+`/slam/lidar_odom` 是厂商自己定的接入点，不是我们挑的 —— 定义在机器人上的
+`/agibot/software/nav/config/slam/slam_config.yaml`，由厂商 LocalizationModule
+发布。实测有 5 个订阅者在等：我们的 slam_manager / pose_monitor /
+navigation_manager，加厂商的 soc1_drp_ros2_node 和 aimrt_perception_node。
+全部是 BEST_EFFORT + VOLATILE，所以发布端照着配，否则匹配不上、一条都收不到。
+
+厂商那套因为授权不含导航自主包（slam / map_manager / auto_integrated 三个
+license_id 不在任何一份有效授权里）起不来，这个口子是空的，我们来填。
+
+用法
+----
+    ros2 run sztu_slam lio_odom_bridge
+
+回放或没有 IMU 时可以跳过重力实测，直接给轴：
+    ros2 run sztu_slam lio_odom_bridge --ros-args -p up_axis:=[1.0,0.0,0.0]
+
+两个已知缺陷（都在上游 FAST-LIO，不是这里）
+-------------------------------------------
+1. `twist` 永远是 0。laserMapping.cpp 的 publish_odometry 只写 pose 和
+   covariance，压根不碰 twist。要速度得自己差分，别信这个字段。
+2. `pose.covariance` 比位姿**晚一帧**。那个函数是先 publish、再往
+   odomAftMapped 里填协方差，于是发出去的是上一帧算的值。我们原样透传
+   （见 on_odom 里的注释），没有去修，也没有把它旋转到 odom 系 ——
+   要拿它做滤波的话得先处理这两件事。
+"""
+
+import numpy as np
+import rclpy
+from geometry_msgs.msg import TransformStamped
+from nav_msgs.msg import Odometry
+from rclpy.duration import Duration
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
+from rclpy.time import Time
+from sensor_msgs.msg import Imu
+from tf2_ros import Buffer, TransformBroadcaster, TransformException, TransformListener
+
+from .odom_transform import (
+    OdomTransformError,
+    gravity_align_matrix,
+    matrix_to_quat,
+    odom_pose_to_base,
+    is_bogus_stamp,
+    quat_to_matrix,
+)
+
+
+class LioOdomBridge(Node):
+
+    def __init__(self):
+        super().__init__('lio_odom_bridge')
+
+        self.declare_parameter('in_topic', '/Odometry')
+        self.declare_parameter('out_topic', '/slam/lidar_odom')
+        self.declare_parameter(
+            'imu_topic', '/aima/hal/sensor/lidar_chest_front/imu')
+        # FAST-LIO 的 body 系。配置里 extrinsic_est_en=false、外参写的是
+        # lidar_chest_front -> lidar_imu_chest_front，所以 body 就是这个。
+        self.declare_parameter('body_frame', 'lidar_imu_chest_front')
+        self.declare_parameter('base_frame', 'base_link')
+        # 用 odom 不用 map：FAST-LIO 没有回环，位姿是连续的，按 REP-105
+        # 该叫 odom。而且 map 已经被厂商占着了 —— start_vectorflux.sh 里
+        # 起了一条 `map -> foot_contact` 的静态变换，脚本自己的注释写着
+        # "publish fake static tf"，是个占位符。我们不去碰它。
+        self.declare_parameter('odom_frame', 'odom')
+        # 实测重力用的静止时长。录包规程本来就要求开头静止 2 秒
+        # （FAST-LIO 自己的 IMU 初始化也需要），正好复用。
+        self.declare_parameter('gravity_static_s', 2.0)
+        # 给了就不测，直接用。回放和单元测试用。
+        self.declare_parameter('up_axis', [0.0, 0.0, 0.0])
+        self.declare_parameter('publish_tf', True)
+        # TF 查不到时最多等多久。10 Hz 的帧间隔是 100 ms，等太久会堵住回调。
+        self.declare_parameter('tf_timeout_ms', 20)
+
+        g = self.get_parameter
+        self.in_topic = g('in_topic').value
+        self.out_topic = g('out_topic').value
+        self.imu_topic = g('imu_topic').value
+        self.body_frame = g('body_frame').value
+        self.base_frame = g('base_frame').value
+        self.odom_frame = g('odom_frame').value
+        self.static_s = float(g('gravity_static_s').value)
+        self.publish_tf = bool(g('publish_tf').value)
+        self.tf_timeout = Duration(
+            nanoseconds=int(g('tf_timeout_ms').value) * 1_000_000)
+
+        # --- 重力方向 -------------------------------------------------------
+        up = [float(v) for v in g('up_axis').value]
+        self.R_grav = None
+        self._acc = np.zeros(3)
+        self._acc_n = 0
+        self._acc_t0 = None
+        self.imu_sub = None
+        if any(abs(v) > 1e-9 for v in up):
+            self.R_grav = gravity_align_matrix(up)
+            self.get_logger().info(f'重力方向由参数给定：{up}，跳过实测')
+        else:
+            self.imu_sub = self.create_subscription(
+                Imu, self.imu_topic, self.on_imu,
+                QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=50,
+                           reliability=QoSReliabilityPolicy.BEST_EFFORT,
+                           durability=QoSDurabilityPolicy.VOLATILE))
+            self.get_logger().info(
+                f'正在从 {self.imu_topic} 实测重力方向（前 {self.static_s:g} 秒'
+                f'必须静止）')
+
+        # --- TF -------------------------------------------------------------
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_broadcaster = TransformBroadcaster(self) if self.publish_tf else None
+
+        # --- 收发 -----------------------------------------------------------
+        # FAST-LIO 那边是 create_publisher(..., 20)，即 RELIABLE/VOLATILE。
+        self.sub = self.create_subscription(
+            Odometry, self.in_topic, self.on_odom,
+            QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=20,
+                       reliability=QoSReliabilityPolicy.RELIABLE,
+                       durability=QoSDurabilityPolicy.VOLATILE))
+        # 下游 5 个订阅者全是 BEST_EFFORT/VOLATILE，必须照着配。
+        self.pub = self.create_publisher(
+            Odometry, self.out_topic,
+            QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=5,
+                       reliability=QoSReliabilityPolicy.BEST_EFFORT,
+                       durability=QoSDurabilityPolicy.VOLATILE))
+
+        self.n_ok = 0
+        self.n_bogus = 0
+        self.n_tf_fail = 0
+        self.n_no_gravity = 0
+        self._warned_gravity = False
+        self._warned_tf = False
+
+        self.get_logger().info(
+            f'{self.in_topic} -> {self.out_topic}'
+            f'（{self.odom_frame} -> {self.base_frame}）')
+
+    # --- 重力实测 -----------------------------------------------------------
+    def on_imu(self, msg: Imu):
+        now = Time.from_msg(msg.header.stamp).nanoseconds / 1e9
+        if self._acc_t0 is None:
+            self._acc_t0 = now
+        a = msg.linear_acceleration
+        self._acc += np.array([a.x, a.y, a.z])
+        self._acc_n += 1
+
+        if now - self._acc_t0 < self.static_s:
+            return
+
+        mean = self._acc / self._acc_n
+        norm = float(np.linalg.norm(mean))
+        # 静止时这个模长应该接近 g。差太多说明这段根本没静止，或者订阅到的
+        # 不是这颗 IMU —— 这时候定出来的"上"是歪的，整条轨迹会跟着歪，
+        # 所以宁可报错也不要静悄悄地用。
+        if not 9.0 <= norm <= 10.6:
+            self.get_logger().error(
+                f'静止段平均加速度模长 {norm:.2f} m/s²，不像重力（期望 ~9.8）。'
+                f'开头这 {self.static_s:g} 秒机器人动了，或者 IMU 话题给错了。'
+                f'重新起，起来前先让它站稳。')
+            # 清零重来，给下一段机会。
+            self._acc[:] = 0.0
+            self._acc_n = 0
+            self._acc_t0 = None
+            return
+
+        try:
+            self.R_grav = gravity_align_matrix(mean)
+        except OdomTransformError as exc:
+            self.get_logger().error(f'算不出重力对齐：{exc}')
+            return
+
+        self.get_logger().info(
+            f'重力方向实测完成：上 = [{mean[0] / norm:+.3f}, '
+            f'{mean[1] / norm:+.3f}, {mean[2] / norm:+.3f}]'
+            f'（{self._acc_n} 帧 IMU，|a| = {norm:.2f}）')
+        # 测完就退订，后面不再需要 IMU。
+        if self.imu_sub is not None:
+            self.destroy_subscription(self.imu_sub)
+            self.imu_sub = None
+
+    # --- 主通路 -------------------------------------------------------------
+    def on_odom(self, msg: Odometry):
+        if self.R_grav is None:
+            self.n_no_gravity += 1
+            if not self._warned_gravity:
+                self._warned_gravity = True
+                self.get_logger().warn(
+                    '重力方向还没测出来，先丢着 —— 这几帧是 FAST-LIO 启动阶段的，'
+                    '本来也不该用。')
+            return
+
+        stamp = Time.from_msg(msg.header.stamp).nanoseconds / 1e9
+        if is_bogus_stamp(stamp):
+            self.n_bogus += 1
+            self.get_logger().warn(
+                f'丢掉一条坏时间戳的里程计：stamp={stamp:.6f}'
+                f'（FAST-LIO 启动阶段偶发，位姿是好的，但这种 stamp 会让'
+                f' TF 查询失败）')
+            return
+
+        tf = self.lookup_base_body(msg.header.stamp)
+        if tf is None:
+            return
+
+        p = msg.pose.pose
+        try:
+            R_cb = quat_to_matrix(
+                (p.orientation.x, p.orientation.y, p.orientation.z,
+                 p.orientation.w))
+            R, t = odom_pose_to_base(
+                self.R_grav, (R_cb, (p.position.x, p.position.y, p.position.z)),
+                tf)
+            q = matrix_to_quat(R)
+        except OdomTransformError as exc:
+            self.get_logger().warn(f'丢掉一帧，换算失败：{exc}')
+            return
+
+        out = Odometry()
+        out.header.stamp = msg.header.stamp
+        out.header.frame_id = self.odom_frame
+        out.child_frame_id = self.base_frame
+        out.pose.pose.position.x = float(t[0])
+        out.pose.pose.position.y = float(t[1])
+        out.pose.pose.position.z = float(t[2])
+        out.pose.pose.orientation.x = float(q[0])
+        out.pose.pose.orientation.y = float(q[1])
+        out.pose.pose.orientation.z = float(q[2])
+        out.pose.pose.orientation.w = float(q[3])
+        # 协方差原样透传。两个坑写在模块注释里：上游发的是**上一帧**的值，
+        # 而且这里没有把它旋转到 odom 系。我们这几个下游都不读它；要拿它
+        # 做滤波的话先去把那两件事解决了。twist 上游从来不填，保持全 0。
+        out.pose.covariance = msg.pose.covariance
+
+        self.pub.publish(out)
+        self.n_ok += 1
+
+        if self.tf_broadcaster is not None:
+            tfs = TransformStamped()
+            tfs.header.stamp = msg.header.stamp
+            tfs.header.frame_id = self.odom_frame
+            tfs.child_frame_id = self.base_frame
+            tfs.transform.translation.x = float(t[0])
+            tfs.transform.translation.y = float(t[1])
+            tfs.transform.translation.z = float(t[2])
+            tfs.transform.rotation = out.pose.pose.orientation
+            self.tf_broadcaster.sendTransform(tfs)
+
+    def lookup_base_body(self, stamp):
+        """
+        查 base_link -> body 的当前变换。查不到返回 None（丢这一帧）。
+
+        必须每帧查：雷达挂在 torso_link 上，中间隔着受驱动的腰关节，
+        base_link -> lidar_imu_chest_front 整条链是动态的。
+
+        查不到就丢，不退回"用最近一次"—— 腰在动的时候用旧的变换，位姿会
+        错得很安静，比少几帧难查得多。
+        """
+        try:
+            tr = self.tf_buffer.lookup_transform(
+                self.base_frame, self.body_frame, stamp, timeout=self.tf_timeout)
+        except TransformException as exc:
+            self.n_tf_fail += 1
+            if not self._warned_tf:
+                self._warned_tf = True
+                self.get_logger().warn(
+                    f'查不到 {self.base_frame} -> {self.body_frame} 的变换：{exc}'
+                    f'\n     机器人的 TF 没在发？这条链经过腰关节，需要'
+                    f' joint_tf 那些节点活着。后面同类告警不再刷屏，收尾时报总数。')
+            return None
+        q = tr.transform.rotation
+        v = tr.transform.translation
+        return quat_to_matrix((q.x, q.y, q.z, q.w)), (v.x, v.y, v.z)
+
+    def report(self):
+        """
+        收尾统计。
+
+        用 print 不用 get_logger()：这个方法是在 spin 退出之后跑的，那时
+        rclpy 的 context 已经被信号处理器拆掉了，往 rosout 发会每行附赠一句
+        "Failed to publish log message to rosout"，把真正的数字淹掉。
+        """
+        print(f'[lio_odom_bridge] 转发 {self.n_ok} 条', flush=True)
+        if self.n_no_gravity:
+            print(f'  重力未就绪丢弃 {self.n_no_gravity} 条（启动阶段，正常）')
+        if self.n_bogus:
+            print(f'  坏时间戳丢弃 {self.n_bogus} 条')
+        if self.n_tf_fail:
+            print(f'  TF 查不到丢弃 {self.n_tf_fail} 条  <-- 这个不正常，去看 TF')
+        if self.n_ok == 0:
+            print('  一条都没转发出去 —— 上面的计数说明卡在哪一步了')
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = LioOdomBridge()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        # Ctrl-C 走哪条取决于信号是被 rclpy 的处理器先接走还是 Python 先接走。
+        # 只 catch KeyboardInterrupt 的话，前一种情况会吐一整段 traceback，
+        # 看着像崩了 —— 之前 run_lio_live.sh 就因为这类假象误报过。
+        pass
+    finally:
+        node.report()
+        if rclpy.ok():
+            node.destroy_node()
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

@@ -31,6 +31,7 @@ setup(
             'pose_monitor = sztu_slam.pose_monitor:main',
             'mapping_tool = sztu_slam.mapping_tool:main',
             'cloud_to_velodyne = sztu_slam.cloud_to_velodyne:main',
+            'lio_odom_bridge = sztu_slam.lio_odom_bridge:main',
         ],
     },
 )
