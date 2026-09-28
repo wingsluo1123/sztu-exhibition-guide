@@ -32,6 +32,12 @@
 #     src/sztu_slam/config/fastlio_x2_chest.yaml，每个值都是从真包量出来的。
 #     照抄官方 velodyne.yaml 会踩四个坑，那份文件的注释里逐条写了。
 #     跑起来用 tools/run_lio_replay.sh。
+#
+# 坑 4：ikd-Tree 是子模块，普通 clone 拿不到。
+#     缺了它 cmake 报 "Cannot find source file: include/ikd-Tree/ikd_Tree.cpp"
+#     + "No SOURCES given to target: fastlio_mapping"，看着像 CMakeLists
+#     坏了。也不能用 --recurse-submodules：那会走 .gitmodules 里的 github
+#     地址，机器人不一定通。脚本第 3b 步显式用 gitcode 镜像优先去取。
 
 set -u
 
@@ -210,6 +216,51 @@ if [ "$need_clone" -eq 1 ]; then
         bad "所有远端都取不到。检查网络，或者手工 clone 到 $DEST 后 checkout"
         say "   git clone -b ROS2 ${FASTLIO_REMOTES[0]} $DEST"
         say "   git -C $DEST checkout $FASTLIO_COMMIT"
+        exit 1
+    fi
+fi
+
+# --- 3b. 子模块 ikd-Tree -----------------------------------------------------
+# 坑 4：ikd-Tree 是 git submodule，普通 clone 拿不到它。
+# 缺了它 cmake 报的是 "Cannot find source file: include/ikd-Tree/ikd_Tree.cpp"
+# 加一条 "No SOURCES given to target: fastlio_mapping" —— 看着像 CMakeLists
+# 坏了，其实只是子模块没拉。不能用 clone --recurse-submodules：那会照
+# .gitmodules 里的 github 地址去取，机器人不一定通。所以这里显式改成
+# gitcode 镜像优先，取不到再回落 github。
+head2 "3b. 子模块 ikd-Tree"
+
+IKD_PATH="include/ikd-Tree"
+IKD_FILE="$DEST/$IKD_PATH/ikd_Tree.cpp"
+# 镜像的 refs/heads/fast_lio 和上游同一个 commit（2026-09-28 核对过 ls-remote）。
+IKD_REMOTES=(
+    "https://gitcode.com/gh_mirrors/ik/ikd-Tree.git"
+    "https://github.com/hku-mars/ikd-Tree.git"
+)
+
+if [ -f "$IKD_FILE" ]; then
+    ok "已存在 $IKD_PATH/ikd_Tree.cpp"
+else
+    git -C "$DEST" submodule init -- "$IKD_PATH" >/dev/null 2>&1
+    got=0
+    for remote in "${IKD_REMOTES[@]}"; do
+        say "   从 $remote 取 ..."
+        git -C "$DEST" config "submodule.$IKD_PATH.url" "$remote"
+        # 不加 --remote：要的是 FAST_LIO 记录的那个 gitlink commit，
+        # 不是子模块分支的最新。
+        if git -C "$DEST" submodule update --init -- "$IKD_PATH" >/dev/null 2>&1 \
+                && [ -f "$IKD_FILE" ]; then
+            got=1
+            sha="$(git -C "$DEST/$IKD_PATH" rev-parse HEAD)"
+            ok "取到 ${sha:0:12}（来源 $remote）"
+            break
+        fi
+        hmm "这个远端取不到，换下一个"
+    done
+    if [ "$got" -eq 0 ]; then
+        bad "ikd-Tree 子模块取不到 —— fast_lio 一定编不过"
+        say "   手工补："
+        say "   git -C $DEST config submodule.$IKD_PATH.url ${IKD_REMOTES[0]}"
+        say "   git -C $DEST submodule update --init -- $IKD_PATH"
         exit 1
     fi
 fi

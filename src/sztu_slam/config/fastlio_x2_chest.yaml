@@ -34,7 +34,7 @@
         cube_side_length: 100.0
         runtime_pos_log_enable: false
         # 只有 /map_save 这个服务会用到它（相对当前工作目录）。
-        # **它不是收尾时存图的路径**，收尾那条路见下面 pcd_save 段。
+        # **它不是收尾时存图的路径** —— 收尾那条路根本不存在，见下面 pcd_save 段。
         map_file_path: "./sztu_map.pcd"
 
         common:
@@ -102,22 +102,23 @@
             map_en: false
 
         pcd_save:
-            # 回放跑完存一份点云地图 —— 这是"SLAM 到底能不能用"的直接证据。
+            # 结论：**这一段在这个分支里完全没用**，留着只是为了记住这个坑。
             #
-            # 两个坑，都是读源码才知道的：
-            #
-            # 1. 地图写到 **src/fast_lio/PCD/scans.pcd**，是编译期写死的
-            #    ROOT_DIR（CMakeLists: -DROOT_DIR=${CMAKE_CURRENT_SOURCE_DIR}），
-            #    **不看上面的 map_file_path**。而且只在收到 SIGINT、
-            #    rclcpp::spin 返回之后才写 —— 所以停这个节点必须用 Ctrl-C /
-            #    SIGINT，SIGKILL 会让整张图白跑。
-            #    （tools/run_lio_replay.sh 已经按这个规矩收尾。）
+            # 1. pcd_save_en 是个死参数。laserMapping.cpp 第 515-543 行整块被
+            #    /* */ 注释掉了，而第 528 行 `*pcl_wait_save += *laserCloudWorld`
+            #    是唯一往 pcl_wait_save 里塞点的地方。所以退出时第 1170 行的
+            #    `pcl_wait_save->size() > 0 && pcd_save_en` 永远不成立，
+            #    配 true 也一个字节都不写。（曾经以为"只要用 SIGINT 收尾就能
+            #    出图"，实测跑完没有 scans.pcd，翻源码才发现是这个原因。）
             #
             # 2. `/map_save` 服务写的是另一个缓冲区 pcl_wait_pub，而那个缓冲区
             #    只有 publish.map_en 为 true 时才会被填。map_en 是 false 时
             #    调 /map_save，它会写出一个**空的 pcd 并返回 success: true、
-            #    message: "Map saved."** —— 一个假成功。别信它，用第 1 条那条路。
-            pcd_save_en: true
-            # -1 = 全程攒在内存里，收尾一次性写出。119 秒的包约 8.5 万×1205 点,
-            # 内存没问题。真机长时间建图要改成正数（每 N 帧落一次盘）。
+            #    message: "Map saved."** —— 一个假成功。
+            #
+            # 真要地图走这条路：tools/run_lio_replay.sh --map 录下
+            # /cloud_registered（已经是世界系的配准点云），再用
+            # tools/assemble_map.py 离线拼。好处是不用改上游代码，
+            # 也就不碰 GPLv2 的分发边界。
+            pcd_save_en: false
             interval: -1

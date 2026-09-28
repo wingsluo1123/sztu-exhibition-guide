@@ -14,11 +14,19 @@
 #   tools/run_lio_replay.sh <包> --rviz      # 顺便开 rviz 看
 #   tools/run_lio_replay.sh <包> --no-loop   # 这个包不是闭环轨迹
 #   tools/run_lio_replay.sh <包> --force     # 明知在机器人域里也照跑
+#   tools/run_lio_replay.sh <包> --all-topics # 全部话题都放（默认只放两个）
+#   tools/run_lio_replay.sh <包> --map        # 连 /cloud_registered 一起录（约 1 GB）
 #
-# 坑 1：必须 SIGINT，不能 SIGKILL。
-#     FAST-LIO 的点云地图是在 rclcpp::spin() 返回**之后**才写盘的
-#     （写到 src/fast_lio/PCD/scans.pcd，路径是编译期写死的）。
-#     kill -9 等于整趟白跑。这个脚本用 SIGINT 收尾并等它写完。
+# 坑 1：pcd_save_en 在这个分支里是个**死参数**，别指望它出图。
+#     laserMapping.cpp 第 515-543 行整块是 /* */ 注释掉的，而第 528 行
+#     `*pcl_wait_save += *laserCloudWorld` 是**唯一**往 pcl_wait_save 里
+#     塞点的地方。所以退出时第 1170 行的 `pcl_wait_save->size() > 0` 永远
+#     不成立，配了 pcd_save_en: true 也一个字节都不写。
+#     （/map_save 服务用的是另一个 buffer pcl_wait_pub，只有 map_en: true
+#     时 publish_map() 才会填它；map_en: false 下调它会返回 "Map saved."
+#     然后写出一个空文件 —— 一个会骗人的成功。）
+#     要地图就录 /cloud_registered 离线拼，见收尾那一段的提示。
+#     仍然用 SIGINT 而不是 kill -9 收尾：让节点正常析构，日志才完整。
 #
 # 坑 2：别在机器人自己的 DDS 域里跑。
 #     回放会往 /tf 灌历史变换，把机器人自己的坐标树污染掉。脚本会先看
@@ -31,6 +39,18 @@
 # 坑 4：里程计频率低于 10 Hz 不是"正常抖动"。
 #     FAST-LIO 订阅点云用的是 SensorDataQoS（BEST_EFFORT，深度 5），处理
 #     跟不上就**静默丢帧**，不报错。报告会把这一项单独指出来，遇到就 -r 0.5。
+#
+# 坑 8：不设 Fast DDS 传输配置，点云会丢 92%，而且完全不报错。
+#     一帧 801 KB。FAST-LIO 订阅点云写死用 SensorDataQoS（BEST_EFFORT），
+#     BEST_EFFORT 不重传，UDP 分片丢一片整帧就没了。实测同一个发布者：
+#         RELIABLE    收到 1195/1195
+#         BEST_EFFORT 收到  100/1195
+#     根因是 Fast DDS 的 SHM 默认段只有 512 KB，801 KB 塞不进去就悄悄回落
+#     到 UDP。把段开大到 64 MB 之后 BEST_EFFORT 也是 1195/1195。
+#     配置在 src/sztu_slam/config/fastdds_large_cloud.xml，脚本会自动用上。
+#
+# 坑 7：别用 `ros2 run` 起节点。它是包装进程，不转发 SIGINT，收尾时
+#     真正的节点会被孤儿化留在后台，下一趟直接撞上坑 5。跑装好的可执行文件。
 #
 # 坑 5：上一趟的进程没收干净，这一趟的结果就是假的。
 #     残留的 cloud_to_velodyne 会和新起的一起往 /lio/points 发，同一个
@@ -53,6 +73,8 @@ BAG=""
 RATE="1.0"
 RVIZ=0
 FORCE=0
+ALL_TOPICS=0
+MAP=0
 LOOP_ARG=""
 
 while [ "$#" -gt 0 ]; do
@@ -60,6 +82,8 @@ while [ "$#" -gt 0 ]; do
         -r|--rate) RATE="$2"; shift ;;
         --rviz)    RVIZ=1 ;;
         --force)   FORCE=1 ;;
+        --all-topics) ALL_TOPICS=1 ;;
+        --map)     MAP=1 ;;
         --no-loop) LOOP_ARG="--no-loop" ;;
         -h|--help)
             awk 'NR>1{if(/^#/){sub(/^# ?/,"");print}else{exit}}' "$0"
@@ -115,6 +139,21 @@ if [ -f "$CFG" ]; then
     ok "配置: $CFG"
 else
     bad "没有配置文件 $CFG（sztu_slam 没编译？）"; fatal=1
+fi
+
+if [ -x "$WS/install/sztu_slam/lib/sztu_slam/cloud_to_velodyne" ]; then
+    ok "cloud_to_velodyne"
+else
+    bad "没有 cloud_to_velodyne —— colcon build --packages-select sztu_slam"; fatal=1
+fi
+
+# 坑 8：Fast DDS 传输配置。不设它点云丢 92%，而且不报错。
+DDS_XML="$WS/install/sztu_slam/share/sztu_slam/config/fastdds_large_cloud.xml"
+if [ -f "$DDS_XML" ]; then
+    export FASTRTPS_DEFAULT_PROFILES_FILE="$DDS_XML"
+    ok "Fast DDS 传输配置（SHM 段 64 MB）"
+else
+    bad "没有 $DDS_XML —— 缺了它点云会丢 92%（见脚本头部坑 8）"; fatal=1
 fi
 
 # 坑 2 和坑 5：这个域里不能有别人在发这几个话题。
@@ -205,7 +244,12 @@ trap finish INT TERM EXIT
 pids+=($!)
 ok "fastlio_mapping (pid ${pids[-1]}) -> fastlio.log"
 
-ros2 run sztu_slam cloud_to_velodyne --ros-args \
+# 坑 7：不要用 `ros2 run` 起它。
+#     `ros2 run` 是个包装进程，节点是它的**子进程**，而它不把 SIGINT 转给
+#     子进程。收尾时 kill 到的是包装层，真正的节点会被孤儿化留在后台，
+#     下一趟就会和新起的那个一起发 —— 正好撞上坑 5。直接跑装好的可执行文件。
+AD_EXE="$WS/install/sztu_slam/lib/sztu_slam/cloud_to_velodyne"
+"$AD_EXE" --ros-args \
     -p use_sim_time:=true \
     > "$RUN_DIR/adapter.log" 2>&1 &
 pids+=($!)
@@ -213,10 +257,16 @@ ok "cloud_to_velodyne (pid ${pids[-1]}) -> adapter.log"
 
 # 录 /Odometry 用来算闭环误差。--foreground 在这里不需要（不走前台信号），
 # 但录制进程必须收 SIGINT 才会写 metadata.yaml，finish() 已经这么做了。
-ros2 bag record -o "$RUN_DIR/odom" /Odometry \
+# --map 时连 /cloud_registered 一起录，跑完用 tools/assemble_map.py 拼成 pcd。
+# 默认不录：每帧 ~800 KB，一趟下来接近 1 GB。
+REC_TOPICS=(/Odometry)
+if [ "$MAP" -eq 1 ]; then
+    REC_TOPICS+=(/cloud_registered)
+fi
+ros2 bag record -o "$RUN_DIR/odom" "${REC_TOPICS[@]}" \
     > "$RUN_DIR/record.log" 2>&1 &
 pids+=($!)
-ok "ros2 bag record /Odometry (pid ${pids[-1]}) -> odom/"
+ok "ros2 bag record ${REC_TOPICS[*]} (pid ${pids[-1]}) -> odom/"
 
 if [ "$RVIZ" -eq 1 ]; then
     RV="$WS/src/fast_lio/rviz/fastlio.rviz"
@@ -247,7 +297,22 @@ head2 "4. 放包（--clock，速率 $RATE）"
 
 say ""
 # 坑 3：--clock 配 use_sim_time。
-ros2 bag play "$BAG" --clock -r "$RATE" 2>&1 | tee "$RUN_DIR/play.log"
+#
+# 坑 6：只放 FAST-LIO 真正订阅的两个话题。
+#     包里有 39 万条消息，其中 36.5 万条是关节状态和机身 IMU —— FAST-LIO
+#     一条都不用，但它们照样要反序列化、过 DDS。实测全放时 player 一直在
+#     报 "Message queue starved"，里程计只有 6.0 Hz。两个话题加起来才 2.5 万条。
+#     顺带也不放 /tf：FAST-LIO 的外参是配置里给的，它自己发 camera_init->body，
+#     放包里的 /tf 只会和它打架。
+#     真要全放（比如要在 rviz 里看机器人模型）用 --all-topics。
+PLAY_ARGS=(--clock -r "$RATE" --read-ahead-queue-size 2000)
+if [ "$ALL_TOPICS" -eq 0 ]; then
+    PLAY_ARGS+=(--topics
+        /aima/hal/sensor/lidar_chest_front/lidar_pointcloud
+        /aima/hal/sensor/lidar_chest_front/imu)
+    say "   只放点云和雷达 IMU 两个话题（--all-topics 可以全放）"
+fi
+ros2 bag play "$BAG" "${PLAY_ARGS[@]}" 2>&1 | tee "$RUN_DIR/play.log"
 say ""
 ok "放完了"
 
@@ -279,10 +344,11 @@ if [ -f "$PCD" ]; then
     ok "点云地图: $PCD（$sz）"
     cp "$PCD" "$RUN_DIR/scans.pcd" 2>/dev/null && \
         say "     也复制到了 $RUN_DIR/scans.pcd"
+elif [ "$MAP" -eq 1 ]; then
+    say "  拼地图:  tools/assemble_map.py $RUN_DIR/odom -o $RUN_DIR/map.pcd"
 else
-    hmm "没有 $PCD —— 地图没写出来"
-    say "   要么 pcd_save_en 没开，要么 FAST-LIO 是被 SIGKILL 掉的，"
-    say "   要么它一帧都没处理成功。先看 fastlio.log。"
+    # 不报警：pcd_save_en 是死参数，这里本来就不会有东西（见脚本头部坑 1）。
+    say "  要地图就加 --map 重跑一趟（录 /cloud_registered，离线拼）"
 fi
 
 # FAST-LIO 自己的抱怨值得原样转出来
@@ -293,7 +359,7 @@ for pat in 'Failed\|error\|Error' 'No point\|Too few' 'IMU' 'wait for imu'; do
 done
 
 if [ -d "$RUN_DIR/odom" ]; then
-    python3 "$WS/tools/lio_report.py" "$RUN_DIR/odom" $LOOP_ARG
+    python3 "$WS/tools/lio_report.py" "$RUN_DIR/odom" $LOOP_ARG --src-bag "$BAG"
     rc=$?
 else
     bad "没录到 /Odometry 包，算不了闭环误差"

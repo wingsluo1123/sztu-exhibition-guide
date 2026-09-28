@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Fast DDS 传输配置：让 801 KB 的点云能可靠地送到 BEST_EFFORT 订阅者手里。
+
+  为什么需要这个文件（实测，不是抄来的）：
+    一帧点云 25640 点 × 32 B = 801 KB。同一个发布者、同一趟回放，两个订阅者：
+        RELIABLE    收到 1195 / 1195
+        BEST_EFFORT 收到  100 / 1195      <-- 丢 92%
+    FAST-LIO 订阅点云写死用 rclcpp::SensorDataQoS()（BEST_EFFORT，深度 5），
+    所以它就是后面那一行。BEST_EFFORT 不重传，UDP 分片丢一片，整帧就没了。
+    而且它**不报错**——只表现为里程计频率上不去、位姿跳变。
+
+  为什么不是"CPU 跟不上"：
+    实测 FAST-LIO 每帧只要 3.79 ms（中位，p95 5.93 ms），能跑 260 Hz。
+    降速到 -r 0.5 反而更差。所以和算力无关，是传输层丢包。
+
+  两条可选的路，这里选了第二条：
+    1. sudo sysctl -w net.core.rmem_max=...  —— 要 root，而且每台机器、
+       每次重启都要重来，机器人上尤其容易漏。
+    2. 走共享内存（SHM）。适配节点和 FAST-LIO 永远在同一台机器上
+       （机器人的 Orin），SHM 没有分片这回事。不需要 root。
+
+  关键的那一行是 segment_size：Fast DDS 的 SHM 默认段只有 512 KB，801 KB
+  的帧塞不进去，就**悄悄回落到 UDP**——也就是上面那 92% 丢包的来源。
+
+  仍然保留 UDPv4，这样跨机器的东西（比如开发机上的 rviz）还能连上。
+-->
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <profiles>
+    <transport_descriptors>
+
+      <transport_descriptor>
+        <transport_id>shm_large</transport_id>
+        <type>SHM</type>
+        <!-- 64 MB：够放几十帧 801 KB 的点云，留足余量。
+             注意 SHM 描述符里**不能**写 max_message_size —— Humble 自带的
+             Fast DDS 不认这个元素，整个 XML 会解析失败，然后静默地什么都
+             不生效（只在 stderr 打 XMLPARSER Error）。 -->
+        <segment_size>67108864</segment_size>
+      </transport_descriptor>
+
+      <transport_descriptor>
+        <transport_id>udp_large</transport_id>
+        <type>UDPv4</type>
+        <!-- 跨机器时的兜底。注意内核会把它截到 net.core.rmem_max
+             （Ubuntu 默认 208 KB），所以跨机器传大点云仍然要调 sysctl。
+             同机走 SHM，不受这个限制。 -->
+        <sendBufferSize>8388608</sendBufferSize>
+        <receiveBufferSize>8388608</receiveBufferSize>
+      </transport_descriptor>
+
+    </transport_descriptors>
+
+    <participant profile_name="sztu_large_cloud" is_default_profile="true">
+      <rtps>
+        <userTransports>
+          <transport_id>shm_large</transport_id>
+          <transport_id>udp_large</transport_id>
+        </userTransports>
+        <!-- 必须关掉内置传输，否则默认的 512 KB SHM 会被一起用上。 -->
+        <useBuiltinTransports>false</useBuiltinTransports>
+      </rtps>
+    </participant>
+
+  </profiles>
+</dds>

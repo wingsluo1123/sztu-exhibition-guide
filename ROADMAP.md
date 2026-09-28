@@ -475,14 +475,24 @@ added_pt.curvature = (pl_orig.points[i].timestamp - pl_orig.points[0].timestamp)
 | 重力方向 | 静止时在 IMU 的 **+X** 上 | — |
 | 开头静止 | 约 2 s，够 IMU 初始化 | — |
 
-**存图有两个坑，都是读源码才知道的：**
+**存图：这个分支根本存不出来（2026-09-28 更正）。**
 
-1. 点云地图写到编译期写死的 `src/fast_lio/PCD/scans.pcd`（CMakeLists 的
-   `-DROOT_DIR`），**不看 `map_file_path`**；而且只在 `rclcpp::spin()`
-   返回**之后**才写。所以停它必须用 SIGINT，`kill -9` 等于整趟白跑。
+上面这条原先写的是"只要用 SIGINT 收尾就能拿到 `scans.pcd`"。实测跑完没有
+这个文件，翻源码才知道**原因不是收尾方式，是 `pcd_save_en` 压根是个死参数**：
+
+1. `laserMapping.cpp` 第 515-543 行整块被 `/* */` 注释掉了，而第 528 行的
+   `*pcl_wait_save += *laserCloudWorld` 是**唯一**往 `pcl_wait_save` 里塞点的
+   地方。于是退出时第 1170 行的 `pcl_wait_save->size() > 0 && pcd_save_en`
+   永远不成立，配 `true` 也一个字节都不写。
+   （编译期写死 `ROOT_DIR`、不看 `map_file_path` 这部分仍然成立，只是无所谓了。）
 2. `/map_save` 服务写的是另一个缓冲区 `pcl_wait_pub`，那个缓冲区只在
    `publish.map_en` 为 true 时才被填。`map_en: false` 时调 `/map_save`，
    它会写出一个**空 pcd 并返回 `success: true, "Map saved."`** —— 假成功。
+
+**所以走第三条路**：录 `/cloud_registered`（本身就是世界系下配准好的点云），
+离线拼。`tools/run_lio_replay.sh --map` 负责录，`tools/assemble_map.py` 负责
+拼（体素降采样后写 binary pcd）。好处是不改上游代码，也就不碰 GPLv2 的分发
+边界。配置里 `pcd_save_en` 已改回 `false`，省得再被它骗一次。
 
 **时间同步：三个传感器同一个时钟，不需要额外对齐。**
 
@@ -500,7 +510,7 @@ added_pt.curvature = (pl_orig.points[i].timestamp - pl_orig.points[0].timestamp)
 > 一开始集中涌出来，不是时钟问题。判断时间同步要**跳过开头几帧**，
 > 否则会误判成标定/同步故障。
 
-#### DIY SLAM 的落地方案：FAST-LIO2（2026-09-28，已实现，未在真机验证）
+#### DIY SLAM 的落地方案：FAST-LIO2（2026-09-28，回放已验证，真机未验证）
 
 **算法选 FAST-LIO2，不选 Point-LIO** —— 理由很实在：hku-mars 给 FAST_LIO
 维护了**官方 ROS2 分支**，Point-LIO 只有 `master` 和
@@ -539,17 +549,75 @@ time@20 ring@24, EIGEN_ALIGN16），正好命中 PCL 的 memcpy 快路径。
 * 第一帧自检打出的每个数（96 线 / ns 相对 / 跨度 94.85 ms /
   float32 量化误差 0.0 ns / 需要重排序）都和独立从包里量出的配置值吻合。
 * `sztu_slam` 30 个单测全过（含 5 个跑真包的，没有 skip），flake8 干净。
-* **FAST-LIO 本体还没编译过，更没跑过** —— 卡在 `ros-humble-pcl-ros`
-  没装（不在 `ros-humble-desktop` 里），装它要 sudo 密码。这是下一步唯一
-  的阻塞项，开发机和机器人都要装。
+* **FAST-LIO 已经在真包上跑通了**，结果见下面"回放实测结果"。
 
 **还没接上的一处**：FAST-LIO 发 `/Odometry`（frame `camera_init` → `body`），
-而我们的导航读 `/slam/lidar_odom`。remap 还没做。
+而我们的导航读 `/slam/lidar_odom`。remap 还没做。做的时候注意下面那条
+**`camera_init` 不是重力对齐的** —— 导航要的是 REP-105 的 z 朝上，
+所以这里不只是改个话题名，还得补一个把重力转正的静态变换。
 
-**两个配套工具**：`tools/run_lio_replay.sh` 拉起整条链路并按 SIGINT 规矩
-收尾；`tools/lio_report.py` 从录下的 `/Odometry` 算轨迹长度、位姿跳变、
-垂直漂移和**闭环误差**（`loop_lf` 是绕一圈回到起点的，首尾距离就是闭环
-误差，能直接写进报告）。判据：闭环误差 ≤2% 算好，>5% 不够展厅导航用。
+**三个配套工具**：`tools/run_lio_replay.sh` 拉起整条链路；
+`tools/lio_report.py` 从录下的 `/Odometry` 算轨迹长度、位姿跳变、沿重力起伏
+和**闭环误差**（`loop_lf` 是绕一圈回到起点的，首尾距离就是闭环误差，能直接
+写进报告）。判据：闭环误差 ≤2% 算好，>5% 不够展厅导航用。
+`tools/assemble_map.py` 把录下的 `/cloud_registered` 离线拼成 pcd。
+
+#### 回放实测结果（2026-09-28，`loop_lf` 包，119 s）
+
+| 量 | 值 | 判定 |
+|---|---|---|
+| 里程计 | 1191 条，10.0 Hz | ✓ 和雷达帧率一致 |
+| 轨迹长度 | 30.99 m | — |
+| 最大单帧位移 | 0.091 m | ✓ 无位姿跳变 |
+| 沿重力起伏 | 0.26 m | ✓ 人走路胸口本来就起伏 ~0.2 m |
+| 闭环误差 | 0.244 m = 轨迹长度的 **0.79%** | ✓ 判据是 ≤2% |
+| 航向差 | +0.3° | ✓ |
+
+**结论：这颗雷达 + FAST-LIO2 在这个包上够展厅导航用。** 但这只证明"离线回放
+能跑"，真机上 CPU 要和别的进程抢，还没验证。
+
+得到这个结果之前踩了两个坑，都不在任何文档里：
+
+**坑 A：BEST_EFFORT + 大点云 = 静默丢 92%，表现为"SLAM 效果差"。**
+一帧点云 25640 点 × 32 B = **801 KB**。同一个发布者、同一趟回放，两个订阅者：
+
+| 订阅端 QoS | 收到 |
+|---|---|
+| RELIABLE | 1195 / 1195 |
+| BEST_EFFORT（`rclcpp::SensorDataQoS()`） | **100 / 1195** |
+
+FAST-LIO 订阅点云写死用 `SensorDataQoS()`，所以它就是后面那行。原因是
+Fast DDS 的 SHM 默认段只有 512 KB，801 KB 的帧塞不进去就**悄悄回落到 UDP**，
+而 `net.core.rmem_max` 默认才 208 KB，分片丢一片 BEST_EFFORT 又不重传，整帧
+就没了。**全程不报任何错**，只表现为里程计频率上不去、位姿跳变。
+
+排错时走错过三次，记下来省得再走：
+"播放器喂不过来"（限制话题后 starvation 警告没了，频率不变）、
+"CPU 不够"（`-r 0.5` 反而更差；`runtime_pos_log` 显示每帧只要 3.79 ms，
+够跑 260 Hz）、"sim time 定时器"（不带 `--clock` 走墙钟，几乎没变化）。
+
+修法是 `src/sztu_slam/config/fastdds_large_cloud.xml`：把 SHM 段开到 64 MB。
+没选 `sysctl -w net.core.rmem_max`，因为那要 root、且每台机器每次重启都要
+重来，机器人上尤其容易漏；而适配节点和 FAST-LIO 永远在同一台机器上（Orin），
+走共享内存就没有分片这回事。
+**副作用**：`useBuiltinTransports` 必须设 false，否则默认那个 512 KB 的 SHM
+会被一起用上。另外 SHM 描述符里**不能**写 `max_message_size` —— Humble 自带的
+Fast DDS 不认这个元素，整个 XML 会解析失败然后静默什么都不生效。
+
+改完这一条，频率 6.3 → 10.0 Hz、位姿跳变 3 处 → 0 处、最大单帧位移
+0.896 → 0.091 m，四个问题里的三个一次解决。
+
+**坑 B：`camera_init` 不是重力对齐的，"垂直方向"不能假设是 z。**
+`IMU_Processing.hpp:195` 那行 `state_inout.rot = Eye3d` 是**注释掉的**，
+初始姿态就是单位阵 —— 世界系 `camera_init` 直接继承 IMU 自己的轴向，重力是
+被当成状态量估出来的，指哪算哪。而这颗雷达的 IMU 静止时 `ax = +9.75`，
+也就是**X 轴朝上**。
+
+于是 `lio_report.py` 按 z 量出 8.32 m 的"垂直漂移"，一度被当成 `extrinsic_R`
+配错了。实际沿真实重力方向只有 **0.26 m**：x 跨度 0.46 m、y 4.50 m、z 8.32 m
+——机器人的 31 m 水平轨迹全落在 y-z 平面上，x 才是那条竖直轴。
+报告工具已改成从源包 IMU 的静止段实测重力方向再沿它量（`--src-bag`），
+不给这个参数时会自己声明"下面按 z 朝上算，对这颗雷达是错的"。
 
 **两条要更正的既有判断：**
 
