@@ -13,7 +13,12 @@ r"""
 QoS 上有个坑：发布端是 RELIABLE + TRANSIENT_LOCAL。订阅端的 durability 要用
 VOLATILE，不要镜像成 TRANSIENT_LOCAL —— 否则一订阅就会先收到一批过期的历史
 点云（真机实测最老的比当前早 1.15 秒），SLAM 拿它当当前帧会直接跑飞。
+
+还有个坑在 on_cloud 里 out.data 那一行（注释写在那儿）：给 bytes 会让 rclpy
+逐字节做类型检查，真机上 124 ms/帧，直接把 10 Hz 拖成 7.8 Hz。
 """
+
+import array
 
 import rclpy
 from rclpy.node import Node
@@ -109,7 +114,15 @@ class CloudToVelodyne(Node):
         out.is_bigendian = False
         out.point_step = step
         out.row_step = step * info['n_points']
-        out.data = data
+        # 坑：这一行**必须**给 array.array('B')，不能给 bytes。
+        # rclpy 给 uint8[] 生成的 setter 只对 array.array 走快路径（认了就
+        # 直接赋值 return）；bytes 会掉进 all(isinstance(v, int) for v in
+        # value) 那个循环 —— 一帧 86 万字节就是 86 万次 Python 迭代。
+        # 真机（Jetson Orin，ARM）实测 124 ms/帧，而 10 Hz 的预算只有 100 ms，
+        # 于是 BEST_EFFORT 的订阅静默丢帧，里程计掉到 7.8 Hz。
+        # 换成 array.array 后同一帧 0.09 ms，快 1400 倍。转换本身只要 3.8 ms，
+        # 一直不是瓶颈 —— 瓶颈全在这一行的类型上。
+        out.data = array.array('B', data)
         # 转换本身不丢点，原样传递稠密性。
         out.is_dense = msg.is_dense
         self.pub.publish(out)
