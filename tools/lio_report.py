@@ -153,10 +153,15 @@ def analyze(odom, up=None):
     # 每个位姿相对起点、沿垂直轴的投影。跨度就是整段轨迹的真实起伏。
     hs = [sum((p[1 + i] - p0[i]) * u[i] for i in range(3)) for p in odom]
     jumps = [(t, d) for t, d in steps if d > JUMP_M]
+    # 时间戳倒流。正常数据不会有；有就说明包被拼过、或者回放开了 --loop。
+    # 不查出来的话 duration 会算成负数，频率变成 0.0 Hz 这种没意义的数。
+    back = sum(1 for a, b in zip(odom, odom[1:]) if b[0] < a[0])
+    duration = odom[-1][0] - odom[0][0]
 
     return {
         'n': n,
-        'duration': odom[-1][0] - odom[0][0],
+        'duration': duration,
+        'backwards': back,
         'length': length,
         'loop_err': loop_err,
         'loop_err_pct': (loop_err / length * 100) if length > 0 else float('inf'),
@@ -166,7 +171,7 @@ def analyze(odom, up=None):
         'up_measured': up is not None,
         'max_step': max(d for _, d in steps),
         'jumps': jumps,
-        'rate': (n - 1) / (odom[-1][0] - odom[0][0]) if odom[-1][0] > odom[0][0] else 0.0,
+        'rate': (n - 1) / duration if duration > 0 else 0.0,
     }
 
 
@@ -181,6 +186,8 @@ def main():
                     help='原始数据包目录。用它的 IMU 静止段量出哪边是"上"；'
                          '不给就假设 z 朝上（对 X2 胸前雷达是错的，见文件头）')
     ap.add_argument('--imu-topic', default=DEFAULT_IMU_TOPIC)
+    ap.add_argument('--live', action='store_true',
+                    help='这趟是真机实时跑的，不是回放（只影响结尾那句提醒）')
     args = ap.parse_args()
 
     odom = load_odom(args.bag)
@@ -201,13 +208,21 @@ def main():
 
     problems = 0
 
-    print(f'  里程计      {r["n"]} 条，{r["duration"]:.1f} s，'
-          f'{r["rate"]:.1f} Hz')
+    if r['backwards']:
+        # 频率、时长在这种数据上都是胡说，不如直接说数据有问题。
+        print(f'  {R}✗{N} 里程计 {r["n"]} 条，但有 {r["backwards"]} 处时间戳倒流')
+        print('     下面的时长和频率不可信。常见原因：回放开了 --loop，')
+        print('     或者这个包是两段拼起来的。')
+        problems += 1
+    else:
+        print(f'  里程计      {r["n"]} 条，{r["duration"]:.1f} s，'
+              f'{r["rate"]:.1f} Hz')
     print(f'  轨迹长度    {r["length"]:.2f} m')
     print(f'  最大单帧位移 {r["max_step"]:.3f} m')
 
     # 频率：应该和雷达帧率一致（10 Hz）。明显偏低说明有帧被丢了。
-    if r['rate'] < 8.0:
+    # 时间戳倒流时 rate 本来就是假的，上面已经报过，这里不重复计一次问题。
+    if not r['backwards'] and r['rate'] < 8.0:
         print(f'  {Y}⚠{N} 里程计频率只有 {r["rate"]:.1f} Hz，雷达是 10 Hz'
               ' —— 有帧没被处理。')
         print('     FAST-LIO 订阅点云用的是 SensorDataQoS（BEST_EFFORT，'
@@ -264,8 +279,12 @@ def main():
     print()
     if problems == 0:
         print(f'{G}{B}这一趟没发现问题。{N}')
-        print('  注意这只证明"在这个包上能跑"，不等于在机器人上能跑：')
-        print('  回放是离线的，真机上 CPU 要和别的进程抢。')
+        if args.live:
+            print('  这是真机实时数据，所以"能跑"这件事是真的。')
+            print('  但一趟走通不等于稳定：换场地、换光照、走快些都要再测。')
+        else:
+            print('  注意这只证明"在这个包上能跑"，不等于在机器人上能跑：')
+            print('  回放是离线的，真机上 CPU 要和别的进程抢。')
     else:
         print(f'{Y}{B}有 {problems} 项要处理（见上）。{N}')
     print()
