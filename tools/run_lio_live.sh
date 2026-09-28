@@ -235,6 +235,11 @@ report() {
             hmm "  bridge.log 是空的 —— 转接层没起来？"
         fi
     fi
+    if [ "$BRIDGE" -eq 1 ] && [ "$RECORD" -eq 1 ] && [ -d "$RUN_DIR/odom" ]; then
+        say ""
+        say "  ${BOLD}转接层的动态 TF 验证${NC}（反解杠杆臂，见 check_lever.py 的注释）"
+        python3 "$WS/tools/check_lever.py" "$RUN_DIR" 2>&1 | sed 's/^/  /' || true
+    fi
     for pat in 'Failed\|error\|Error' 'No point\|Too few' 'wait for imu'; do
         hits="$(grep -i "$pat" "$RUN_DIR/fastlio.log" 2>/dev/null | sort -u | head -3)"
         [ -n "$hits" ] && { say ""; say "   fastlio.log 里的 [$pat]:"; \
@@ -314,8 +319,8 @@ if [ "$RECORD" -eq 1 ]; then
     REC_TOPICS=(/Odometry "$IMU_TOPIC")
     [ "$MAP" -eq 1 ] && REC_TOPICS+=(/cloud_registered)
     # --bridge 时把转接层的输出和 TF 一起录下来。这一趟要验的恰恰是"动态 TF
-    # 有没有真正起作用"，而那件事只能事后拿 /tf 和 /slam/lidar_odom 对着看
-    # （弯腰时 base_link 的位姿该不动）。两个话题都很小。
+    # 有没有真正起作用"，而那件事只能事后反解杠杆臂来判（tools/check_lever.py
+    # 要 /Odometry + /slam/lidar_odom + /tf 三样齐全）。两个话题都很小。
     [ "$BRIDGE" -eq 1 ] && REC_TOPICS+=("$NAV_TOPIC" /tf /tf_static)
     ros2 bag record -o "$RUN_DIR/odom" "${REC_TOPICS[@]}" \
         > "$RUN_DIR/record.log" 2>&1 &
@@ -374,11 +379,12 @@ fi
 
 if [ "$BRIDGE" -eq 1 ]; then
     say ""
-    say "${BOLD}--bridge 这一趟要特意做一件事：弯腰，或者转一下腰。${NC}"
-    say "  判据：$NAV_TOPIC 里 base_link 的位姿**不该跟着动**。"
-    say "  动了就说明杠杆臂被当成常数了，动态 TF 没起作用 —— 这一条"
-    say "  开发机上用静态假 TF 是测不出来的，只能在机器人上看。"
-    say "  另开一个终端看:  ros2 topic echo $NAV_TOPIC --field pose.pose.position"
+    say "${BOLD}--bridge 这一趟要特意做一件事：动一下腰${NC}（弯腰或转腰都行）。"
+    say "  要验的是杠杆臂每帧都重查了 TF，而那条链上唯一的动关节就是腰。"
+    say "  腰不动的话这一层等于没测 —— 开发机上用静态假 TF 回放也测不到。"
+    say "  ${BOLD}别肉眼看话题${NC}：腰往前弯的时候髋膝踝会一起配平，骨盆本身"
+    say "  真的会动，所以 base_link 的位姿跟着动是对的，不是 bug。跑完由"
+    say "  tools/check_lever.py 反解杠杆臂来判（收尾时自动跑）。"
 fi
 
 # --- 4. 实时监控 ------------------------------------------------------------
