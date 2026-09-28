@@ -19,16 +19,26 @@
 #          record 不会报错，只会安静地录一个 0 条消息的包。
 #          FAQ 那条"systemd 启动的节点收不到消息"就是这个。
 #
-#   坑 2：X2 的传感器话题全是 BEST_EFFORT（官方 echo_lidar_data.py:43-47）。
-#          rosbag2 会去读发布者的 QoS 再自适应——但前提是【订阅的时候发布者
-#          已经在了】。如果先开录、传感器后启动，rosbag2 会用默认的 RELIABLE
-#          订阅，和 BEST_EFFORT 发布者不兼容，那个话题就一条都录不到。
+#   坑 2：传感器话题的 QoS 各不相同，不能一刀切。rosbag2 会去读发布者的
+#          QoS 再自适应——但前提是【订阅的时候发布者已经在了】。如果先开录、
+#          传感器后启动，rosbag2 会用默认的 RELIABLE 订阅，碰上 BEST_EFFORT
+#          的发布者就不兼容，那个话题一条都录不到。
 #          所以必须先确认有发布者、且真的在出数据，再开录。
 #
+#          注意：这里原来写的是"X2 的传感器话题全是 BEST_EFFORT（见官方
+#          echo_lidar_data.py:43-47）"——**这条是错的**，2026-09-28 真机实测
+#          推翻了。那份示例代码写的是它自己**订阅端**的 QoS，不代表发布端。
+#          真机实测：雷达点云和雷达 IMU 都是 RELIABLE/TRANSIENT_LOCAL，
+#          只有两颗机身 IMU 是 BEST_EFFORT/TRANSIENT_LOCAL。
+#          教训：别拿示例代码的订阅端 QoS 去推断发布端。要知道发布端是什么，
+#          只能问运行中的机器人（ros2 topic info -v，或 sensor_probe.py）。
+#
 #   坑 3：`ros2 topic hz` 在 Humble 没有任何 QoS 选项，只能用 RELIABLE 订阅,
-#          因此它看不见 BEST_EFFORT 的传感器话题，会一直打 "no new messages"。
-#          拿它判断"雷达有没有出数据"会得到完全错误的结论。
-#          所以这里用 tools/sensor_probe.py（它按发布者 QoS 镜像订阅）。
+#          因此它看不见 BEST_EFFORT 的话题（比如那两颗机身 IMU），会一直打
+#          "no new messages"。拿它判断"传感器有没有出数据"会得到错误结论。
+#          所以这里用 tools/sensor_probe.py（它按发布者 QoS 逐话题镜像订阅，
+#          不需要我们事先猜对发布端是什么——见坑 2 那个猜错的例子）。
+
 #
 #   坑 4：停止录制必须发 SIGINT，不能 SIGKILL。rosbag2 要靠收到 INT 才会
 #          把 metadata.yaml 写完并正常关闭 sqlite3。被 -9 打死的包缺 metadata,

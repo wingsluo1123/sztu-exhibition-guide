@@ -100,8 +100,42 @@ source 之后跑全量测试：**187 passed，0 failed，0 skipped，0 error。*
 > 完整外参）配雷达。代价是这两者之间隔了刚性连接但物理距离更远，杆臂效应
 > 更明显，精度会差一些；而且要确认躯干 IMU 和雷达的时间戳是否同源。
 >
-> **所以 B4 的问题清单里，"要外参"这条不是划掉，而是缩小成一条很具体的：
-> 雷达和它自带 IMU 之间的外参。** 只有这一个，不是"全部标定文件"。
+> **第三次更正：外参不缺，它在运行时的 `/tf_static` 里（2026-09-28 真机实测）。**
+>
+> 上面两条都是在**离线翻文件**的基础上推的，所以都只说对了一半。真机上
+> 一条命令就问出来了：
+>
+> ```
+> $ ros2 run tf2_ros tf2_echo lidar_chest_front lidar_imu_chest_front
+> At time 0.0
+> - Translation: [-0.011, 0.005, 0.016]
+> - Rotation: in Quaternion (xyzw) [0.495, -0.506, -0.499, 0.501]
+> ```
+>
+> `At time 0.0` 说明它是**静态**变换，来自 `/tf_static`。也就是说：
+> **URDF 里没有，不等于机器人不发。** 机器人运行时发布的坐标树比 `mc-x86`
+> 那份 URDF 更全。这是这次最值得记的一条教训 —— 前两次更正都在翻文件，
+> 而答案一直在运行时的话题里，一条 `tf2_echo` 就能拿到。
+>
+> 数据自洽性已验：`R·Rᵀ` 是单位阵、`det(R)=+1`、用四元数重建的旋转阵和
+> 打印的矩阵最大只差 0.001。平移 [-11, 5, 16] mm 也正是 IMU 装在雷达壳体
+> 内该有的量级。
+>
+> FAST-LIO2 / Point-LIO 的 `extrinsic_*` 要的是**雷达在 IMU 系下**的位姿，
+> 和 `tf2_echo` 输出的方向相反，求逆后：
+>
+> ```yaml
+> extrinsic_T: [ 0.004693, -0.016074, -0.011028 ]
+> extrinsic_R: [ -0.0090, -0.9999,  0.0130,
+>                -0.0009,  0.0130,  0.9999,
+>                -1.0000,  0.0090, -0.0011 ]
+> ```
+> （旋转四舍五入就是干净的轴置换 `[0 -1 0; 0 0 1; -1 0 0]`，偏差 <1.5°。）
+>
+> **但实际上不用手填这两个数**：只要录包时带上 `/tf_static`，外参就在包里，
+> 回放时自动可用。手填的值留在这里只作为对照和兜底。
+>
+> **结论：C 类"外参"这条彻底结掉，不用问售后。** B4 的第三个问题删除。
 
 **另有一条线索（不是结论）**：仿真器二进制里**有** `RaycasterPointCloudPublisher<sensor_msgs::msg::PointCloud2>` 和 `RaycasterGridMapPublisher` 这两个类，只是出厂的 X2 模型里没有 `raycaster_lidar` 这个元素（启动日志打 `raycaster_lidar not found, disable raycaster publishing`）。往模型里加一个 `raycaster_lidar` 也许就能把点云开出来，那样连点云都能离线验证。**没试过。**
 
@@ -312,7 +346,7 @@ bash ~/sztu/tools/check_slam.sh 2>&1 | tee /tmp/slam_check.log
 
 把 `/tmp/slam_check.log` 带回来。
 
-### B1. 读体检结论的三分支
+### B1. 读体检结论的三分支 —— ✅ 已落定在 A 支（2026-09-28 真机实测）
 
 脚本第 1 节（决定性判据）会落到三种情况之一：
 
@@ -320,7 +354,41 @@ bash ~/sztu/tools/check_slam.sh 2>&1 | tee /tmp/slam_check.log
 - **B：app 清单里完全没有** → 确实没开通，必须找售后。
 - **C：什么都看不到** → 可能是沙盒/DDS 问题，根本不是模块的问题，回去查我们自己的配置（A7）。
 
-这个分支决定后面所有 SLAM 工作是"能自己做"、"要等人"、还是"我们自己的 bug"。**在此之前不要写任何 SLAM 相关代码。**
+**实测结果：落在 A 支，而且是最好的那种情况 —— 感知硬件完全正常，只有官方
+SLAM 那层没起。** `record_bag.sh --dry-run` 在真机上的探测（8 秒采样）：
+
+| 话题 | 发布者 | Hz | MB/s | frame_id | QoS |
+|---|---|---|---|---|---|
+| `lidar_chest_front/lidar_pointcloud` | 1 | 11.2 | 9.22 | `lidar_chest_front` | RELIABLE/TRANSIENT_LOCAL |
+| `lidar_chest_front/imu` | 1 | 201.0 | 0.07 | `lidar_imu_chest_front` | RELIABLE/TRANSIENT_LOCAL |
+| `imu/torso/state` | 1 | 498.9 | 0.16 | `base_link` ⚠ | BEST_EFFORT/TRANSIENT_LOCAL |
+| `imu/chest/state` | 1 | 498.8 | 0.16 | `base_link` ⚠ | BEST_EFFORT/TRANSIENT_LOCAL |
+| `/slam/lidar_odom` | **0** | — | — | — | — |
+| `/tf` | 1 | 45.1 | 0.16 | — | RELIABLE/VOLATILE |
+| `/tf_static` | 3 | — | — | `base_link -> pelvis` | RELIABLE/TRANSIENT_LOCAL |
+
+三条结论：
+
+1. **雷达和雷达 IMU 都在正常出数据** → 感知模块是开通的，DIY SLAM 的输入齐了。
+2. **`/slam/lidar_odom` 有话题名但 0 个发布者** → 官方 SLAM 的 app 没启动。
+   这正是 A 支，自己 `aima em start-app` 就能试。
+3. **不必再为"要不要走 DIY"纠结** —— 原始数据齐全，DIY 路线现在是可选项而
+   不是退路。
+
+**两条要更正的既有判断：**
+
+* **"X2 的传感器话题全是 BEST_EFFORT"是错的。** 这条是照官方
+  `echo_lidar_data.py:43-47` 推的，但那只是示例代码的**订阅端**写法，
+  不代表发布端。真机上雷达点云和雷达 IMU 都是 **RELIABLE**，只有两颗机身
+  IMU 是 BEST_EFFORT。`sensor_probe.py` 因为是照抄发布者 QoS，没受影响 ——
+  这正是"镜像"这个做法的价值：它不需要我猜对。
+  `record_bag.sh` 头部的坑 2/坑 3 描述要跟着改。
+* **两颗机身 IMU 的 `frame_id` 都是 `base_link`。** 躯干和胸部两个物理位置
+  不同的 IMU 报同一个坐标系，至少有一个是错的（URDF 里它们分别对应
+  `imu_in_torso_link` 和另一处）。**用它们做任何位姿解算之前必须先搞清楚。**
+  好在 LIO 要用的是雷达自带那颗，它的 `frame_id` 是正确的
+  `lidar_imu_chest_front`，所以不阻塞主线。
+
 
 （`aima em` 管模块生命周期这件事是从 FAQ 和 8.1 节反推的，SLAM 的 app 名字没有文档——所以脚本探测了 `list-app`/`list-apps`/`list`/`ls`/`status`/`ps` 一串只读子命令。）
 
@@ -343,18 +411,15 @@ bash ~/sztu/tools/check_slam.sh 2>&1 | tee /tmp/slam_check.log
 
 重定位用的是**像素**坐标（20 px/m），来自 `/agibot/data/var/MapManagerModule/<map_id>/grid_map_info.txt`（第 1 行分辨率、第 2 行原点像素、第 3 行宽高）；`map_id` 从 `sqlite3 /agibot/data/var/MapManagerModule/map.db "SELECT * FROM map;"` 查。
 
-### B4. 问售后三个问题 → 收窄成两个半
+### B4. 问售后 → **只剩一个问题了**
 
-`check_slam.sh` 结论区已经会把这几条打出来：
+1. ~~感知模块是否已开通~~ —— **不用问了**。真机实测雷达点云 11.2 Hz、雷达
+   IMU 201 Hz 都在正常出数据，模块是开通的（见 B1 的实测表）。
+2. **SLAM 的 app 叫什么名字**（`aima em start-app` 要用）—— 仍然要问，
+   除非 `aima em list-app` 自己列得出来。这是唯一剩下的。
+3. ~~传感器外参 / 标定文件~~ —— **不用问了**。雷达↔自带 IMU 的外参就在
+   运行时的 `/tf_static` 里，一条 `tf2_echo` 就能拿到（见 C 类第三次更正）。
 
-1. 这台机器的感知模块**是否包含在采购内 / 是否已开通**（文档 5.5 原话是"本模块默认不启用"，是"默认关"不是"没买"——这两者的处置完全不同）
-2. SLAM 的 app 叫什么名字（`aima em start-app` 要用）
-3. ~~**传感器外参 / 标定文件**~~ → **收窄成一条很具体的**：雷达
-   `lidar_chest_front` 和它**自带的那颗 IMU** `lidar_imu_chest_front` 之间的外参。
-   URDF 给了其余全部坐标系，唯独没有这一个（41 个 link 里逐个核对过）。
-   但这一条**先别急着问**：RoboSense E1R 的数据手册里大概率就有（这是雷达出厂
-   的机械尺寸），而且 FAST-LIO2 / Point-LIO 可以用 `extrinsic_est_en` 在线估。
-   问售后是第三顺位。详细的三条出路见 C 类的第二次更正。
 
 ---
 
