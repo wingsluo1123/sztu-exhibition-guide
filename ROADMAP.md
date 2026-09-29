@@ -1429,11 +1429,49 @@ tools/run_lio_live.sh --bridge
 source ~/sztu/setup.sh
 tools/tour_precheck.py /tmp/map36b
 
-# 终端 2：讲解系统。先空跑一遍看日志，再真走
+# 终端 2：讲解系统。先停掉开机自启的那一套（见下），再空跑，最后真走
 source ~/sztu/setup.sh
+systemctl --user stop sztu-bridge
 ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true
 ros2 run sztu_guide guide_manager
+# 走完
+systemctl --user start sztu-bridge
 ```
+
+### ⚠️ 开机自启的 sztu-bridge 会和 guide_manager 撞车
+
+`sztu-bridge.service` 是个 systemd **用户级**单元、`Restart=always`，
+开机就在跑，它启动的是 `remote.launch.py` —— 而那个 launch **也起一个
+独立的 navigation_manager**。真机上实测到过这个状态：
+
+```
+$ ros2 node list | grep -c navigation_manager
+2
+$ pgrep -af navigation_manager
+118572 .../navigation_manager --ros-args -r __node:=navigation_manager   # sztu-bridge 起的，没带 dry_run
+```
+
+于是「两个 NavigationManager 用同一个名字 `sdk_sztu_nav`、同一个优先级 45
+注册走跑输入源并同时下发速度」这个最危险的重复，**不需要你手贱跑
+`guide.launch.py` 也会发生** —— 默认就是这个状态。而且 sztu-bridge 起的
+那个**没带 dry_run**，所以哪怕你给 guide_manager 加了 dry_run，另一路照样
+能让机器人动。
+
+开走前确认（应当只有一个）：
+
+```
+ros2 node list | grep -c navigation_manager
+```
+
+### 遥控器优先级 80 高于导航的 45 —— 这是对的，不要改
+
+`GetCurrentInputSource` 在空闲时报的是 `name='rc', priority=80`。
+**这不是故障，是设计**：遥控器必须能在机器人自己走的时候把它停下来，
+一个能被程序盖过去的急停不叫急停。导航源 `sdk_sztu_nav` 取 45 就是为了
+永远压在遥控器下面。
+
+（这里原来记过一句"开走前先把遥控器关掉"，**那是错的**，已删。真要担心的
+不是遥控器占着优先级，而是上面那条 sztu-bridge 撞车。）
 
 **改了代码不用重新 colcon build。** 工作空间是 `--symlink-install` 建的
 （`build/<pkg>/<pkg>` 是指向 `src/` 的软链，install 里放的是 egg-link），
