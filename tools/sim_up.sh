@@ -33,11 +33,27 @@
 #     （但仿真器**有** RaycasterPointCloudPublisher<sensor_msgs/PointCloud2>
 #       和 RaycasterGridMapPublisher 这两个类，往模型里加 raycaster_lidar
 #       也许能把点云开出来 —— 没试过，是条线索不是结论。）
-#   * 光起这两个进程，机器人会在仿真里倒下（MC 打 "Detect Falling Action"）。
-#     要让它站住得再让 MC 进 Stable Stand，本脚本还没做这一步。
+#   * 仿真里的步态参数和真机不是一套（厂商 README 明说"示例只在仿真环境验证
+#     通过，控制真实机器人需要重新适配"）。所以这里量出来的速度/阈值**不能
+#     直接填进真机的配置**，只能用来验证控制律的形状和判据本身。
+#
+# 让机器人站住（坑 5，2026-09-29 解决）：
+#   机器人默认在 PASSIVE_DEFAULT（零力矩），仿真一起来它就瘫成一堆。
+#   **顺序很重要**：必须先让 MC 进 STAND_DEFAULT，再起仿真器 —— 这样机器人
+#   在 z=0.68 重生的那一刻，MC 已经在力控站立模式，一把就接住了。
+#   反过来（先起仿真器再切模式）救不回来：等 MC 收到命令时它已经躺下了，
+#   而 LIE_DOWN -> STAND 那条路要走起身流程，x86 仿真里没跑通过。
+#
+#   还有一个反直觉的地方：**别去显式请求 LOCOMOTION_DEFAULT**。
+#   mc_param 的 action_state.yaml 里它属于 "MOVE" 状态且 auto_transition: true
+#   —— 站稳之后只要有速度指令进来，MC 自己会切过去。显式请求会被静默忽略，
+#   **而且 SetMcAction 照样回 status=SUCCESS、message='success, action:
+#   LOCOMOTION_DEFAULT'**（实测，MC 日志里连一行 TransitionAction 都没有）。
+#   这是厂商的一个 bug：报告成功但什么都没做。别信那个返回值，信 GetMcAction。
 #
 # 用法:
 #   tools/sim_up.sh            # 起 MC + 仿真器，日志在 /tmp/sim_up/
+#   tools/sim_up.sh --stand    # 同上，但让机器人站起来（跑控制律要用这个）
 #   tools/sim_up.sh --mc-only  # 只起 MC（查接口/QoS/service 用这个就够）
 #   tools/sim_up.sh --down     # 全停
 
@@ -53,6 +69,23 @@ FAKE_ROOT="$HOME/agibot-fake"
 LOG_DIR="/tmp/sim_up"
 
 MC_ONLY=0
+STAND=0
+
+# ROS / AimDK 的 setup.bash 会读未绑定的变量，在 set -u 下直接报错退出。
+# 真 aimdk_msgs 在 ~/aimdk/install 下（开发机布局），不挂它就没有
+# SetMcAction / SetMcInputSource 这些类型。
+ros_source() {
+    set +u
+    # shellcheck disable=SC1090
+    source "$1" >/dev/null 2>&1
+    set -u
+}
+
+ros_env() {
+    ros_source /opt/ros/humble/setup.bash
+    [ -f "$HOME/aimdk/install/setup.bash" ] && ros_source "$HOME/aimdk/install/setup.bash"
+    return 0
+}
 
 # 进程判活。必须用 pgrep -f 而不是 -x：/proc/PID/comm 只存 15 个字符，
 # 而 "aima-mc-app-main" 有 17 个，-x 永远匹配不上，会静默地说"没在跑"。
@@ -69,6 +102,7 @@ case "${1:-}" in
         exit 0
         ;;
     --mc-only) MC_ONLY=1 ;;
+    --stand)   STAND=1 ;;
     "") ;;
     *) echo "未知参数: $1"; exit 1 ;;
 esac
@@ -140,31 +174,106 @@ if [ "$MC_ONLY" -eq 1 ]; then
     exit 0
 fi
 
+# --- 站立态用的几个小函数 ---------------------------------------------------
+mc_action() {
+    ros_env
+    timeout 20 ros2 service call /aimdk_5Fmsgs/srv/SetMcAction \
+        aimdk_msgs/srv/SetMcAction \
+        "{source: 'sim_up', command: {action_desc: '$1'}}" 2>&1 \
+        | grep -o "message='[^']*'"
+}
+
+mc_current_action() {
+    ros_env
+    timeout 15 ros2 service call /aimdk_5Fmsgs/srv/GetMcAction \
+        aimdk_msgs/srv/GetMcAction "{}" 2>&1 \
+        | grep -o "action_desc='[^']*'" | head -1 | cut -d"'" -f2
+}
+
+# 躯干高度。站立 ~0.65，瘫在地上 ~0.07。判"站住了"只能看这个量，
+# 不能看 GetMcAction —— 它报 STAND_DEFAULT 的时候机器人可能正躺着，
+# 那个字段说的是"MC 想做什么"，不是"机器人现在什么样"。
+torso_z() {
+    ros_env
+    timeout 15 ros2 topic echo /aima/hal/odom/state --once 2>/dev/null \
+        | grep -A3 'position:' | grep -oE 'z: [-0-9.e]+' | head -1 | cut -d' ' -f2
+}
+
+start_sim() {
+    echo "$ROBOT" > "$SIM_DIR/sim_robot_name_cache.txt"
+    # 坑 4：脚本名拆开拼，别让 "start_sim.sh" 出现在命令行里
+    local _s="start_sim"
+    nohup env AGIBOT_HOME="$FAKE_ROOT" bash -c "
+        set +u
+        source /opt/ros/humble/setup.bash >/dev/null 2>&1
+        cd '$SIM_DIR' || exit 1
+        exec ./${_s}.sh
+    " > "$LOG_DIR/sim.log" 2>&1 &
+
+    echo -n "起仿真器（等 25 秒）"
+    for _ in $(seq 25); do sleep 1; echo -n "."; done
+    echo
+    if sim_running; then
+        echo -e "${GREEN}\u2713${NC} 仿真器在跑 (日志 $LOG_DIR/sim.log)"
+    else
+        echo -e "${RED}\u2717${NC} 仿真器起不来，看 $LOG_DIR/sim.log"
+        grep -iE "already running|Exiting|what\(\):" "$LOG_DIR/sim.log" | head -3
+        exit 1
+    fi
+}
+
 # --- 仿真器 -----------------------------------------------------------------
-echo "$ROBOT" > "$SIM_DIR/sim_robot_name_cache.txt"
+start_sim
 
-# 坑 4：脚本名拆开拼，别让 "start_sim.sh" 出现在命令行里
-_s="start_sim"
-nohup env AGIBOT_HOME="$FAKE_ROOT" bash -c "
-    set +u
-    source /opt/ros/humble/setup.bash >/dev/null 2>&1
-    cd '$SIM_DIR' || exit 1
-    exec ./${_s}.sh
-" > "$LOG_DIR/sim.log" 2>&1 &
+# --- 让它站起来（坑 5）-----------------------------------------------------
+if [ "$STAND" -eq 1 ]; then
+    echo
+    echo "机器人此刻是瘫的（零力矩）。切模式，然后重启仿真器让它重生。"
+    # PASSIVE -> JOINT_DEFAULT -> STAND_DEFAULT。不能一步到位：转移表里
+    # PASSIVE 的 next_actions 没有 STAND_DEFAULT（见 mc_param/action_ruler.yaml）。
+    # 躺着也能切 —— 切的是 MC 的模式，不是机器人的姿态。
+    for a in JOINT_DEFAULT STAND_DEFAULT; do
+        echo -n "  $a ... "
+        mc_action "$a" >/dev/null
+        sleep 5
+        now="$(mc_current_action)"
+        if [ "$now" = "$a" ]; then
+            echo -e "${GREEN}\u2713${NC}"
+        else
+            echo -e "${RED}\u2717 没到（现在是 '${now}'）${NC}"
+            echo "  别信 SetMcAction 的返回值，它对没做成的转移照样回 SUCCESS。"
+            exit 1
+        fi
+    done
 
-echo -n "起仿真器（等 25 秒）"
-for _ in $(seq 25); do sleep 1; echo -n "."; done
-echo
-if sim_running; then
-    echo -e "${GREEN}✓${NC} 仿真器在跑 (日志 $LOG_DIR/sim.log)"
-else
-    echo -e "${RED}✗${NC} 仿真器起不来，看 $LOG_DIR/sim.log"
-    grep -iE "already running|Exiting|what\(\):" "$LOG_DIR/sim.log" | head -3
-    exit 1
+    # 重启仿真器：机器人在 pelvis z=0.68 重生，而 MC 已经在力控站立态，
+    # 一把就接住了。反过来（躺着让它自己站起来）在 x86 仿真里没跑通过。
+    echo "  重启仿真器，让机器人在站立态下重生"
+    pkill -f 'aima-sim-app' 2>/dev/null
+    sleep 3
+    pkill -9 -f 'aima-sim-app' 2>/dev/null
+    sleep 1
+    start_sim
 fi
 
 echo
-echo -e "${YELLOW}提醒${NC}：光这样机器人会在仿真里倒下（MC 打 Detect Falling Action）。"
-echo "要让它站住还得让 MC 进 Stable Stand，本脚本没做。"
+if [ "$STAND" -eq 1 ]; then
+    z="$(torso_z)"
+    if [ -n "$z" ] && awk "BEGIN{exit !($z > 0.4)}"; then
+        echo -e "${GREEN}✓${NC} 机器人站住了（躯干 z=${z}）"
+        echo
+        echo "现在可以下速度指令了。注意**别**去请求 LOCOMOTION_DEFAULT："
+        echo "它是 auto_transition 的，有速度指令进来 MC 自己会切。"
+        echo
+        echo "量原地最小转速：  tools/turn_probe.py --odom /aima/hal/odom/state"
+    else
+        echo -e "${RED}✗${NC} 机器人没站住（躯干 z=${z:-读不到}，站立应该 ~0.65）"
+        echo "  再跑一次通常就好了。反复不行就看 $LOG_DIR/mc.log 里的 Falling。"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}提醒${NC}：光这样机器人会在仿真里倒下（MC 打 Detect Falling Action）。"
+    echo "要让它站住，用 tools/sim_up.sh --stand。"
+fi
 echo
 echo "停止: tools/sim_up.sh --down"
