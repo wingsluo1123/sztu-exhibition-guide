@@ -104,6 +104,21 @@ def quat_yaw(x, y, z, w):
     return math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
 
 
+def quat_rpy(x, y, z, w):
+    """四元数取 (roll, pitch, yaw)，ZYX 顺序。
+
+    **roll/pitch 一定要一起看。** yaw 这个量只有在姿态大致直立的时候才有
+    意义：pitch 接近 ±90° 就是万向节锁，yaw 会随着一点点抖动整个甩过去。
+    机器人是站着的，所以 base_link 的 roll/pitch 本该接近 0 —— 如果算出来
+    不是，那说明换算链搞错了，这时候那个 yaw 一个字都不能信。
+    """
+    sinp = 2.0 * (w * y - z * x)
+    sinp = max(-1.0, min(1.0, sinp))
+    return (math.atan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y)),
+            math.asin(sinp),
+            quat_yaw(x, y, z, w))
+
+
 def read_tf(conn, t0_ns, t1_ns, topic='/tf'):
     """按 (父, 子) 统计每一节 TF 的 yaw 变了多少。
 
@@ -163,9 +178,9 @@ def read_poses(conn, topic, t0_ns, t1_ns):
             (topic_id, t0_ns, t1_ns)):
         msg = deserialize_message(bytes(blob), msg_cls)
         p = msg.pose.pose
-        out.append((ts / 1e9, p.position.x, p.position.y,
-                    quat_yaw(p.orientation.x, p.orientation.y,
-                             p.orientation.z, p.orientation.w)))
+        roll, pitch, yaw = quat_rpy(p.orientation.x, p.orientation.y,
+                                    p.orientation.z, p.orientation.w)
+        out.append((ts / 1e9, p.position.x, p.position.y, yaw, roll, pitch))
     return out
 
 
@@ -206,6 +221,8 @@ def summarize(samples):
         'gaps': [g for g in gaps if g[0] > GAP_REPORT],
         'start': (xy[0][0], xy[0][1], cont[0]),
         'end': (xy[-1][0], xy[-1][1], cont[-1]),
+        # 直立性：|roll| 和 |pitch| 的最大值。见 quat_rpy 的注释。
+        'tilt': max(max(abs(s[4]), abs(s[5])) for s in samples),
     }
 
 
@@ -216,7 +233,7 @@ def clock(epoch):
 def print_table(samples, every):
     """每 `every` 秒打一行。速度和角速度用相邻两个**采样点**算。"""
     print(f'{"时刻":>12} {"t":>7} {"x":>7} {"y":>7} {"yaw°":>7} '
-          f'{"速度":>7} {"ω °/s":>8}')
+          f'{"速度":>7} {"ω °/s":>8} {"roll°":>7} {"pitch°":>7}')
     t0 = samples[0][0]
     prev = None
     for s in samples:
@@ -232,7 +249,8 @@ def print_table(samples, every):
         v_txt = '—' if prev is None else f'{v:.2f}'
         w_txt = '—' if prev is None else f'{w:.1f}'
         print(f'{clock(s[0]):>12} {s[0] - t0:7.1f} {s[1]:7.2f} {s[2]:7.2f} '
-              f'{math.degrees(s[3]):7.1f} {v_txt:>7} {w_txt:>8}')
+              f'{math.degrees(s[3]):7.1f} {v_txt:>7} {w_txt:>8} '
+              f'{math.degrees(s[4]):7.1f} {math.degrees(s[5]):7.1f}')
         prev = s
 
 
@@ -343,6 +361,9 @@ def main():
           f'累计转过 {math.degrees(s["turned"]):.1f}°')
     print(f'  最长断流 {s["max_gap"][0] * 1000:.0f} ms '
           f'（{clock(s["max_gap"][1])}）')
+    print(f'  最大倾斜 {math.degrees(s["tilt"]):.1f}°'
+          + ('' if s['tilt'] < math.radians(20)
+             else '  <- 姿态不直立，上面那个 yaw 不可信'))
     if s['gaps']:
         print(f'  超过 {GAP_REPORT} 秒的断流 {len(s["gaps"])} 次：'
               + ', '.join(f'{clock(t)} 停了 {g:.1f}s' for g, t in s['gaps'][:5]))
