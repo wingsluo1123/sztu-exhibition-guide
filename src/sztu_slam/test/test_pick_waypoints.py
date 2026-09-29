@@ -224,7 +224,7 @@ def ring_candidates(step=0.25):
 
 
 def ring_is_clear(a, b, n=64):
-    """a 到 b 的直线穿过中心那块展柜吗？穿了就不通。"""
+    """判断 a 到 b 的直线有没有穿过中心那块展柜。穿了就不通。"""
     t = np.linspace(0.0, 1.0, n)
     x = a[0] + (b[0] - a[0]) * t
     y = a[1] + (b[1] - a[1]) * t
