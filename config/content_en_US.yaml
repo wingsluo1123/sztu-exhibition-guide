@@ -31,7 +31,7 @@ content:
     
   point_05:
     intro: "This is the Interactive Experience Zone where you can personally experience HarmonyOS distributed capabilities."
-    detail: "Watch this demonstration: when my phone approaches this tablet, they automatically recognize and connect. Now I open a video on my phone, and with a simple gesture, the video transfers to the tablet's larger screen. The audio can also switch to the smart speaker nearby. This is HarmonyOS's 'Super Device' capability - combining multiple devices into a virtual super device that shares hardware resources."
+    detail: "Please pick up the phone on the stand and bring it close to the tablet beside it - the two will recognize each other and connect automatically. Open a video on the phone, then swipe it toward the tablet, and the video transfers to the tablet's larger screen. The audio can also switch to the smart speaker nearby. This is HarmonyOS's 'Super Device' capability - combining multiple devices into a virtual super device that shares hardware resources. Please go ahead and try it yourself."
     emotion: "surprised"
     gesture: "point"
     duration: 30

@@ -40,6 +40,15 @@ class NavigationManager(Node):
         # app_proxy(60) / rc(80) —— 人拿遥控器或手机随时能接管自主导航。
         self.declare_parameter('locomotion_source', 'sdk_sztu_nav')
         self.declare_parameter('locomotion_priority', 45)
+        # 空跑：整条链照常跑（读位姿、算控制量、判到点、播讲解），只是不把
+        # 速度下发给走跑接口。点位坐标写错的代价从"撞墙"降到"看日志"，
+        # 所以每次换了 waypoints.yaml 之后先空跑一遍再实走。
+        self.declare_parameter('dry_run', False)
+        self.dry_run = bool(self.get_parameter('dry_run').value)
+        if self.dry_run:
+            self.get_logger().warn(
+                'dry_run=true —— 速度指令不会下发，机器人不会动。'
+                '实走请去掉这个参数。')
 
         self.position_tolerance = self.get_parameter('position_tolerance').value
         self.angle_tolerance = self.get_parameter('angle_tolerance').value
@@ -149,7 +158,7 @@ class NavigationManager(Node):
         阻塞版本见 navigate_to()。分成两个方法是因为 bridge、guide_manager
         这些调用方的线程模型不一样：前者不能被阻塞，后者是顺序流程。
         """
-        if not self.locomotion_ready:
+        if not self.locomotion_ready and not self.dry_run:
             self.get_logger().error(
                 '走跑输入源未注册，拒绝导航请求 —— 发速度也不会有人执行')
             return False
@@ -262,6 +271,12 @@ class NavigationManager(Node):
         # 由 LocomotionController 统一兜底 —— 控制律算出的小速度在这一层被抬到
         # 阈值之上，否则会出现"一直在发速度但机器人不动"。典型触发点是避障降速
         # （0.15 × 0.3 = 0.045，低于前进阈值）。
+        if self.dry_run:
+            self.get_logger().info(
+                f'[dry_run] 本该下发 linear={linear:+.3f} '
+                f'angular={angular:+.3f}',
+                throttle_duration_sec=1.0)
+            return
         self.locomotion.set_velocity(float(linear), 0.0, float(angular))
 
     def stop(self):
