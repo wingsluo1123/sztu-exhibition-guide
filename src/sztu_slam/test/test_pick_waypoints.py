@@ -16,10 +16,13 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 
 from pick_waypoints import (                                    # noqa: E402
-    chain_pick, clearance, edt, nearest_wall_yaw, order_tour, path_is_clear,
-    read_map, reachable, render_yaml, spread_pick, to_cell, yaw_to_quat,
+    MARK_LEG, MARK_POINT, blit_number, chain_pick, clearance, edt,
+    nearest_wall_yaw, order_tour, path_is_clear, read_map, reachable,
+    render_check_png, render_yaml, spread_pick, to_cell, yaw_to_quat,
 )
-from gridmap import PGM_FREE, PGM_OCC, PGM_UNK, write_pgm       # noqa: E402
+from gridmap import (                                           # noqa: E402
+    PGM_FREE, PGM_OCC, PGM_PATH, PGM_UNK, write_pgm,
+)
 
 RES = 0.05
 
@@ -421,6 +424,72 @@ def test_read_map_roundtrips_and_flips_to_y_up(tmp_path):
     assert (res2, x2, y2) == (res, x0, y0)
     ix, iy = to_cell([(0.075, 0.075)], res, x0, y0)
     assert g2[iy[0], ix[0]] == PGM_OCC
+
+
+# --- 核对用的渲染图 ---------------------------------------------------------
+# 这张图是人签字的依据。画反了、编号错位了，人核对的是一张假图 ——
+# 比不画更糟，所以朝向和编号位置都要有测试。
+
+def test_blit_number_writes_inside_the_image_and_changes_pixels():
+    img = np.full((40, 40), PGM_FREE, np.uint8)
+    blit_number(img, '3', 20, 20, scale=2)
+    assert (img == 0).any(), '数字一个像素都没画上'
+    # 不能画到边界外去（越界会静默丢字，或者 numpy 报错）
+    blit_number(img, '7', 0, 0, scale=2)
+    blit_number(img, '7', 39, 39, scale=2)
+
+
+def test_render_check_png_is_not_upside_down(tmp_path):
+    """点位标记必须落在图像的正确一半。
+
+    y-up 的几何系和 image-orientation 的渲染系差一次 flipud，
+    而 draw_path / draw_marker 内部自己会翻一次。翻两次或者不翻，
+    图看着都"像个房间"，只是点位上下颠倒 —— 这种错光看图发现不了，
+    所以在这儿钉住。
+    """
+    g, res, x0, y0 = room(8.0, 6.0)
+    # 点位放在房间上半部（y 大）。渲染图第 0 行是 y 最大，所以标记必须
+    # 出现在图像的**上**半。
+    p = np.array([[4.0, 5.0]])
+    traj = np.array([[1.0, 1.0], [7.0, 1.0]])
+    img = render_check_png(str(tmp_path / 'r.png'), g, traj, p, [0.0],
+                           res, x0, y0, pad=0.5, zoom=1)
+    ys, _ = np.nonzero(img == MARK_POINT)
+    assert len(ys) > 0, '点位标记没画出来'
+    assert ys.mean() < img.shape[0] / 2, \
+        f'点位画到了图像下半（行均值 {ys.mean():.1f} / {img.shape[0]}）'
+    # 轨迹在 y 小的一侧，必须画在图像下半
+    yp, _ = np.nonzero(img == PGM_PATH)
+    assert len(yp) > 0 and yp.mean() > img.shape[0] / 2
+
+
+def test_render_check_png_crops_to_the_region_of_interest(tmp_path):
+    """裁剪：全图渲染时点位只是一大片灰里的几个小黑点，没法核对。"""
+    g, res, x0, y0 = room(30.0, 20.0)
+    p = np.array([[2.0, 2.0], [4.0, 2.0]])
+    img = render_check_png(str(tmp_path / 'r.png'), g, p, p,
+                           [0.0, 0.0], res, x0, y0, pad=1.0, zoom=1)
+    # 关心的范围是 x [1,5] y [1,3] -> 约 80 x 40 格，远小于整图 600 x 400
+    assert img.shape[0] < 100 and img.shape[1] < 150, f'没裁：{img.shape}'
+
+
+def test_render_check_png_draws_the_legs_between_points(tmp_path):
+    """航段要画出来 —— 机器人就是沿直线走的，这条线才是真正要核对的东西。"""
+    g, res, x0, y0 = room(8.0, 6.0)
+    p = np.array([[2.0, 3.0], [6.0, 3.0]])
+    img = render_check_png(str(tmp_path / 'r.png'), g, p, p, [0.0, 0.0],
+                           res, x0, y0, pad=0.5, zoom=1)
+    assert (img == MARK_LEG).sum() > 20, '两点之间的航段没画'
+
+
+def test_render_check_png_zoom_scales_the_output(tmp_path):
+    g, res, x0, y0 = room(4.0, 3.0)
+    p = np.array([[2.0, 1.5]])
+    a = render_check_png(str(tmp_path / 'a.png'), g, p, p, [0.0],
+                         res, x0, y0, pad=0.5, zoom=1)
+    b = render_check_png(str(tmp_path / 'b.png'), g, p, p, [0.0],
+                         res, x0, y0, pad=0.5, zoom=3)
+    assert b.shape == (a.shape[0] * 3, a.shape[1] * 3)
 
 
 # --- 开走前的对齐自检 -------------------------------------------------------

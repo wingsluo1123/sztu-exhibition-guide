@@ -50,6 +50,7 @@ from gridmap import PGM_FREE, PGM_OCC, draw_path, write_png  # noqa: E402
 # 标记的灰度，避开 gridmap 已经用掉的 0/254/205/120
 MARK_POINT = 40      # 点位圆心
 MARK_ARROW = 70      # 朝向箭头
+MARK_LEG = 100       # 相邻点之间的直线航段
 
 DEFAULT_RADIUS = 0.40    # 机器人半径（米）。仓库里没有 footprint 规格，
 #                          取的保守值，用 --radius 可改。
@@ -340,6 +341,96 @@ def yaw_to_quat(yaw):
     return math.sin(yaw / 2.0), math.cos(yaw / 2.0)
 
 
+# 5x7 点阵数字，只要 0-9。渲染图是给人核对用的，点上没有编号就没法核对
+# ——"第 3 个点在哪"答不出来，这张图就等于没画。
+DIGITS = {
+    '0': ('01110', '10001', '10011', '10101', '11001', '10001', '01110'),
+    '1': ('00100', '01100', '00100', '00100', '00100', '00100', '01110'),
+    '2': ('01110', '10001', '00001', '00010', '00100', '01000', '11111'),
+    '3': ('11111', '00010', '00100', '00010', '00001', '10001', '01110'),
+    '4': ('00010', '00110', '01010', '10010', '11111', '00010', '00010'),
+    '5': ('11111', '10000', '11110', '00001', '00001', '10001', '01110'),
+    '6': ('00110', '01000', '10000', '11110', '10001', '10001', '01110'),
+    '7': ('11111', '00001', '00010', '00100', '01000', '01000', '01000'),
+    '8': ('01110', '10001', '10001', '01110', '10001', '10001', '01110'),
+    '9': ('01110', '10001', '10001', '01111', '00001', '00010', '01100'),
+}
+
+
+def blit_number(img, text, cx, cy, scale=2, fg=0, bg=254):
+    """在图像坐标 (cx, cy) 处写一串数字，带底色好认。就地改 img。"""
+    gw, gh = 5 * scale, 7 * scale
+    tw = len(text) * (gw + scale)
+    h, w = img.shape
+    x = int(cx - tw // 2)
+    y = int(cy - gh // 2)
+    # 先铺底色，再写字：不铺的话数字压在墙上根本看不出来
+    y0b, y1b = max(y - scale, 0), min(y + gh + scale, h)
+    x0b, x1b = max(x - scale, 0), min(x + tw + scale, w)
+    if y0b >= y1b or x0b >= x1b:
+        return img
+    img[y0b:y1b, x0b:x1b] = bg
+    for ch in text:
+        pat = DIGITS.get(ch)
+        if pat is not None:
+            for r, row in enumerate(pat):
+                for c, bit in enumerate(row):
+                    if bit != '1':
+                        continue
+                    py, px = y + r * scale, x + c * scale
+                    if 0 <= py < h - scale and 0 <= px < w - scale:
+                        img[py:py + scale, px:px + scale] = fg
+        x += gw + scale
+    return img
+
+
+def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
+                     zoom=None):
+    """画一张**能让人真正核对**的图。
+
+    第一版渲染是 603x463 全图、点位是没有编号的小黑点、朝向箭头一个像素
+    宽 —— 图是出来了，但没法照着它签字。这一版：
+      - 裁到轨迹和点位的范围（外扩 pad 米），不留一大片空白的未知区；
+      - 整数倍放大，小东西看得见；
+      - 画出相邻点之间的**直线航段**，因为机器人就是这么走的；
+      - 每个点标上编号，和终端打印的序号、讲解内容的 point_0N 一致。
+    """
+    allp = np.vstack([np.asarray(traj, float).reshape(-1, 2),
+                      np.asarray(pts, float).reshape(-1, 2)])
+    lo = allp.min(0) - pad
+    hi = allp.max(0) + pad
+    i0, j0 = to_cell([lo], res, x0, y0)
+    i1, j1 = to_cell([hi], res, x0, y0)
+    h, w = grid.shape
+    i0, j0 = max(int(i0[0]), 0), max(int(j0[0]), 0)
+    i1, j1 = min(int(i1[0]) + 1, w), min(int(j1[0]) + 1, h)
+
+    # draw_path / draw_marker 内部都按 img[h-1-iy] 写，也就是要求传进去的
+    # 数组已经是**图像朝向**（第 0 行是 y 最大）。所以先翻，再画。
+    sub = np.flipud(grid[j0:j1, i0:i1]).copy()
+    sx0, sy0 = x0 + i0 * res, y0 + j0 * res
+    draw_path(sub, np.asarray(traj)[:, :2], sx0, sy0, res)
+
+    pts = np.asarray(pts, float).reshape(-1, 2)
+    for a, b in zip(pts[:-1], pts[1:]):
+        draw_path(sub, np.array([a, b]), sx0, sy0, res, value=MARK_LEG)
+    for p, yaw in zip(pts, yaws):
+        draw_marker(sub, p, yaw, res, sx0, sy0)
+
+    if zoom is None:                        # 目标长边约 1100 px
+        zoom = max(1, min(6, int(round(1100 / max(sub.shape)))))
+    img = np.kron(sub, np.ones((zoom, zoom), np.uint8))
+    sh = sub.shape[0]
+    for n, p in enumerate(pts, 1):
+        ix, iy = to_cell([p], res, sx0, sy0)
+        # 编号画在点的右上方，别盖住圆心和箭头
+        cx = int(ix[0]) * zoom + 9 * zoom
+        cy = (sh - 1 - int(iy[0])) * zoom - 7 * zoom
+        blit_number(img, str(n), cx, cy, scale=max(1, zoom // 2))
+    write_png(path, img)
+    return img
+
+
 def load_existing(path):
     """读现有 waypoints.yaml，只为了保住 id / 名字 / 讲解时长。
 
@@ -486,12 +577,24 @@ def main():
     meta = meta[:len(pts)]
     yaws = [nearest_wall_yaw(grid, res, x0, y0, p) for p in pts]
 
+    # 离轨迹多远要报出来：点位落在机器人没走过的地方，就算几何上连通，
+    # 也是这张图上最不可信的部分（地面高低、玻璃门、反光都只在走过的
+    # 地方才验证过）。
+    dtraj = edt(tmask, res)
     print('\n选出的点位：')
     for i, (m, p, yaw) in enumerate(zip(meta, pts, yaws), 1):
         ix, iy = to_cell([p], res, x0, y0)
         print(f'  {i}. {m["name"]:<12s} ({p[0]:+7.3f}, {p[1]:+7.3f}) '
               f'朝向 {math.degrees(yaw):+7.1f}°  净空 '
-              f'{clr[iy[0], ix[0]]:.2f} m')
+              f'{clr[iy[0], ix[0]]:.2f} m  离轨迹 '
+              f'{dtraj[iy[0], ix[0]]:.2f} m')
+    far = [i for i, p in enumerate(pts, 1)
+           if dtraj[to_cell([p], res, x0, y0)[1][0],
+                    to_cell([p], res, x0, y0)[0][0]] > 0.75]
+    if far:
+        print(f'  ! 第 {far} 个点离机器人走过的地方超过 0.75 m。'
+              '几何上连通，但那片地面没实地走过 ——\n'
+              '    核对 .png 的时候重点看这几个，必要时用 --near-traj 收紧。')
 
     legs = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
             for i in range(len(pts) - 1)]
@@ -511,11 +614,7 @@ def main():
     print(f'\n写出 {out_path}')
 
     if args.render:
-        img = np.flipud(grid).copy()
-        draw_path(img, traj, x0, y0, res)
-        for p, yaw in zip(pts, yaws):
-            draw_marker(img, p, yaw, res, x0, y0)
-        write_png(args.render, img)
+        render_check_png(args.render, grid, traj, pts, yaws, res, x0, y0)
         print(f'写出 {args.render} —— **先看这张图确认点位落在该在的地方**')
     return 0
 
