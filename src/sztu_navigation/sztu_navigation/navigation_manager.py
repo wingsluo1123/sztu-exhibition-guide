@@ -43,8 +43,15 @@ def spin_node_once(node, timeout_sec: float = 0.1) -> None:
 
 
 class NavigationManager(Node):
-    def __init__(self):
-        super().__init__('navigation_manager')
+    def __init__(self, **node_kwargs):
+        """
+        node_kwargs 原样透给 rclpy 的 Node。
+
+        测试拿它塞 parameter_overrides，把用例订的话题指到一个真机上不存在的
+        私有话题 —— 不隔开的话，机器人上 lio_odom_bridge 正在发的真位姿会先
+        送进来，断言拿到的是现场数据，通过和失败都跟被测逻辑无关（实测踩过）。
+        """
+        super().__init__('navigation_manager', **node_kwargs)
 
         self.get_logger().info('Navigation Manager initializing...')
 
@@ -84,6 +91,12 @@ class NavigationManager(Node):
         self.odom_stale_timeout = (
             configured_stale if configured_stale > 0.0
             else odom_stale_timeout(self.position_tolerance, self.max_linear_speed))
+
+        # 起步前等第一帧位姿最多等多久。话题发现本身实测要 2 秒出头
+        # （2026-09-29 真机 2.19 秒），所以这个值不能只留一两帧的余量。
+        self.declare_parameter('pose_wait_timeout', 10.0)
+        self.pose_wait_timeout = float(
+            self.get_parameter('pose_wait_timeout').value)
 
         # QoS 配置
         odom_qos = QoSProfile(
@@ -203,7 +216,10 @@ class NavigationManager(Node):
             return False
 
         if self.current_pose is None:
-            self.get_logger().error('Current pose not available, cannot navigate')
+            self.get_logger().error(
+                'Current pose not available, cannot navigate —— 这个节点自己'
+                '一帧位姿都还没收到。阻塞调用请走 navigate_to()（它会先'
+                'wait_for_pose）；非阻塞调用方要保证有执行器在转这个节点。')
             return False
 
         # 开一个新目标之前也要看位姿新不新。位姿流断掉以后 current_pose 还留着
@@ -226,6 +242,37 @@ class NavigationManager(Node):
         self._goal_start_time = time.monotonic()
         return True
 
+    def wait_for_pose(self, timeout: float = None) -> bool:
+        """
+        等到**这个节点自己**收到一帧新鲜位姿。等到了返回 True。
+
+        为什么 navigate_to 必须先调它：**NavigationManager 有自己的
+        `/slam/lidar_odom` 订阅，和 SlamManager 那份是两个节点、两份
+        `current_pose`。**上层（guide_manager）过了 SlamManager 的定位闸，
+        只说明**那个**节点收到了位姿；这个节点的 odom_callback 只会在
+        navigate_to 的等待循环里被调到，而那个循环在 set_goal 成功之后才开始
+        转 —— 于是 set_goal 里的 `current_pose is None` 必然命中，
+        一帧都还没来就先拒绝了。鸡生蛋。
+
+        2026-09-29 真机实测：定位闸刚报 "Localization successful"，紧接着
+        7 个点位在 1 秒内全部报 "Current pose not available"，整场讲解跑完
+        一步没走。
+
+        新鲜度要和"非 None"一起等：只判非 None 的话，位姿流早就断了的场合
+        会拿一个冻住的旧值起步 —— 那正是 odom_stale_timeout 要拦的事。
+        """
+        timeout = self.pose_wait_timeout if timeout is None else timeout
+        deadline = time.monotonic() + timeout
+        while rclpy.ok():
+            age = self.pose_age()
+            if (self.current_pose is not None and age is not None
+                    and age <= self.odom_stale_timeout):
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            spin_node_once(self, timeout_sec=0.1)
+        return False
+
     def navigate_to(self, x: float, y: float, yaw: float = None,
                     timeout: float = None) -> bool:
         """
@@ -234,6 +281,14 @@ class NavigationManager(Node):
         timeout 为 None 时用参数 navigation_timeout。超时会主动停车并返回 False，
         否则一次定位丢失就能把整场讲解永久挂住。
         """
+        # 先把自己的位姿等到手，再让 set_goal 去判。顺序反了的话第一次调用
+        # 必然失败，见 wait_for_pose 的注释。
+        if not self.wait_for_pose():
+            self.get_logger().error(
+                f'等了 {self.pose_wait_timeout:.0f} 秒还没收到新鲜位姿，不起步。'
+                f'先确认位姿源在发：ros2 topic hz {self.odom_topic}')
+            return False
+
         if not self.set_goal(x, y, yaw):
             return False
 
