@@ -47,6 +47,10 @@ PGM_FREE = 254     # 空闲 = 白
 PGM_UNK = 205      # 未知 = 灰
 PGM_PATH = 120     # 走过的轨迹，**只画在 .png 上**，不进 .pgm
 
+# 地面拟合最多用这么多点。RANSAC 对样本量不敏感（几万点就够定一个平面），
+# 封顶是为了展厅那种长包也不至于把子样本本身撑成几百 MB。
+GROUND_SAMPLE_CAP = 2_000_000
+
 
 def fit_ground(P, seed=0, iters=400, band=0.30, inlier=0.03):
     """在点云里找地面平面，返回 (法向, 平面上一点, 厚度 m, 内点数)。
@@ -260,38 +264,38 @@ def draw_path(img, xy, x0, y0, res, value=PGM_PATH):
     return img
 
 
-def load_frames(run_dir, topic):
-    """流式读点云，转到重力系，只留下 float32。返回 [(原点, 点集)]。"""
-    from assemble_map import iter_clouds, xyz_offsets
-    from check_lever import (find_bag, read_topics, gravity_from_log,
-                             gravity_align_matrix)
-
-    up, _ = gravity_from_log(run_dir)
-    R = gravity_align_matrix(up)
-    bag = find_bag(run_dir)
-
-    # 传感器原点从 /Odometry 取，按 stamp 和点云配对。
-    odo = {}
+def sensor_origins(bag, R):
+    """从 /Odometry 取每帧的传感器原点，转到重力系，按 stamp 索引。"""
+    from check_lever import read_topics
+    out = {}
     for _, m in read_topics(bag, ['/Odometry'])['/Odometry']:
         p = m.pose.pose.position
-        key = (m.header.stamp.sec, m.header.stamp.nanosec)
-        odo[key] = R @ np.array([p.x, p.y, p.z])
+        out[(m.header.stamp.sec, m.header.stamp.nanosec)] = \
+            R @ np.array([p.x, p.y, p.z])
+    return out
 
-    frames, missing = [], 0
-    for msg in iter_clouds(bag, topic):
+
+def stream_frames(bag, topic, odo, R, stride=1):
+    """一帧一帧地吐 (原点, 重力系下的点)，**不在内存里留住任何一帧**。
+
+    展厅那种十几二十分钟的包，一次性读进来是几个 GB。这里逐帧产出，
+    调用方用完就扔，内存占用和走多久无关。
+    """
+    from assemble_map import iter_clouds, xyz_offsets
+    for i, msg in enumerate(iter_clouds(bag, topic)):
+        if i % stride:
+            continue
         key = (msg.header.stamp.sec, msg.header.stamp.nanosec)
         if key not in odo:
-            missing += 1
+            yield None, None
             continue
         ox, oy, oz = xyz_offsets(msg)
         buf = np.frombuffer(bytes(msg.data), dtype=np.uint8)
         buf = buf.reshape(-1, msg.point_step)[:msg.width * msg.height]
         xyz = np.column_stack([buf[:, o:o + 4].copy().view(np.float32).ravel()
                                for o in (ox, oy, oz)])
-        xyz = xyz[np.isfinite(xyz).all(axis=1)]
-        frames.append((odo[key], (xyz.astype(np.float64) @ R.T)
-                       .astype(np.float32)))
-    return frames, missing, R
+        xyz = xyz[np.isfinite(xyz).all(axis=1)].astype(np.float64) @ R.T
+        yield odo[key], xyz
 
 
 def main():
@@ -317,18 +321,46 @@ def main():
     ap.add_argument('--topic', default='/cloud_registered')
     args = ap.parse_args()
 
-    print(f'读 {args.run_dir} ...')
-    frames, missing, _ = load_frames(args.run_dir, args.topic)
-    if not frames:
-        raise SystemExit('一帧都没配上 —— 录的时候加 --map 了吗？看 record.log')
-    if missing:
-        print(f'  {missing} 帧点云没有同 stamp 的 /Odometry，跳过')
-    npts = sum(len(p) for _, p in frames)
-    print(f'  {len(frames)} 帧，{npts} 点')
+    from check_lever import find_bag, gravity_from_log, gravity_align_matrix
 
-    # --- 地面 ---
-    sub = np.vstack([p[::17] for _, p in frames]).astype(float)
-    g = fit_ground(sub)
+    up, _ = gravity_from_log(args.run_dir)
+    R = gravity_align_matrix(up)
+    bag = find_bag(args.run_dir)
+    odo = sensor_origins(bag, R)
+    lo, hi = args.slab
+
+    # === 第一趟：地面 + 图幅 ===
+    # 两趟流式，而不是一次性读进内存。展厅那种十几二十分钟的包，全读进来
+    # 是几个 GB；分两趟多花一遍反序列化的时间（约 25 s / 2 分钟量级），
+    # 换来内存占用和走多久无关。
+    print(f'第一趟（地面 + 图幅）：{args.run_dir}')
+    sub, nsub = [], 0
+    lo_xy = np.array([np.inf, np.inf])
+    hi_xy = np.array([-np.inf, -np.inf])
+    nframe = nmiss = npts = 0
+    for o, q in stream_frames(bag, args.topic, odo, R, args.stride):
+        if o is None:
+            nmiss += 1
+            continue
+        nframe += 1
+        npts += len(q)
+        near = within_range(q[:, :2], o[:2], args.range)
+        if len(near):
+            lo_xy = np.minimum(lo_xy, near.min(axis=0))
+            hi_xy = np.maximum(hi_xy, near.max(axis=0))
+        # 地面拟合只要个子样本。封顶是为了长包也不涨内存。
+        if nsub < GROUND_SAMPLE_CAP:
+            t = q[::17]
+            sub.append(t.astype(np.float32))
+            nsub += len(t)
+    if not nframe:
+        raise SystemExit('一帧都没配上 —— 录的时候加 --map 了吗？看 record.log')
+    if nmiss:
+        print(f'  {nmiss} 帧点云没有同 stamp 的 /Odometry，跳过')
+    print(f'  {nframe} 帧，{npts} 点')
+
+    g = fit_ground(np.vstack(sub).astype(float))
+    del sub
     if g is None:
         raise SystemExit('找不到地面平面 —— 点太少或者这趟根本没看到地面')
     n, c, thick, nin = g
@@ -342,35 +374,17 @@ def main():
               f'{0.5/math.tan(math.radians(tilt)):.0f} m 外切穿地面。'
               '这里按平面算，没这个问题。')
 
-    # --- 一遍扫完：命中 + 碾空闲 ---
-    lo, hi = args.slab
-    sl = []
-    for o, q in frames[::args.stride]:
-        h = (q.astype(float) - c) @ n
-        band = q[(h > lo) & (h < hi)]
-        if len(band):
-            sl.append((o, band))
-    if not sl:
-        raise SystemExit(f'切层带 {lo}~{hi} m 里一个点都没有 —— 界是不是设反了')
-
-    nslab = sum(len(q) for _, q in sl)
-    print(f'\n切层带 离地 {lo:.2f} ~ {hi:.2f} m：{len(sl)} 帧，{nslab} 点'
-          f'（占全部的 {nslab/npts*100:.1f}%）')
-
-    # 先按地平线裁一遍，图幅才不会被远处几个孤点撑大
-    sl = [(o, within_range(q[:, :2], o[:2], args.range)) for o, q in sl]
-    sl = [(o, q) for o, q in sl if len(q)]
-    nnear = sum(len(q) for _, q in sl)
-    print(f'  {args.range:.0f} m 地平线以内 {nnear} 点'
-          f'（裁掉 {nslab-nnear}，命中和碾空闲用同一个地平线）')
-
-    allxy = np.vstack([q for _, q in sl]).astype(float)
-    x0, y0 = allxy.min(axis=0) - 1.0
-    x1, y1 = allxy.max(axis=0) + 1.0
+    x0, y0 = lo_xy - 1.0
+    x1, y1 = hi_xy + 1.0
     W = int(math.ceil((x1 - x0) / args.res))
     H = int(math.ceil((y1 - y0) / args.res))
+    mb = W * H * 8 / 1e6
     print(f'\n图幅 {W} x {H} 格 = {W*args.res:.1f} x {H*args.res:.1f} m，'
-          f'原点 ({x0:.2f}, {y0:.2f})')
+          f'原点 ({x0:.2f}, {y0:.2f})，计数图 {mb:.0f} MB')
+    if mb > 2000:
+        raise SystemExit(
+            f'计数图要 {mb/1000:.1f} GB —— 图幅太大了。'
+            '调大 --res，或者确认 SLAM 是不是飞了（轨迹应该没这么大）。')
 
     def flat(xy):
         ix = np.floor((xy[:, 0] - x0) / args.res).astype(np.int64)
@@ -378,23 +392,38 @@ def main():
         k = (ix >= 0) & (ix < W) & (iy >= 0) & (iy < H)
         return iy[k] * W + ix[k]
 
+    # === 第二趟：命中 + 碾空闲 ===
+    print(f'\n第二趟（切层带 离地 {lo:.2f} ~ {hi:.2f} m，'
+          f'地平线 {args.range:.0f} m）')
     n_hit = np.zeros(W * H, dtype=np.int32)
     n_free = np.zeros(W * H, dtype=np.int32)
     step = args.res * 0.5
-    for i, (o, q) in enumerate(sl):
-        xy = q.astype(float)
+    path, nslab, i = [], 0, 0
+    for o, q in stream_frames(bag, args.topic, odo, R, args.stride):
+        if o is None:
+            continue
+        i += 1
+        h = (q - c) @ n
+        xy = within_range(q[(h > lo) & (h < hi)][:, :2], o[:2], args.range)
+        if not len(xy):
+            continue
+        nslab += len(xy)
+        path.append(o[:2])
         np.add.at(n_hit, flat(xy), 1)
         b, r = bearing_min_range(xy - o[:2], args.bearings, args.range)
         np.add.at(n_free, flat(ray_samples(o, b, r, args.bearings, step)), 1)
-        if (i + 1) % 200 == 0:
-            print(f'  {i+1}/{len(sl)} 帧', file=sys.stderr)
+        if i % 500 == 0:
+            print(f'  {i}/{nframe} 帧', file=sys.stderr)
+    if not nslab:
+        raise SystemExit(f'切层带 {lo}~{hi} m 里一个点都没有 —— 界是不是设反了')
+    print(f'  {len(path)} 帧有效，{nslab} 点（占全部的 {nslab/npts*100:.1f}%）')
+    path = np.array(path)
 
     cells = classify(n_hit, n_free, args.min_hits, args.occ_ratio,
                      args.min_free).reshape(H, W)
     # PGM 的第 0 行是图像最上边 = y 最大的那行
     img = np.flipud(cells)
 
-    path = np.array([o[:2] for o, _ in sl])
     print(f'  走过的范围 {path[:, 0].ptp():.1f} x {path[:, 1].ptp():.1f} m，'
           f'图幅比它大是因为雷达看得比走得远')
 

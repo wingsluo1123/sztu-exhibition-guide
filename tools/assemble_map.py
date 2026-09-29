@@ -50,14 +50,15 @@ def iter_clouds(bag_dir, topic=TOPIC):
             raise SystemExit(
                 f'包里没有 {topic}（有这些：{", ".join(sorted(ids))}）。\n'
                 '回放时要加 --map 才会录它。')
-        rows = db.execute(
+        # 用游标边读边吐，**不要 fetchall**。展厅那种十几分钟的包，
+        # /cloud_registered 就有几个 GB，一次性取出来直接把内存吃光。
+        cur = db.execute(
             'select data from messages where topic_id=? order by timestamp',
-            (ids[topic],)).fetchall()
+            (ids[topic],))
+        for (blob,) in cur:
+            yield deserialize_message(bytes(blob), PointCloud2)
     finally:
         db.close()
-
-    for (blob,) in rows:
-        yield deserialize_message(bytes(blob), PointCloud2)
 
 
 def xyz_offsets(msg):
