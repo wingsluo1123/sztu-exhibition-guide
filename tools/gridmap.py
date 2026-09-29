@@ -45,6 +45,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 PGM_OCC = 0        # 占据 = 黑
 PGM_FREE = 254     # 空闲 = 白
 PGM_UNK = 205      # 未知 = 灰
+PGM_PATH = 120     # 走过的轨迹，**只画在 .png 上**，不进 .pgm
 
 
 def fit_ground(P, seed=0, iters=400, band=0.30, inlier=0.03):
@@ -221,6 +222,32 @@ def ascii_preview(img, width=100):
     return '\n'.join(out)
 
 
+def draw_path(img, xy, x0, y0, res, value=PGM_PATH):
+    """把走过的轨迹画进图里（原地改）。
+
+    **只画在给人看的 .png 上，不画进 .pgm** —— .pgm 是导航的输入，多一条
+    线就是多一排假障碍。分开画是为了能一眼看出"图里哪部分是走过的地方、
+    哪部分是远处扫到的"，这两者的可信度差很远。
+    """
+    xy = np.asarray(xy, dtype=float).reshape(-1, 2)
+    if len(xy) < 2:
+        return img
+    h, w = img.shape
+    # 相邻两个位姿之间插值，免得快走的时候画成虚线。步长取半格而不是
+    # 整格：整格时浮点取整会时不时跳过一格，线就是虚的（测试抓到过）。
+    d = np.hypot(*(np.diff(xy, axis=0).T))
+    n = np.maximum(np.ceil(d / (res * 0.5)).astype(np.int64), 1)
+    t = np.concatenate([np.arange(k) / k for k in n] + [[0.0]])
+    seg = np.repeat(np.arange(len(xy) - 1), n)
+    seg = np.concatenate([seg, [len(xy) - 2]])
+    p = xy[seg] + (xy[seg + 1] - xy[seg]) * t[:, None]
+    ix = np.floor((p[:, 0] - x0) / res).astype(np.int64)
+    iy = np.floor((p[:, 1] - y0) / res).astype(np.int64)
+    k = (ix >= 0) & (ix < w) & (iy >= 0) & (iy < h)
+    img[h - 1 - iy[k], ix[k]] = value      # 图像第 0 行是 y 最大那行
+    return img
+
+
 def load_frames(run_dir, topic):
     """流式读点云，转到重力系，只留下 float32。返回 [(原点, 点集)]。"""
     from assemble_map import iter_clouds, xyz_offsets
@@ -314,6 +341,10 @@ def main():
     if not sl:
         raise SystemExit(f'切层带 {lo}~{hi} m 里一个点都没有 —— 界是不是设反了')
 
+    nslab = sum(len(q) for _, q in sl)
+    print(f'\n切层带 离地 {lo:.2f} ~ {hi:.2f} m：{len(sl)} 帧，{nslab} 点'
+          f'（占全部的 {nslab/npts*100:.1f}%）')
+
     allxy = np.vstack([q[:, :2] for _, q in sl]).astype(float)
     x0, y0 = allxy.min(axis=0) - 1.0
     x1, y1 = allxy.max(axis=0) + 1.0
@@ -344,9 +375,14 @@ def main():
     # PGM 的第 0 行是图像最上边 = y 最大的那行
     img = np.flipud(cells)
 
+    path = np.array([o[:2] for o, _ in sl])
+    print(f'  走过的范围 {path[:, 0].ptp():.1f} x {path[:, 1].ptp():.1f} m，'
+          f'图幅比它大是因为雷达看得比走得远')
+
     base = args.out
-    write_pgm(base + '.pgm', img)
-    write_png(base + '.png', img)
+    write_pgm(base + '.pgm', img)          # 给导航：干净的三态图
+    # 给人看的那张才叠轨迹 —— 画进 .pgm 就成了一排假障碍
+    write_png(base + '.png', draw_path(img.copy(), path, x0, y0, args.res))
     write_yaml(base + '.yaml', os.path.basename(base) + '.pgm',
                args.res, (x0, y0))
 
@@ -355,7 +391,8 @@ def main():
         k = int((cells == v).sum())
         print(f'  {name} {k:8d} 格  {k/tot*100:5.1f}%  '
               f'{k*args.res**2:8.1f} m²')
-    print(f'\n写出 {base}.pgm / {base}.yaml / {base}.png')
+    print(f'\n写出 {base}.pgm（导航用）/ {base}.yaml / '
+          f'{base}.png（叠了轨迹，给人看）')
     print('\n' + ascii_preview(img))
     return 0
 

@@ -20,8 +20,10 @@ from gridmap import (  # noqa: E402
     PGM_FREE,
     PGM_OCC,
     PGM_UNK,
+    PGM_PATH,
     ascii_preview,
     bearing_min_range,
+    draw_path,
     classify,
     fit_ground,
     ray_samples,
@@ -301,3 +303,40 @@ def test_square_room_comes_out_as_a_square_room():
     assert at(1.7, 0.0) == PGM_OCC, '柱子朝向雷达那面没画出来'
     assert at(2.0, 0.0) == PGM_UNK, '柱子内部看不见，该是未知'
     assert at(3.5, 0.0) == PGM_UNK, '柱子背后该有影子'
+
+
+# --- 轨迹叠加（只该出现在给人看的那张图上）--------------------------------
+
+def test_path_is_drawn_where_it_was_walked():
+    img = np.full((40, 40), PGM_FREE, dtype=np.uint8)
+    xy = np.array([[0.0, 0.0], [1.0, 0.0]])
+    draw_path(img, xy, 0.0, 0.0, 0.05)
+    # y=0 -> 图像最下面一行
+    assert (img[-1, :20] == PGM_PATH).all(), '这一段该被画上'
+    assert (img[0] == PGM_FREE).all(), '没走过的行不该被碰'
+
+
+def test_path_is_continuous_across_a_big_jump():
+    """两个位姿隔得远时不能画成虚线 —— 10 Hz 下快走一步就有 0.1 m。"""
+    img = np.full((60, 60), PGM_FREE, dtype=np.uint8)
+    draw_path(img, np.array([[0.0, 0.0], [2.0, 0.0]]), 0.0, 0.0, 0.05)
+    drawn = np.flatnonzero(img[-1] == PGM_PATH)
+    assert len(drawn) == 40, '2 m / 0.05 m 该正好盖 40 格'
+    assert (np.diff(drawn) == 1).all(), '中间断了 —— 线画成虚的了'
+
+
+def test_path_outside_the_image_is_clipped_not_crashing():
+    img = np.full((10, 10), PGM_FREE, dtype=np.uint8)
+    draw_path(img, np.array([[-99.0, -99.0], [99.0, 99.0]]), 0.0, 0.0, 0.05)
+    assert img.shape == (10, 10)
+
+
+def test_a_single_pose_draws_nothing():
+    img = np.full((10, 10), PGM_FREE, dtype=np.uint8)
+    draw_path(img, np.array([[0.1, 0.1]]), 0.0, 0.0, 0.05)
+    assert (img == PGM_FREE).all()
+
+
+def test_path_value_is_not_one_of_the_three_states():
+    """轨迹的灰度不能撞上占据/空闲/未知，否则人看图会读错。"""
+    assert PGM_PATH not in (PGM_OCC, PGM_FREE, PGM_UNK)
