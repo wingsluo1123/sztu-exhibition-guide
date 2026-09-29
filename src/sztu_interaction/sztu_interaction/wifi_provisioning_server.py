@@ -142,7 +142,16 @@ class AimaWifiConnector:
 
 
 class WifiProvisioningServer:
-    """Expose Wi-Fi provisioning over an encrypted BLE GATT characteristic."""
+    """Expose Wi-Fi provisioning over a BLE GATT characteristic.
+
+    Not an encrypted one. The request characteristic below is declared with a
+    plain ``write`` flag, so BlueZ asks for neither pairing nor link
+    encryption: anyone in radio range can submit credentials, and the write
+    goes out in the clear. That is a deliberate tradeoff and
+    docs/WIFI_BLE_PROVISIONING.md says so — but this docstring used to claim
+    the channel was encrypted, which would have been the wrong thing to
+    believe while typing a Wi-Fi password into it.
+    """
 
     def __init__(self, connector=None):
         self.connector = connector or AimaWifiConnector()
