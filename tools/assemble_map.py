@@ -24,11 +24,19 @@ TOPIC = '/cloud_registered'
 
 
 def iter_clouds(bag_dir, topic=TOPIC):
-    db3 = None
-    for name in sorted(os.listdir(bag_dir)):
-        if name.endswith('.db3'):
-            db3 = os.path.join(bag_dir, name)
-            break
+    """按时间顺序吐出 topic 的每一帧 PointCloud2。
+
+    bag_dir 给目录或者直接给 .db3 都行 —— check_lever.find_bag 返回的是
+    文件路径，这里收目录，两边不一致踩过一次。
+    """
+    if os.path.isfile(bag_dir) and bag_dir.endswith('.db3'):
+        db3 = bag_dir
+    else:
+        db3 = None
+        for name in sorted(os.listdir(bag_dir)):
+            if name.endswith('.db3'):
+                db3 = os.path.join(bag_dir, name)
+                break
     if db3 is None:
         raise SystemExit(f'{bag_dir} 里没有 .db3')
 
