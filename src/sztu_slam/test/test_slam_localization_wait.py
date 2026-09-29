@@ -95,7 +95,17 @@ def ros():
 
 @pytest.fixture
 def slam(ros):
-    node = SlamManager()
+    # 必须用一个真机上不存在的话题：这套测试要在机器人上跑，而机器人上
+    # /slam/lidar_odom 很可能正被 lio_odom_bridge 发着。实测踩过 —— 用例里的
+    # 合成位姿还没发出去，节点先收到了真位姿，断言拿到的是现场数据，
+    # 于是"通过"或"失败"都跟被测逻辑无关。
+    node = SlamManager(parameter_overrides=[
+        rclpy.parameter.Parameter(
+            'odom_topic',
+            rclpy.parameter.Parameter.Type.STRING,
+            '/test_only/localization_wait/odom',
+        ),
+    ])
     yield node
     node.destroy_node()
 
@@ -145,6 +155,8 @@ def test_is_ready_stays_false_without_spinning(slam, source):
 # --- 3. 超时 ----------------------------------------------------------------
 
 def test_wait_times_out_without_publisher(slam):
+    # 不要 source 夹具：这条要的就是"没人发"。靠 slam 夹具里那个私有话题保证
+    # 真机上也确实没人发。
     timeout = 1.0
     started = time.monotonic()
     result = slam.wait_until_localized(timeout)

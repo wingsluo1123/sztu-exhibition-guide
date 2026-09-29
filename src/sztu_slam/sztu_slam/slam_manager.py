@@ -16,10 +16,23 @@ import time
 
 
 class SlamManager(Node):
-    def __init__(self):
-        super().__init__('slam_manager')
+    def __init__(self, **node_kwargs):
+        """
+        node_kwargs 原样透给 rclpy 的 Node。
+
+        测试拿它塞 parameter_overrides / namespace，好把用例和机器人上正在跑的
+        真实话题隔开 —— 不隔开的话真机上这套测试是不可信的：实测过一次，用例里
+        的合成位姿还没到，节点先收到了 lio_odom_bridge 正在发的真位姿。
+        """
+        super().__init__('slam_manager', **node_kwargs)
 
         self.get_logger().info('SLAM Manager initializing...')
+
+        # 位姿话题。做成参数的理由和 navigation_manager 的 odom_topic 一样：
+        # 位姿源换了（厂商 SLAM / lio_odom_bridge / 回放）不用改代码。
+        # 同时存成属性：调用方报"定位没就绪，去查这个话题"时要说得出订的是哪个。
+        self.declare_parameter('odom_topic', '/slam/lidar_odom')
+        self.odom_topic = str(self.get_parameter('odom_topic').value)
 
         # QoS 配置（匹配 AimDK 要求）
         command_qos = QoSProfile(
@@ -48,9 +61,6 @@ class SlamManager(Node):
         )
 
         # 订阅者：位姿数据（用于监控定位状态）
-        # 话题名存成属性：调用方报"定位没就绪，去查这个话题"的时候要能说出
-        # 到底订的是哪个，写死两遍早晚会漂。
-        self.odom_topic = '/slam/lidar_odom'
         self.odom_sub = self.create_subscription(
             Odometry,
             self.odom_topic,
