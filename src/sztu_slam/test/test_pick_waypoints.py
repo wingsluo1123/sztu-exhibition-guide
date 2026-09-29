@@ -408,6 +408,25 @@ def test_emitted_yaml_angle_comments_match_the_quaternion():
     assert f'z: {z:.3f}' in text
 
 
+def test_emitted_map_block_warns_the_origin_is_not_an_offset():
+    """map 块里的原点不能被当成"要给点位加的偏移"。
+
+    点位坐标和 /slam/lidar_odom 在同一个坐标系里，加了这个原点就整体
+    偏掉。这个块以前一直写着手编的 0.0，摆着一个假值就是在等人误用，
+    所以现在写真值 + 写明没人读它。
+    """
+    mapcfg = dict(MAPCFG, origin_x=-15.53, origin_y=-17.70)
+    text = render_yaml(META, np.array([[0.0, 0.0], [1.0, 1.0]]),
+                       [0.0, 0.0], NAV, mapcfg)
+    assert 'origin_x: -15.53' in text
+    assert '同一个坐标系' in text, 'map 块缺少"别拿原点加偏移"的警告'
+    # 加了注释之后仍然要是合法 yaml，且 map.name 还在（有测试依赖它）
+    import yaml
+    d = yaml.safe_load(text)
+    assert d['map']['name'] == 'test_hall'
+    assert d['map']['origin_x'] == pytest.approx(-15.53)
+
+
 # --- 读图 -------------------------------------------------------------------
 
 def test_read_map_roundtrips_and_flips_to_y_up(tmp_path):

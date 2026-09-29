@@ -480,7 +480,13 @@ def render_yaml(meta, pts, yaws, nav, mapcfg):
     out += ['# 导航参数', 'navigation:']
     for k, v in nav.items():
         out.append(f'  {k}: {v}')
-    out += ['', '# 地图配置', 'map:']
+    out += ['',
+            '# 地图配置。',
+            '# **下面的 origin_x / origin_y / resolution 目前没有任何代码在读**',
+            '# （只有 map.name 被用到）。写的是这张图的真实值，不是 0 ——',
+            '# 上面那些点位坐标和 /slam/lidar_odom 发的位姿在**同一个坐标系**里，',
+            '# 谁都不要再拿这个原点去给点位加偏移，加了就整体偏掉。',
+            'map:']
     for k, v in mapcfg.items():
         val = f'"{v}"' if isinstance(v, str) else v
         out.append(f'  {k}: {val}')
@@ -609,6 +615,13 @@ def main():
         print('只有一个点')
 
     out_path = args.out or args.config
+    # 把 map 块里的原点和分辨率换成这张图的真实值。原来一直是手编的 0.0，
+    # 虽然没代码读它，但摆着一个假的 (0, 0) 就是在等人拿它去算偏移。
+    mapcfg = dict(mapcfg)
+    mapcfg['origin_x'] = round(x0, 3)
+    mapcfg['origin_y'] = round(y0, 3)
+    mapcfg['resolution'] = res
+    mapcfg['source'] = os.path.basename(args.map_base)
     with open(out_path, 'w', encoding='utf-8') as fh:
         fh.write(render_yaml(meta, pts, yaws, nav, mapcfg))
     print(f'\n写出 {out_path}')
