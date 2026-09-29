@@ -1,5 +1,10 @@
 # 展厅讲解点位配置
 # 坐标系：SLAM 地图坐标系（单位：米）
+#
+# 坐标由 tools/pick_waypoints.py 从实测地图上选出并校验：
+#   净空 ≥ 机器人半径、只在走过的区域内、相邻两点直线畅通。
+# **不要手工改坐标**，改完请重跑那个工具重新校验 —— 现在没有
+# 避障，一个没校验过的点位就是一次撞墙。
 
 exhibition_points:
   # 点位 1: 入口欢迎区
@@ -7,117 +12,122 @@ exhibition_points:
     name: "入口欢迎区"
     name_en: "Entrance Welcome Area"
     position:
-      x: 0.0
-      y: 0.0
+      x: -0.005
+      y: -0.006
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.0
-      w: 1.0
-    lecture_duration: 15  # 讲解时长（秒）
-    
+      z: -0.998  # sin(-173.7°/2)
+      w: 0.055  # cos(-173.7°/2)
+    lecture_duration: 15
+
   # 点位 2: 鸿蒙系统概览
   - id: "point_02"
     name: "鸿蒙系统概览"
     name_en: "HarmonyOS Overview"
     position:
-      x: 3.0
-      y: 1.5
+      x: 8.745
+      y: -0.428
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.383  # sin(45°/2)
-      w: 0.924  # cos(45°/2)
+      z: -0.230  # sin(-26.6°/2)
+      w: 0.973  # cos(-26.6°/2)
     lecture_duration: 30
-    
-  # 点位 3: 分布式技术
+
+  # 点位 3: 分布式软总线
   - id: "point_03"
     name: "分布式软总线"
     name_en: "Distributed Soft Bus"
     position:
-      x: 5.0
-      y: 3.0
+      x: 8.395
+      y: -6.028
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.707  # sin(90°/2)
-      w: 0.707  # cos(90°/2)
+      z: -0.571  # sin(-69.7°/2)
+      w: 0.821  # cos(-69.7°/2)
     lecture_duration: 25
-    
-  # 点位 4: 应用生态
+
+  # 点位 4: 应用生态展示
   - id: "point_04"
     name: "应用生态展示"
     name_en: "Application Ecosystem"
     position:
-      x: 7.0
-      y: 2.0
+      x: 1.745
+      y: -6.278
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.924  # sin(135°/2)
-      w: 0.383  # cos(135°/2)
+      z: 0.707  # sin(90.0°/2)
+      w: 0.707  # cos(90.0°/2)
     lecture_duration: 20
-    
+
   # 点位 5: 互动体验区
   - id: "point_05"
     name: "互动体验区"
     name_en: "Interactive Experience Zone"
     position:
-      x: 6.0
-      y: -1.0
+      x: 5.045
+      y: -5.278
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: 1.0   # sin(180°/2)
-      w: 0.0   # cos(180°/2)
+      z: 0.707  # sin(90.0°/2)
+      w: 0.707  # cos(90.0°/2)
     lecture_duration: 30
-    
+
   # 点位 6: 未来展望
   - id: "point_06"
     name: "未来展望"
     name_en: "Future Outlook"
     position:
-      x: 3.0
-      y: -2.0
+      x: -0.055
+      y: -5.478
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: -0.707  # sin(-90°/2)
-      w: 0.707   # cos(-90°/2)
+      z: 0.912  # sin(131.6°/2)
+      w: 0.410  # cos(131.6°/2)
     lecture_duration: 20
-    
-  # 点位 7: 返回起点
+
+  # 点位 7: 参观结束
   - id: "point_07"
     name: "参观结束"
     name_en: "Tour End"
     position:
-      x: 0.5
-      y: -0.5
+      x: 1.294
+      y: -2.778
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.0
-      w: 1.0
+      z: 0.133  # sin(15.3°/2)
+      w: 0.991  # cos(15.3°/2)
     lecture_duration: 10
 
 # 导航参数
 navigation:
-  position_tolerance: 0.3      # 位置到达容忍度（米）
-  angle_tolerance: 0.26        # 角度到达容忍度（弧度，约15度）
-  max_linear_speed: 0.5        # 最大线速度（米/秒）
-  max_angular_speed: 0.8       # 最大角速度（弧度/秒）
-  navigation_timeout: 120      # 单次导航超时（秒）
+  position_tolerance: 0.3
+  angle_tolerance: 0.26
+  max_linear_speed: 0.5
+  max_angular_speed: 0.8
+  navigation_timeout: 120
 
-# 地图配置
+# 地图配置。
+# **下面的 origin_x / origin_y / resolution 目前没有任何代码在读**
+# （只有 map.name 被用到）。写的是这张图的真实值，不是 0 ——
+# 上面那些点位坐标和 /slam/lidar_odom 发的位姿在**同一个坐标系**里，
+# 谁都不要再拿这个原点去给点位加偏移，加了就整体偏掉。
 map:
-  name: "hongmeng_exhibition_hall"  # 地图名称
-  origin_x: 0.0                     # 地图原点 X
-  origin_y: 0.0                     # 地图原点 Y
-  resolution: 0.05                  # 地图分辨率（米/像素）
+  name: "hongmeng_exhibition_hall"
+  origin_x: -15.53
+  origin_y: -17.703
+  resolution: 0.05
+  source: "map36b"
