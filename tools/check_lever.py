@@ -47,18 +47,29 @@
 两个一减就是残差。缓存了常数、退旧值退太狠、链接错了，都会在残差里现形，
 而且这个判据不依赖"哪个部位物理上动了"、也不依赖腰往哪个方向动。
 
-残差里有个说清楚的噪声底
-------------------------
+残差里那个噪声底是可以精确扣掉的
+--------------------------------
 
-我这边的 `R_grav` 是从 `bridge.log` 抠的，只有三位小数，和节点真用的那个
-差 δ ≲ 0.03°。推一下这个 δ 怎么传到残差里：
+我这边的 `R_grav` 是从 `bridge.log` 抠的，只有三位小数，和节点真用的那个差一
+个小旋转 δ。它是这么传进残差的：
 
-    解 = T_cam_body⁻¹ · Δ · T_cam_body · 真        （Δ = 我的 R_grav⁻¹ · 它的）
+    解 = T_cam_body⁻¹ · Δ · T_cam_body · 真        （Δ = (δR, 0)）
 
-展开后旋转部分是 `R_cb ᵀ δR R_cb`（大小就是 δ，和走多远无关），**平移部分是
-`R_cb ᵀ (δR − I) t_cb`，大小约 δ·|t_cb|** —— 会随着离起点越来越远而涨。走
-27 m 时 0.03° 就是 14 mm。所以下面的平移残差要和这个上界比，不能和一个固定
-的毫米数比；转角残差没这个问题，直接卡死线。
+所以把残差取成 **M = 解 · 真⁻¹**（不是 真⁻¹ · 解 —— 那个会被 truth 共轭、形
+式变乱），就正好
+
+    M 的旋转   = R_cbᵀ · δR · R_cb          大小就是 δ，和走多远无关
+    M 的平移   = R_cbᵀ · (δR − I) · t_cb    大小约 δ·|t_cb|，跟着走远而涨
+
+关键是这两项**同源**：从 M 的旋转能把 δR 解出来，于是 M 的平移可以被**预测**
+
+    t_pred = (R_M − I) · (R_cbᵀ · t_cb)
+
+扣掉它剩下的才是真误差，而且不随距离涨。所以下面报三个数：转角残差（δ 本
+身，卡死线）、平移残差（会涨，只做参考）、**扣掉预测项之后的余量**（真正
+的判据，不管走多远都该是亚毫米）。
+
+不用假设 δ 有多大 —— 它是量出来的。
 
 用法:
     tools/check_lever.py <run_dir>          # run_lio_live.sh --bridge 的产物目录
@@ -92,14 +103,14 @@ BASE_FRAME = 'base_link'
 BODY_FRAME = 'lidar_imu_chest_front'
 STATIC_S = 2.0
 
-# 转角残差的死线。噪声底只有 R_grav 的量化误差（~0.03°），留 20 倍余量。
+# 转角残差的死线。这一项就是重力方向的量化误差 δ（bridge.log 只有三位小数），
+# 实测 0.044°。留一个数量级的余量。
 RESID_DEG = 0.5
-# 平移残差除了 δ·|t_cb| 那一项，还有四元数往返、float32 的 TF 之类的碎渣。
-RESID_FLOOR_MM = 2.0
+# 扣掉 δ 的预测项之后，剩下的余量。这才是真判据 —— 它不随走多远涨，所以可以
+# 卡一个固定的小数。剩下的是四元数往返、float32 的 TF、slerp 对齐这些碎渣。
+LEFTOVER_MM = 2.0
 # 整条链至少得动这么多，这趟才算测到了东西。
 CHAIN_MIN_DEG = 1.0
-# bridge.log 里的重力方向只有三位小数，每个分量 ±0.0005 -> δ 约 0.0005 rad。
-GRAV_QUANT_RAD = 5e-4
 
 
 def find_bag(path):
@@ -322,10 +333,13 @@ def main():
         # 按链算：同一时刻本该是多少
         R_c, t_c, gap = chain_at(chain, t)                # T_base_body 真
         R_t, t_t = invert(R_c, t_c)                       # T_body_base 真
-        # 残差
-        R_e, t_e = compose(*invert(R_t, t_t), R_s, t_s)
-        rows.append((t, np.linalg.norm(t_e) * 1000, rot_angle(R_e),
-                     GRAV_QUANT_RAD * np.linalg.norm(t_cb) * 1000, gap,
+        # 残差取 解 · 真⁻¹（不是反过来），这样它就等于 T_cam_body⁻¹·Δ·T_cam_body，
+        # 形式干净、能把重力量化那一项解析地扣掉。推导见文件头。
+        R_m, t_m = compose(R_s, t_s, *invert(R_t, t_t))
+        # 用 M 的旋转去预测 M 的平移里属于 δ 的那部分，扣掉。
+        t_pred = (R_m - np.eye(3)) @ (R_cb.T @ t_cb)
+        rows.append((t, np.linalg.norm(t_m) * 1000, rot_angle(R_m),
+                     np.linalg.norm(t_m - t_pred) * 1000, gap,
                      t_s, matrix_to_quat(R_s), matrix_to_quat(R_t)))
 
     n_nav = len(msgs[NAV_TOPIC])
@@ -339,7 +353,7 @@ def main():
 
     res_mm = np.array([r[1] for r in rows])
     res_deg = np.array([r[2] for r in rows])
-    bound_mm = np.array([r[3] for r in rows]) + RESID_FLOOR_MM
+    left_mm = np.array([r[3] for r in rows])
     gaps = np.array([r[4] for r in rows])
     solved_t = np.array([r[5] for r in rows])
     sq = np.array([r[6] for r in rows])
@@ -358,13 +372,14 @@ def main():
         print(f'  有帧的 stamp 落在 /tf 采样区间之外，最多 '
               f'{gaps.max() * 1000:.0f} ms（按端点值算的）')
 
-    print('\n=== 残差（反解 − 按链算）===')
-    print(f'  转角   中位 {np.median(res_deg):.3f}°  最大 {res_deg.max():.3f}°'
-          f'   死线 {RESID_DEG}°')
-    print(f'  平移   中位 {np.median(res_mm):.2f} mm  最大 {res_mm.max():.2f} mm')
-    print(f'         上界 {bound_mm.min():.1f} ~ {bound_mm.max():.1f} mm'
-          '（δ·|t_cb| + 碎渣，见文件头；跟着走多远涨）')
-    n_over = int((res_mm > bound_mm).sum())
+    print('\n=== 残差（解 · 真⁻¹）===')
+    print(f'  转角        中位 {np.median(res_deg):.3f}°  最大 '
+          f'{res_deg.max():.3f}°   死线 {RESID_DEG}°')
+    print(f'              ^ 这就是重力方向的量化误差 δ，不随走多远变')
+    print(f'  平移        中位 {np.median(res_mm):.2f} mm  最大 '
+          f'{res_mm.max():.2f} mm  ← 含 δ·|t_cb|，会跟着走远涨，不作判据')
+    print(f'  扣掉 δ 之后 中位 {np.median(left_mm):.3f} mm  最大 '
+          f'{left_mm.max():.3f} mm   死线 {LEFTOVER_MM} mm  ← 判据')
 
     print('\n=== 判据 ===')
     if chain_deg < CHAIN_MIN_DEG:
@@ -374,22 +389,24 @@ def main():
         return 2
 
     bad_deg = res_deg.max() > RESID_DEG
-    bad_mm = n_over > 0.01 * len(rows)     # 偶尔一两帧超界不算
+    bad_mm = left_mm.max() > LEFTOVER_MM
     if bad_deg or bad_mm:
         print(f'  ✗ 对不上：链动了 {chain_deg:.2f}°，但反解出来的和按链算的'
               '差得超出噪声底')
         if bad_deg:
             print(f'    转角残差最大 {res_deg.max():.3f}° > {RESID_DEG}°')
         if bad_mm:
-            print(f'    平移残差有 {n_over}/{len(rows)} 帧超出上界')
-        print('    去看：lookup_base_base 是不是被缓存了；bridge.log 里'
+            print(f'    扣掉 δ 之后还剩 {left_mm.max():.3f} mm > {LEFTOVER_MM} mm')
+        print('    去看：lookup_base_body 是不是被缓存了；bridge.log 里'
               '「TF 退用最新值」的「最差旧了」是不是很大；')
         print('    或者 base_frame / body_frame 参数指错了地方。')
         return 1
 
     print(f'  ✓ 链动了 {chain_deg:.2f}°，反解出来的杠杆臂和按链算的对得上')
-    print(f'    转角残差最大 {res_deg.max():.3f}°（死线 {RESID_DEG}°），'
-          f'平移残差全部在上界内')
+    print(f'    转角残差 {res_deg.max():.3f}°（= 重力量化误差 δ，死线 '
+          f'{RESID_DEG}°）')
+    print(f'    平移残差扣掉 δ 的预测项后只剩 {left_mm.max():.3f} mm'
+          f'（死线 {LEFTOVER_MM} mm）')
     print('    -> 每帧确实重查了 TF，而且用的就是当帧那个值')
     return 0
 
