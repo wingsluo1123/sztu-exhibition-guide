@@ -24,9 +24,16 @@ if [ -f ~/aimdk/install/setup.bash ]; then
     source ~/aimdk/install/setup.bash
     echo -e "${GREEN}✓${NC} AimDK 环境已加载"
 elif [ -d ~/aimdk/src/aimdk_msgs/prebuilt_aarch64 ]; then
-    # 使用预编译库
+    # 使用预编译库。三个变量缺一不可：
+    #   PYTHONPATH      —— python 的 `import aimdk_msgs`
+    #   LD_LIBRARY_PATH —— 它背后的 .so
+    #   AMENT_PREFIX_PATH —— ros2 CLI 按包名找接口定义
+    # 原来这里漏了第三个，症状很迷惑：python 里 import 得到，但
+    # `ros2 interface show` / `ros2 topic echo` / `ros2 service call`
+    # 一律报 Unknown package 'aimdk_msgs'。见 docs/NAVIGATION_SDK_REPORT.md §3.7。
     export PYTHONPATH=$PYTHONPATH:~/aimdk/src/aimdk_msgs/prebuilt_aarch64/local/lib/python3.10/dist-packages
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/aimdk/src/aimdk_msgs/prebuilt_aarch64/lib
+    export AMENT_PREFIX_PATH=$AMENT_PREFIX_PATH:$HOME/aimdk/src/aimdk_msgs/prebuilt_aarch64
     echo -e "${GREEN}✓${NC} AimDK 预编译库已加载"
 else
     echo -e "${YELLOW}⚠${NC} 警告: 未找到 AimDK 环境"
