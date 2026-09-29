@@ -51,6 +51,10 @@ def generate_launch_description():
             'ws_port': LaunchConfiguration('ws_port'),
         }]
     )
+    wifi_provisioning_node = Node(
+        package='sztu_interaction', executable='wifi_provisioning_server',
+        name='wifi_provisioning_server', output='screen'
+    )
 
     return LaunchDescription([
         tcp_port_arg,
@@ -60,4 +64,5 @@ def generate_launch_description():
         pose_monitor_node,
         navigation_node,
         bridge_node,
+        wifi_provisioning_node,
     ])

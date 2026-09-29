@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'bluezero'],
     zip_safe=True,
     maintainer='agi',
     maintainer_email='robotics@sztu.edu.cn',
@@ -24,6 +24,7 @@ setup(
             'emotion_controller = sztu_interaction.emotion_controller:main',
             'gesture_controller = sztu_interaction.gesture_controller:main',
             'motion_mode_controller = sztu_interaction.motion_mode_controller:main',
+            'wifi_provisioning_server = sztu_interaction.wifi_provisioning_server:main',
         ],
     },
 )
