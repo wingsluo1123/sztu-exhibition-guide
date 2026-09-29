@@ -18,9 +18,14 @@ sztu-bridge 已经跑着一个 navigation_manager（**没带 dry_run**），
 
     systemctl --user stop sztu-bridge      # 走完再 start 回去
 
-判断有没有重的办法（应当只有一个）：
+判断有没有重的办法（方括号是必需的，不是花哨）：
 
-    ros2 node list | grep -c navigation_manager
+    pgrep -af 'navigation_[m]anager'
+
+`ros2 node list | grep -c navigation_manager` 和 `pgrep -cf navigation_manager`
+这两种写法都实测过，**都会骗人**：前者会把 ros2 daemon 里同名的陈旧发现条目
+一起数进去（只有一个进程时数出 2），后者会匹配到发起这条命令的 shell 自己
+（一个都没跑时数出 1）。详见 ROADMAP「这个自检我先前给错了两版」。
 
 所以实走只用一条命令：
     ros2 run sztu_guide guide_manager

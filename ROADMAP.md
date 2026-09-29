@@ -1432,6 +1432,7 @@ tools/tour_precheck.py /tmp/map36b
 # 终端 2：讲解系统。先停掉开机自启的那一套（见下），再空跑，最后真走
 source ~/sztu/setup.sh
 systemctl --user stop sztu-bridge
+pgrep -af 'navigation_[m]anager'      # 应当没有输出
 ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true
 ros2 run sztu_guide guide_manager
 # 走完
@@ -1445,8 +1446,6 @@ systemctl --user start sztu-bridge
 独立的 navigation_manager**。真机上实测到过这个状态：
 
 ```
-$ ros2 node list | grep -c navigation_manager
-2
 $ pgrep -af navigation_manager
 118572 .../navigation_manager --ros-args -r __node:=navigation_manager   # sztu-bridge 起的，没带 dry_run
 ```
@@ -1457,11 +1456,65 @@ $ pgrep -af navigation_manager
 那个**没带 dry_run**，所以哪怕你给 guide_manager 加了 dry_run，另一路照样
 能让机器人动。
 
-开走前确认（应当只有一个）：
+开走前确认（实走前应当一个都没有；只跑 guide_manager 时应当只有一个）：
 
 ```
-ros2 node list | grep -c navigation_manager
+pgrep -af 'navigation_[m]anager'
 ```
+
+### ⚠️ 这个自检我先前给错了两版，两版都会骗人
+
+方括号那个写法不是花哨，是**必需**的。原来记在这儿的两种查法都不可靠，
+而且错的方向正好最坏 —— 会让人以为有重复、或以为没重复：
+
+| 写法 | 实测结果 | 为什么骗人 |
+|---|---|---|
+| `ros2 node list \| grep -c navigation_manager` | 只有 1 个进程时数出 **2** | 同时还打印 `WARNING: ... nodes in the graph that share an exact name`。ros2 daemon 的发现缓存会留下同名的陈旧条目，停掉服务之后还能数出 2 来 |
+| `pgrep -cf navigation_manager` | 一个都没在跑时数出 **1** | pgrep 会匹配到**发起这条命令的 shell 自己** —— 它的命令行里就带着这个字符串 |
+| `pgrep -af 'navigation_[m]anager'` | 没在跑时无输出、退出码 1 | 正则 `navigation_[m]anager` 匹配得上 `navigation_manager`，但匹配不上它自己那行字面量 |
+
+第一版是我拿 `ros2 node list` 数出 2 写进来的；你实走时照着查，停掉
+sztu-bridge 之后还是 2，白卡了一道。第二版换成 `pgrep -cf` 更糟，
+它在什么都没跑的时候也报 1。**"停掉服务后再确认一次"这个动作本身没问题，
+错的是我给的尺子。**
+
+### 卡在 `Localization not ready` —— 已修（75fe60b）
+
+你第一次实走时，欢迎词、`greeting` 表情、`wave` 手势全都做完了，然后停在：
+
+```
+[WARN] [guide_manager]: Localization not ready, attempting to load map...
+```
+
+**不是定位真的没好。**当时 `/slam/lidar_odom` 正以 10 Hz 稳稳地发着
+（`ros2 topic hz` 实测，Publisher count 1、Subscription count 3）。
+
+真因在代码里：`guide_manager` 在 `__init__` 里把 `SlamManager` new 成了
+**进程内子节点**，而它的 `main()` 没有执行器、也没有 spin，就直接 `input()`
+等你选语言了。`SlamManager.is_localized` 只在 `odom_callback` 里置位，
+回调没有任何人送进来，标志位就永远是 `False`，于是那句
+`if not self.slam.is_ready(): return False` 必然命中。
+
+这也正好解释了"为什么只有定位这一步不行"：TTS / 表情 / 手势各自在
+`spin_until_future_complete(self, future)` 里**自己转自己**，所以它们照常工作。
+而 `navigation_manager.navigate_to` 早就有正确的写法（`navigation_manager.py:206-209`
+那个 `if self.executor is None: spin_once(...) else: sleep(...)`），只有
+`SlamManager` 漏了。
+
+修法就是照抄那个写法：新增 `SlamManager.wait_until_localized(timeout)`，
+判据从"查一眼标志位"改成"转着等，最多等 `localization_timeout` 秒（默认 10）"。
+等不到的时候日志会直接告诉你去查哪个话题，不再是一句没头没尾的 warn。
+
+真机上验过：现在这道门 **0.12 秒**就过了。测试
+`src/sztu_slam/test/test_slam_localization_wait.py` 用真 rclpy 收发，
+其中一条是负对照 —— 有人发位姿但不转节点时 `is_ready()` 必须一直是 `False`，
+把这个故障的机理钉在测试里。
+
+（写这组测试时还踩到一个更值得记的坑：第一版用的就是 `/slam/lidar_odom`，
+在真机上跑，用例里的合成位姿还没到，节点先收到了 `lio_odom_bridge` 正在发的
+真位姿 —— 断言拿到的是现场数据，"通过"和"失败"都跟被测逻辑无关。
+所以 `SlamManager` 的 `odom_topic` 现在是 ROS 参数，用例指到一个真机上
+不存在的私有话题。**在活着的机器人上跑测试，第一件事是把话题隔开。**）
 
 ### 遥控器优先级 80 高于导航的 45 —— 这是对的，不要改
 
