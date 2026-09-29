@@ -27,7 +27,20 @@ import time
 import pytest
 
 rclpy = pytest.importorskip('rclpy', reason='需要 ROS 2 环境（source setup.sh）')
-pytest.importorskip('aimdk_msgs', reason='需要厂商 SDK 的 aimdk_msgs')
+
+# **这里不能写 `pytest.importorskip('aimdk_msgs')`。**
+# 本包的 conftest.py 在收集之前就往 sys.modules 里注入了一个**假**
+# aimdk_msgs（给纯函数用例用的，见 sztu_interaction.testing）。importorskip
+# 只问"能不能 import"，对着替身当然能，于是这组用例会一路跑到建真订阅那一步
+# 才炸，报成 4 个 ERROR：
+#     AttributeError: type object 'type' has no attribute '_TYPE_SUPPORT'
+# 真机上装了真 SDK 时一直是绿的，只有在缺 SDK 的环境里才现形 —— 一条本该
+# "跳过"的路悄悄变成了"错误"。判据要问的是**真包在不在**。
+from sztu_interaction.testing import aimdk_msgs_available          # noqa: E402
+
+if not aimdk_msgs_available():
+    pytest.skip('需要厂商 SDK 的真 aimdk_msgs（本包 conftest 注入的是替身）',
+                allow_module_level=True)
 
 from nav_msgs.msg import Odometry                                   # noqa: E402
 from rclpy.node import Node                                         # noqa: E402
