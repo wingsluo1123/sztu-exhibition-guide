@@ -64,6 +64,21 @@ if ! python3 -c 'import aimdk_msgs' 2>/dev/null; then
     fi
 fi
 
+# 机器人上没有 ~/aimdk（那是开发机的布局），厂商的 aimdk_msgs 在 /agibot 里，
+# 而且**没有 setup.bash 可以 source**，只能手工挂三条路径。三条缺一不可，
+# 每一条缺了的表现都实测过（2026-09-29，X2 真机）：
+#   1. dist-packages                 缺 -> ModuleNotFoundError: aimdk_msgs
+#   2. dist-packages/aimdk_msgs      缺 -> ImportError: libaimdk_msgs__rosidl_generator_py.so
+#   3. /agibot/software/common/lib   缺 -> ImportError: libaimdk_msgs__rosidl_typesupport_c.so
+# 后两种都会收敛成 UnsupportedTypeSupport，把用例报成 ERROR 而不是 skip ——
+# 也就是说"少挂一条路径"和"代码坏了"在输出里长得一模一样。
+AGIBOT_PY=/agibot/software/common/local/lib/python3.10/dist-packages
+if ! python3 -c 'import aimdk_msgs' 2>/dev/null \
+   && [ -d "$AGIBOT_PY/aimdk_msgs" ]; then
+    export PYTHONPATH="$AGIBOT_PY:${PYTHONPATH:-}"
+    export LD_LIBRARY_PATH="$AGIBOT_PY/aimdk_msgs:/agibot/software/common/lib:${LD_LIBRARY_PATH:-}"
+fi
+
 if python3 -c 'import aimdk_msgs' 2>/dev/null; then
     echo -e "${GREEN}✓${NC} 真 aimdk_msgs 可用 —— 字段契约测试会真的跑"
     HAVE_AIMDK=1
@@ -102,6 +117,16 @@ echo ""
 if [ $rc -eq 0 ]; then
     echo -e "${GREEN}✓ 全部通过${NC}"
     [ "$HAVE_AIMDK" -eq 0 ] && echo -e "${YELLOW}  但字段契约没校验（缺真 aimdk_msgs）${NC}"
+elif [ $rc -eq 5 ]; then
+    # pytest 的 5 = "一条用例都没收集到"。单独拎出来讲，因为机器人上它的
+    # 输出**长得像通过**：整轮只打印一行 "1 skipped in 0.31s"，没有红字。
+    echo -e "${RED}✗ 一条用例都没跑（exit=5）${NC}"
+    echo "  X2 真机上实测（2026-09-29）：只要有一个测试模块在**模块层**跳过"
+    echo "  （importorskip / pytest.skip(allow_module_level=True)），整轮"
+    echo "  collection 就被一起掐掉 —— 4 个包 400 多条用例一条都不跑，输出"
+    echo "  却只有一行 \"1 skipped\"。开发机上同样版本的 pytest (6.2.5) 不这样，"
+    echo "  关掉 launch_testing 插件也只能救 --collect-only，救不了真跑。"
+    echo "  最常见的起因就是缺真 aimdk_msgs，看上面第 2 步的提示。"
 else
     echo -e "${RED}✗ 有失败（exit=$rc）${NC}"
 fi
