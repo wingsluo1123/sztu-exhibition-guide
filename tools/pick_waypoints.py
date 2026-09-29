@@ -372,7 +372,9 @@ def main():
     from check_lever import find_bag, gravity_from_log, gravity_align_matrix
     from gridmap import sensor_origins
     bag = find_bag(args.bag)
-    R = gravity_align_matrix(gravity_from_log(args.bag))
+    # gravity_from_log 返回 (up, 诊断信息)，第二项这里不用。
+    up, _ = gravity_from_log(args.bag)
+    R = gravity_align_matrix(up)
     traj = np.array(list(sensor_origins(bag, R).values()))[:, :2]
     print(f'轨迹 {len(traj)} 个位姿，走过的范围 '
           f'{traj[:, 0].ptp():.1f} x {traj[:, 1].ptp():.1f} m')
