@@ -280,6 +280,8 @@ def main():
     ap.add_argument('--no-table', action='store_true')
     ap.add_argument('--tf', action='store_true',
                     help='不看位姿，改成列出每一节 TF 的 yaw 变化')
+    ap.add_argument('--tf-topic', default='/tf',
+                    help='--tf 读哪个话题（查关节链的挂法用 /tf_static）')
     ap.add_argument('--map', help='gridmap 的 -o（<base>.pgm/.yaml），用来出图')
     ap.add_argument('--config', default='config/waypoints.yaml')
     ap.add_argument('--render', help='输出的 .png')
@@ -304,7 +306,7 @@ def main():
     t1 = parse_time(args.t_to, first_ns) if args.t_to else last_ns
 
     if args.tf:
-        seen = read_tf(conn, t0, t1)
+        seen = read_tf(conn, t0, t1, args.tf_topic)
         print(f'\n窗口 {clock(t0 / 1e9)} .. {clock(t1 / 1e9)}：'
               f'{len(seen)} 节 TF，按 yaw 净变化排序')
         print(f'{"父 -> 子":<52} {"帧数":>7} {"起":>8} {"止":>8} '
