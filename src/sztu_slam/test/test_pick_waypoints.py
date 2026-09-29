@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.join(
 from pick_waypoints import (                                    # noqa: E402
     MARK_LEG, MARK_POINT, blit_number, chain_pick, clearance, edt,
     nearest_wall_yaw, order_tour, path_is_clear, read_map, reachable,
-    render_check_png, render_yaml, spread_pick, to_cell, yaw_to_quat,
+    render_check_png, render_yaml, spread_pick, to_cell, tour_order,
+    yaw_to_quat,
 )
 from gridmap import (                                           # noqa: E402
     PGM_FREE, PGM_OCC, PGM_PATH, PGM_UNK, write_pgm,
@@ -330,6 +331,97 @@ def test_chain_pick_uses_the_real_clearance_check_on_a_ring_grid():
     for p in pts:
         ix, iy = to_cell([p], res, 0.0, 0.0)
         assert clr[iy[0], ix[0]] >= radius + margin - 1e-9
+
+
+# --- 巡游顺序和方向（tour_order）--------------------------------------------
+
+def tour_len(pts, order=None):
+    """折线总长。测试自己算，不借被测代码里的那个 —— 判据要有独立的量尺。"""
+    q = pts if order is None else [pts[i] for i in order]
+    return sum(math.hypot(q[i + 1][0] - q[i][0], q[i + 1][1] - q[i][1])
+               for i in range(len(q) - 1))
+
+
+def test_tour_order_keeps_the_start_first():
+    """第 0 个点是贴胶带的出发点，永远排第一，不参与重排。"""
+    pts = np.array([[0.0, 0.0], [3.0, 0.0], [1.0, 0.0], [2.0, 0.0]])
+    order, _ = tour_order(pts, lambda a, b: True)
+    assert order[0] == 0
+
+
+def test_tour_order_reverses_to_end_near_the_start():
+    """一串点排成一条线时，最近邻会一路走到最远端收尾 —— 必须反过来。
+
+    讲解走完要停在入口附近（最后一个点位就叫「参观结束」）。闭环总长两个
+    方向一样（这里都是 6 m），所以反向不多走一步冤枉路，只是把折返挪到了
+    开头一次走完。这条红了，就是机器人讲完最后一句话停在离门口最远的角上。
+    """
+    pts = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]])
+    order, dropped = tour_order(pts, lambda a, b: True)
+    assert dropped == []
+    assert order == [0, 3, 2, 1]
+    # 末点离起点 1 m，而最近邻那版是 3 m
+    assert math.hypot(*pts[order[-1]]) == pytest.approx(1.0)
+    # 闭环（含回起点那段）两个方向一样长，反向没有额外代价
+    assert (tour_len(pts, order) + math.hypot(*pts[order[-1]])
+            == pytest.approx(tour_len(pts, [0, 1, 2, 3]) + 3.0))
+
+
+def test_tour_order_does_not_reverse_when_the_new_first_leg_is_blocked():
+    """反向会多出一条**没验过**的边：出发点直接到原末点。不通就不许反向。
+
+    这条是防撞墙用的：反向的内部各段和正向是同一批边，唯独第一段是新的。
+    少了这道检查，工具会把一条穿墙的航段写进配置，而写进去之后没有任何
+    东西会再拦它 —— 现在还没有避障。
+    """
+    pts = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]])
+    blocked = {(0, 3), (3, 0)}
+
+    def is_clear(a, b):
+        ia = int(round(a[0]))
+        ib = int(round(b[0]))
+        return (ia, ib) not in blocked
+
+    order, dropped = tour_order(pts, is_clear)
+    assert order == [0, 1, 2, 3], '出发点到原末点走不通，不该反向'
+    assert dropped == []
+
+
+def test_tour_order_still_drops_unreachable_points():
+    """走不到的点照旧要报出来（tour_order 只是在 order_tour 外面挑方向）。"""
+    pts = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [50.0, 50.0]])
+
+    def is_clear(a, b):
+        return math.hypot(b[0] - a[0], b[1] - a[1]) < 10.0
+
+    order, dropped = tour_order(pts, is_clear)
+    assert dropped == [3]
+    assert 3 not in order
+
+
+def test_tour_order_beats_chain_pick_order_on_a_ring_room():
+    """真实形状上的收益：重排后既不更长，收尾也不更远。
+
+    chain_pick 按「离已选点最远又直线畅通」选点 —— 它优化的是铺得开，
+    不是路线长度。实测房间上原序 32.60 m、重排后 26.24 m，省下的 6.36 m
+    全是中途的折返。这条是那件事的合成版。
+    """
+    cand = ring_candidates()
+    start = (0.5, 0.5)
+    pts = chain_pick(cand, start, 7, 1.5, ring_is_clear)
+    assert len(pts) == 7
+    order, dropped = tour_order(pts, ring_is_clear)
+    assert dropped == [], '一个点都不该被落下'
+    assert sorted(order) == list(range(7)), '点的集合不能变，只能换顺序'
+
+    assert tour_len(pts, order) <= tour_len(pts) + 1e-9
+    d_new = math.hypot(pts[order[-1]][0] - start[0],
+                       pts[order[-1]][1] - start[1])
+    d_old = math.hypot(pts[-1][0] - start[0], pts[-1][1] - start[1])
+    assert d_new <= d_old + 1e-9
+    # 重排后每条边仍然直线畅通 —— 这是写进配置的前提
+    for i in range(len(order) - 1):
+        assert ring_is_clear(pts[order[i]], pts[order[i + 1]])
 
 
 # --- 朝向 -------------------------------------------------------------------

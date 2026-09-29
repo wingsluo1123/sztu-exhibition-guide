@@ -314,6 +314,47 @@ def order_tour(pts, is_clear):
     return order, sorted(left)
 
 
+def _tour_len(pts):
+    """一条折线走完的总长（米），不含回起点那一段。"""
+    return sum(math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+               for i in range(len(pts) - 1))
+
+
+def tour_order(pts, is_clear):
+    """排巡游顺序，并且**挑方向**。返回 (顺序, 被落下的点的下标)。
+
+    为什么要单独挑方向：可走的区域是个环的时候，同一个环正着走和反着走
+    **总长一模一样**，差别在收尾离出发点多远。讲解走完要回到入口附近
+    （最后一个点位本来就叫「参观结束」），所以取末点离出发点更近的那个方向。
+    反着走是安全的 —— `path_is_clear` 对两个端点是对称的，正向每段畅通
+    就等于反向每段畅通。
+
+    实测房间（7 个点）三种顺序的实际差别：
+
+        chain_pick 原序      32.60 m   末点离起点 3.06 m
+        最近邻（order_tour） 20.54 m   末点离起点 8.76 m   ← 短但回不来
+        最近邻反向            26.24 m   末点离起点 3.06 m   ← 取这个
+
+    闭环长度两个方向都是 29.30 m，所以这里省下的 6.36 m 全是原序里的纯折返。
+
+    `chain_pick` 之所以会绕，是因为它按「离已选点最远又直线畅通」贪心选点
+    —— 它优化的是**铺得开**（覆盖），不是路线长度。选点和排序是两件事。
+    """
+    order, dropped = order_tour(pts, is_clear)
+    if len(order) > 2:
+        tail = order[1:]
+        d_end = math.hypot(pts[tail[-1]][0] - pts[0][0],
+                           pts[tail[-1]][1] - pts[0][1])
+        d_rev = math.hypot(pts[tail[0]][0] - pts[0][0],
+                           pts[tail[0]][1] - pts[0][1])
+        # 反向的内部各段和正向是同一批边（对称），但**第一段是新的**：
+        # 出发点到原末点这条边 order_tour 从没验过，必须在这儿验。
+        # 不通就不反向 —— 宁可多走 6 米，也不要让第一段去撞墙。
+        if d_end > d_rev and is_clear(pts[0], pts[tail[-1]]):
+            order = [order[0]] + tail[::-1]
+    return order, dropped
+
+
 def draw_marker(img, p, yaw, res, x0, y0, radius=0.25, arrow=0.6):
     """在（已翻成图像朝向的）图上画一个点位：一个实心圆加一支朝向箭头。"""
     h, w = img.shape
@@ -394,9 +435,12 @@ def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
       - 整数倍放大，小东西看得见；
       - 画出相邻点之间的**直线航段**，因为机器人就是这么走的；
       - 每个点标上编号，和终端打印的序号、讲解内容的 point_0N 一致。
+
+    `traj` 允许是空的（`--reorder-only` 没有建图那趟的轨迹可画）：那时候
+    只画点位和航段，裁剪范围也只按点位算。
     """
-    allp = np.vstack([np.asarray(traj, float).reshape(-1, 2),
-                      np.asarray(pts, float).reshape(-1, 2)])
+    traj = np.asarray(traj, float).reshape(-1, 2)
+    allp = np.vstack([traj, np.asarray(pts, float).reshape(-1, 2)])
     lo = allp.min(0) - pad
     hi = allp.max(0) + pad
     i0, j0 = to_cell([lo], res, x0, y0)
@@ -409,7 +453,8 @@ def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
     # 数组已经是**图像朝向**（第 0 行是 y 最大）。所以先翻，再画。
     sub = np.flipud(grid[j0:j1, i0:i1]).copy()
     sx0, sy0 = x0 + i0 * res, y0 + j0 * res
-    draw_path(sub, np.asarray(traj)[:, :2], sx0, sy0, res)
+    if len(traj) >= 2:
+        draw_path(sub, traj, sx0, sy0, res)
 
     pts = np.asarray(pts, float).reshape(-1, 2)
     for a, b in zip(pts[:-1], pts[1:]):
@@ -435,6 +480,9 @@ def load_existing(path):
     """读现有 waypoints.yaml，只为了保住 id / 名字 / 讲解时长。
 
     坐标是要换掉的，但 id 绝不能动 —— content_zh_CN.yaml 是按 id 查的。
+
+    `x` / `y` 也一并读出来，但只给 `--reorder-only` 用（那条路只重排已经
+    校验过的坐标，不重新选点）。正常选点的路径**不看**这两个字段。
     """
     import yaml
     with open(path, encoding='utf-8') as fh:
@@ -443,7 +491,9 @@ def load_existing(path):
     meta = [{'id': p['id'],
              'name': p.get('name', p['id']),
              'name_en': p.get('name_en', ''),
-             'lecture_duration': p.get('lecture_duration', 20)}
+             'lecture_duration': p.get('lecture_duration', 20),
+             'x': (p.get('position') or {}).get('x'),
+             'y': (p.get('position') or {}).get('y')}
             for p in pts]
     return meta, data.get('navigation', {}), data.get('map', {})
 
@@ -510,6 +560,9 @@ def main():
     ap.add_argument('--margin', type=float, default=DEFAULT_MARGIN,
                     help=f'点位净空比半径多留的余量（米），'
                          f'默认 {DEFAULT_MARGIN}')
+    ap.add_argument('--reorder-only', action='store_true',
+                    help='不重新选点：读 -c 里已有的坐标，只重排巡游顺序并'
+                         '重算朝向。不需要 --bag（重排只用地图）。')
     args = ap.parse_args()
 
     grid, res, x0, y0 = read_map(args.map_base)
@@ -521,82 +574,117 @@ def main():
     print(f'现有配置 {n} 个点位：{", ".join(m["name"] for m in meta)}')
     print('  （只换坐标，id 和名字原样保留 —— 讲解内容是按 id 查的）')
 
-    if not args.bag:
-        raise SystemExit(
-            '需要 --bag 指向建图那趟的 run_dir：选点必须知道机器人真走过\n'
-            '哪里，否则会把雷达透过门窗碾出去的室外空闲区当成可达。')
-
-    from check_lever import find_bag, gravity_from_log, gravity_align_matrix
-    from gridmap import sensor_origins
-    bag = find_bag(args.bag)
-    # gravity_from_log 返回 (up, 诊断信息)，第二项这里不用。
-    up, _ = gravity_from_log(args.bag)
-    R = gravity_align_matrix(up)
-    traj = np.array(list(sensor_origins(bag, R).values()))[:, :2]
-    print(f'轨迹 {len(traj)} 个位姿，走过的范围 '
-          f'{traj[:, 0].ptp():.1f} x {traj[:, 1].ptp():.1f} m')
-
     clr = clearance(grid, res)
-    tix, tiy = to_cell(traj, res, x0, y0)
-    h, w = grid.shape
-    k = (tix >= 0) & (tix < w) & (tiy >= 0) & (tiy < h)
-    tmask = np.zeros((h, w), dtype=bool)
-    tmask[tiy[k], tix[k]] = True
-
-    near = edt(tmask, res) <= args.near_traj
-    # 站点要留余量（radius + margin），但**通行**只要求 radius ——
-    # 窄处照样能过去，只是不在窄处停下来讲解。
-    ok = (clr >= args.radius + args.margin) & near
-    reach = reachable(ok, list(zip(tiy[k], tix[k])))
-    print(f'候选区 {int(reach.sum())} 格 = '
-          f'{reach.sum() * res * res:.1f} m²'
-          f'（净空 ≥ {args.radius + args.margin:.2f} m、'
-          f'离轨迹 ≤ {args.near_traj} m、和轨迹连通）')
-    if not reach.any():
-        raise SystemExit(
-            '一个候选格都没有 —— 要么 --radius 给大了，要么这张图的空闲区\n'
-            '本来就比机器人窄。先看 .png 确认图是不是对的。')
-
-    cy, cx = np.nonzero(reach)
-    wx, wy = to_world(cx, cy, res, x0, y0)
-    cand = np.column_stack([wx, wy])
-    start = traj[0]
 
     def is_clear(a, b):
         return path_is_clear(clr, a, b, res, x0, y0, args.radius)
 
-    pts = chain_pick(cand, start, n, args.spacing, is_clear)
-    if len(pts) < n:
-        print(f'  ! 只铺得下 {len(pts)} 个点（要 {n} 个）。相邻两点必须直线'
-              f'畅通，\n    走过的这一圈里就只排得开这么多。'
-              f'把 --spacing 调小些再试。')
+    if args.reorder_only:
+        # 重排已经校验过的坐标。**不碰 --bag**：净空和畅通只用栅格算，
+        # 而建图那趟的包只在机器人上，开发机拿不到。
+        missing = [m['id'] for m in meta if m['x'] is None or m['y'] is None]
+        if missing:
+            raise SystemExit(
+                f'--reorder-only 要求 -c 里已有坐标，但这些点位没有：'
+                f'{missing}。先正常跑一次（带 --bag）选点。')
+        pts = np.array([[m['x'], m['y']] for m in meta], dtype=float)
+        traj = np.zeros((0, 2))
+        dtraj = None
+        # 坐标是从 yaml 读回来的，只有毫米精度（写出时 %.3f）。朝向会按这个
+        # 毫米级的位置重新算，所以和当初选点时的角度可能差个 0.1° 以内 ——
+        # 点离墙越近差得越明显。这点差别远在到点判据之下，但别以为是 bug。
+        print(f'重排模式：坐标照搬 {args.config}，只动顺序和朝向')
+    else:
+        if not args.bag:
+            raise SystemExit(
+                '需要 --bag 指向建图那趟的 run_dir：选点必须知道机器人真走过\n'
+                '哪里，否则会把雷达透过门窗碾出去的室外空闲区当成可达。\n'
+                '（只想重排已有点位的顺序：加 --reorder-only，那条路不需要包。）')
 
-    # 每条相邻边都是 chain_pick 构造出来的，这里再独立验一遍：
+        from check_lever import find_bag, gravity_from_log, gravity_align_matrix
+        from gridmap import sensor_origins
+        bag = find_bag(args.bag)
+        # gravity_from_log 返回 (up, 诊断信息)，第二项这里不用。
+        up, _ = gravity_from_log(args.bag)
+        R = gravity_align_matrix(up)
+        traj = np.array(list(sensor_origins(bag, R).values()))[:, :2]
+        print(f'轨迹 {len(traj)} 个位姿，走过的范围 '
+              f'{traj[:, 0].ptp():.1f} x {traj[:, 1].ptp():.1f} m')
+
+        tix, tiy = to_cell(traj, res, x0, y0)
+        h, w = grid.shape
+        k = (tix >= 0) & (tix < w) & (tiy >= 0) & (tiy < h)
+        tmask = np.zeros((h, w), dtype=bool)
+        tmask[tiy[k], tix[k]] = True
+
+        near = edt(tmask, res) <= args.near_traj
+        # 站点要留余量（radius + margin），但**通行**只要求 radius ——
+        # 窄处照样能过去，只是不在窄处停下来讲解。
+        ok = (clr >= args.radius + args.margin) & near
+        reach = reachable(ok, list(zip(tiy[k], tix[k])))
+        print(f'候选区 {int(reach.sum())} 格 = '
+              f'{reach.sum() * res * res:.1f} m²'
+              f'（净空 ≥ {args.radius + args.margin:.2f} m、'
+              f'离轨迹 ≤ {args.near_traj} m、和轨迹连通）')
+        if not reach.any():
+            raise SystemExit(
+                '一个候选格都没有 —— 要么 --radius 给大了，要么这张图的空闲区\n'
+                '本来就比机器人窄。先看 .png 确认图是不是对的。')
+
+        cy, cx = np.nonzero(reach)
+        wx, wy = to_world(cx, cy, res, x0, y0)
+        cand = np.column_stack([wx, wy])
+        start = traj[0]
+
+        pts = chain_pick(cand, start, n, args.spacing, is_clear)
+        if len(pts) < n:
+            print(f'  ! 只铺得下 {len(pts)} 个点（要 {n} 个）。相邻两点必须直线'
+                  f'畅通，\n    走过的这一圈里就只排得开这么多。'
+                  f'把 --spacing 调小些再试。')
+        # 离轨迹多远要报出来：点位落在机器人没走过的地方，就算几何上连通，
+        # 也是这张图上最不可信的部分（地面高低、玻璃门、反光都只在走过的
+        # 地方才验证过）。
+        dtraj = edt(tmask, res)
+
+    # 选点和排序是两件事。chain_pick 按「铺得最开」选点，出来的顺序会绕远路；
+    # 这里重排成巡游顺序，并挑收尾离出发点更近的方向。详见 tour_order。
+    # 第 0 个点（出发点那个）永远排在最前，不参与重排。
+    order, dropped = tour_order(pts, is_clear)
+    if dropped:
+        raise SystemExit(
+            f'第 {[i + 1 for i in dropped]} 个点从别的点直线走不过去，'
+            '排不进路线。没写出配置。\n'
+            '没有避障的时候，一条不畅通的边就是一次撞墙。')
+    before = _tour_len(pts)
+    pts = pts[order]
+    print(f'\n巡游顺序 {" -> ".join(str(i + 1) for i in order)}'
+          f'（原序 {before:.2f} m -> {_tour_len(pts):.2f} m）')
+    print('  （编号是重排后的顺序号；坐标的集合没变，变的是谁排第几个）')
+
+    # 每条相邻边都该是畅通的，这里再独立验一遍：
     # 万一哪天改坏了，宁可在这儿炸，不要等机器人撞墙。
     bad = [i for i in range(len(pts) - 1)
            if not is_clear(pts[i], pts[i + 1])]
     if bad:
         raise SystemExit(
             f'内部错误：第 {[i + 1 for i in bad]} 段直线不畅通，'
-            'chain_pick 本该保证这件事。没写出配置。')
+            'tour_order 本该保证这件事。没写出配置。')
 
     meta = meta[:len(pts)]
     yaws = [nearest_wall_yaw(grid, res, x0, y0, p) for p in pts]
 
-    # 离轨迹多远要报出来：点位落在机器人没走过的地方，就算几何上连通，
-    # 也是这张图上最不可信的部分（地面高低、玻璃门、反光都只在走过的
-    # 地方才验证过）。
-    dtraj = edt(tmask, res)
     print('\n选出的点位：')
     for i, (m, p, yaw) in enumerate(zip(meta, pts, yaws), 1):
         ix, iy = to_cell([p], res, x0, y0)
+        near_txt = ('' if dtraj is None else
+                    f'  离轨迹 {dtraj[iy[0], ix[0]]:.2f} m')
         print(f'  {i}. {m["name"]:<12s} ({p[0]:+7.3f}, {p[1]:+7.3f}) '
               f'朝向 {math.degrees(yaw):+7.1f}°  净空 '
-              f'{clr[iy[0], ix[0]]:.2f} m  离轨迹 '
-              f'{dtraj[iy[0], ix[0]]:.2f} m')
-    far = [i for i, p in enumerate(pts, 1)
-           if dtraj[to_cell([p], res, x0, y0)[1][0],
-                    to_cell([p], res, x0, y0)[0][0]] > 0.75]
+              f'{clr[iy[0], ix[0]]:.2f} m{near_txt}')
+    far = [] if dtraj is None else [
+        i for i, p in enumerate(pts, 1)
+        if dtraj[to_cell([p], res, x0, y0)[1][0],
+                 to_cell([p], res, x0, y0)[0][0]] > 0.75]
     if far:
         print(f'  ! 第 {far} 个点离机器人走过的地方超过 0.75 m。'
               '几何上连通，但那片地面没实地走过 ——\n'

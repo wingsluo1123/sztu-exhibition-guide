@@ -57,14 +57,14 @@ exhibition_points:
     name: "应用生态展示"
     name_en: "Application Ecosystem"
     position:
-      x: 1.745
-      y: -6.278
+      x: 5.045
+      y: -5.278
       z: 0.0
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.707  # sin(90.0°/2)
-      w: 0.707  # cos(90.0°/2)
+      z: 0.707  # sin(90.1°/2)
+      w: 0.707  # cos(90.1°/2)
     lecture_duration: 20
 
   # 点位 5: 互动体验区
@@ -72,8 +72,8 @@ exhibition_points:
     name: "互动体验区"
     name_en: "Interactive Experience Zone"
     position:
-      x: 5.045
-      y: -5.278
+      x: 1.745
+      y: -6.278
       z: 0.0
     orientation:
       x: 0.0
@@ -93,8 +93,8 @@ exhibition_points:
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.912  # sin(131.6°/2)
-      w: 0.410  # cos(131.6°/2)
+      z: 0.912  # sin(131.7°/2)
+      w: 0.409  # cos(131.7°/2)
     lecture_duration: 20
 
   # 点位 7: 参观结束
@@ -108,8 +108,8 @@ exhibition_points:
     orientation:
       x: 0.0
       y: 0.0
-      z: 0.133  # sin(15.3°/2)
-      w: 0.991  # cos(15.3°/2)
+      z: 0.133  # sin(15.2°/2)
+      w: 0.991  # cos(15.2°/2)
     lecture_duration: 10
 
 # 导航参数
