@@ -1478,7 +1478,7 @@ sztu-bridge 之后还是 2，白卡了一道。第二版换成 `pgrep -cf` 更�
 它在什么都没跑的时候也报 1。**"停掉服务后再确认一次"这个动作本身没问题，
 错的是我给的尺子。**
 
-### 卡在 `Localization not ready` —— 已修（75fe60b）
+### 卡在 `Localization not ready` —— 两个 bug，修了两次（75fe60b + e9f1bcf）
 
 你第一次实走时，欢迎词、`greeting` 表情、`wave` 手势全都做完了，然后停在：
 
@@ -1489,26 +1489,80 @@ sztu-bridge 之后还是 2，白卡了一道。第二版换成 `pgrep -cf` 更�
 **不是定位真的没好。**当时 `/slam/lidar_odom` 正以 10 Hz 稳稳地发着
 （`ros2 topic hz` 实测，Publisher count 1、Subscription count 3）。
 
-真因在代码里：`guide_manager` 在 `__init__` 里把 `SlamManager` new 成了
-**进程内子节点**，而它的 `main()` 没有执行器、也没有 spin，就直接 `input()`
-等你选语言了。`SlamManager.is_localized` 只在 `odom_callback` 里置位，
-回调没有任何人送进来，标志位就永远是 `False`，于是那句
-`if not self.slam.is_ready(): return False` 必然命中。
+#### 第一个 bug：查一眼标志位，而没人转节点（75fe60b）
+
+`guide_manager` 在 `__init__` 里把 `SlamManager` new 成了**进程内子节点**，
+而它的 `main()` 没有执行器、也没有 spin，就直接 `input()` 等你选语言了。
+`SlamManager.is_localized` 只在 `odom_callback` 里置位，回调没有任何人送进来，
+标志位就永远是 `False`，于是那句 `if not self.slam.is_ready(): return False`
+必然命中。
 
 这也正好解释了"为什么只有定位这一步不行"：TTS / 表情 / 手势各自在
 `spin_until_future_complete(self, future)` 里**自己转自己**，所以它们照常工作。
-而 `navigation_manager.navigate_to` 早就有正确的写法（`navigation_manager.py:206-209`
-那个 `if self.executor is None: spin_once(...) else: sleep(...)`），只有
-`SlamManager` 漏了。
 
-修法就是照抄那个写法：新增 `SlamManager.wait_until_localized(timeout)`，
-判据从"查一眼标志位"改成"转着等，最多等 `localization_timeout` 秒（默认 10）"。
-等不到的时候日志会直接告诉你去查哪个话题，不再是一句没头没尾的 warn。
+修法：新增 `SlamManager.wait_until_localized(timeout)`，判据从"查一眼标志位"
+改成"转着等，最多等 `localization_timeout` 秒（默认 10）"。等不到的时候
+日志会直接告诉你去查哪个话题，不再是一句没头没尾的 warn。
 
-真机上验过：现在这道门 **0.12 秒**就过了。测试
-`src/sztu_slam/test/test_slam_localization_wait.py` 用真 rclpy 收发，
-其中一条是负对照 —— 有人发位姿但不转节点时 `is_ready()` 必须一直是 `False`，
-把这个故障的机理钉在测试里。
+#### 第二个 bug：等待循环只 spin 了第一下（e9f1bcf）
+
+**上面那个修完，现象一模一样地又来了一次**，而且我第一反应是把它归给"位姿流
+偶发停摆"（见下一节）—— 那个归因是错的。你贴的那两次运行里，
+`ros2 topic hz` 紧接着就报 10.6~12.5 Hz，位姿流当时是好的。
+
+`wait_until_localized` 第一版是照 `navigation_manager.navigate_to` 抄的：
+
+```python
+if self.executor is None:
+    rclpy.spin_once(self, timeout_sec=0.1)
+else:
+    time.sleep(0.05)          # 别人在转，我不抢
+```
+
+**这个守卫是错的，而且 `navigate_to` 那边也一样错。**rclpy 里
+`Executor.add_node()` 会设 `node.executor`，`remove_node()` **不把它清回 None**；
+而 `rclpy.spin_once(node)` 内部恰好就是 `add_node -> spin -> remove_node`。
+所以只要这个节点被 spin 过一次（构造子系统时那些 `spin_until_future_complete`
+到处都是，`SlamManager.load_map` 自己也有一个），`node.executor` 就永远非空了 ——
+尽管它早已不在那个执行器的节点表里，没有任何人在转它。
+
+于是等待循环只 spin 了第一个 0.1 秒，之后一路睡到超时。真机实测：话题发现
+要 **2.19 秒**才完成，第一下 0.1 秒必然赶不上。偶尔"成功"（我测到过 0.12 秒
+就过）是第一下碰巧赶上了，所以这个 bug 看着像是时好时坏 —— 这也是我一开始
+误判成"位姿流停摆"的原因。
+
+钉死机理的实测，同一个进程里：
+
+| 订阅者 | 发现到的发布者 | 4 秒内收到 |
+|---|---|---|
+| 普通 Node，BEST_EFFORT，循环 spin_once | 1 | 是（0.17 s） |
+| `SlamManager`（旧守卫） | **0** | **否** |
+
+判据改成问"**此刻在不在别人的执行器节点表里**"（`executor.get_nodes()`），
+而不是"曾经被谁加过"。`sleep` 分支保留：节点真被 `rclpy.spin()` 或
+MultiThreadedExecutor 接管时抢回调会抛 "cannot spin while another thread
+is spinning"。
+
+`navigation_manager.navigate_to` 一并改了，**那边的后果更重**：控制循环是
+这个节点上的定时器，等待循环不 spin 它，`control_loop` 一次都不会被调到 ——
+机器人一步不走，然后报导航超时。实走前没发现这个，第一趟就会撞上。
+
+修完在真机上验的是完整路径：构造 `GuideManager` 全套子系统之后过定位闸，
+7 个点位加载正常，闸 0.00 秒通过，位姿 (0.008, -0.242)。
+
+#### 测试
+
+`src/sztu_slam/test/test_slam_localization_wait.py`（7 条，用真 rclpy 收发）。
+两条负对照把两个 bug 的机理分别钉住：
+
+- 有人发位姿但不转节点时 `is_ready()` 必须一直是 `False`（第一个 bug）
+- 先 `rclpy.spin_once` 一次再等，必须照样收得到（第二个 bug）
+
+**为什么第一版测试没抓到第二个 bug**：那条"外部执行器"用例用的是专门
+`new` 出来的 `SingleThreadedExecutor` 并且真的在 spin，正好绕开了"executor
+非空但节点已被移除"这个情形；而正对照里同进程收发太快，第一下 spin 就够了。
+另外还加了一条用例直接钉 rclpy 的这个行为本身 —— 哪天上游改成在 `remove_node`
+里清掉 `node.executor`，那条会变红，届时可以回去简化，而不是删用例。
 
 （写这组测试时还踩到一个更值得记的坑：第一版用的就是 `/slam/lidar_odom`，
 在真机上跑，用例里的合成位姿还没到，节点先收到了 `lio_odom_bridge` 正在发的
@@ -1536,6 +1590,11 @@ sztu-bridge 之后还是 2，白卡了一道。第二版换成 `pgrep -cf` 更�
 当时我正在机器人上连着跑几百条 ROS 测试（多个 python 进程 + 发现风暴），
 所以"是不是我把它压垮的"是个合理怀疑 —— 但这只是怀疑，**没有验证过，
 不要当结论**。点云掉到 5 Hz 这件事也一样没查出是驱动还是负载。
+
+**这件事我用错过一次：**上一节那个定位闸第二次失败时，我拿这次停摆去解释它。
+错了 —— 你贴的日志里 `ros2 topic hz` 紧接着就报 10.6~12.5 Hz。真因是
+`wait_until_localized` 自己的守卫写错了。一个"已知会偶发的现象"最容易被
+顺手拿来当别的故障的解释，下次先看时间对不对得上。
 
 **已经做的兜底（802bdc2）：** 位姿超过 `odom_stale_timeout`（默认 0.6 秒，
 按 位置容差/最大线速度 推出来的）没更新，`control_loop` 直接停车、

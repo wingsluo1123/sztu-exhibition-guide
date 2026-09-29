@@ -140,8 +140,13 @@ class GuideManager(Node):
         # `if not self.slam.is_ready()`，于是标志位永远是 False —— 真机上实测
         # 到过：/slam/lidar_odom 以 10 Hz 正常发着，欢迎词、表情、手势全做完了，
         # 到这一步直接 return False，日志只有一行 "Localization not ready"。
-        # （TTS / 表情 / 手势没出这个问题，是因为它们各自在
-        #  spin_until_future_complete 里自己转自己。）
+        #
+        # 改成 wait 之后还栽过第二次，而且现象一模一样（等满超时再报错）：
+        # 上面那几行 tts/emotion/gesture 内部都会 spin_until_future_complete，
+        # 它们经全局执行器的 add_node -> spin -> remove_node，而 remove_node
+        # 不把 node.executor 清回 None。第一版的等待循环照 `executor is None`
+        # 决定要不要 spin，于是从第二圈起只剩 sleep。判据现在看的是
+        # get_nodes()，见 slam_manager.spin_node_once()。
         if not self.slam.wait_until_localized(self.localization_timeout):
             self.get_logger().error(
                 f'定位未就绪：等了 {self.localization_timeout:.0f} 秒没收到位姿。'
