@@ -375,7 +375,14 @@ def main():
     print('\n=== 残差（解 · 真⁻¹）===')
     print(f'  转角        中位 {np.median(res_deg):.3f}°  最大 '
           f'{res_deg.max():.3f}°   死线 {RESID_DEG}°')
-    print(f'              ^ 这就是重力方向的量化误差 δ，不随走多远变')
+    if res_deg.max() <= RESID_DEG:
+        # 只有在这一项足够小的时候，才能说它"就是"重力量化误差。大了的话它是
+        # 真误差，下面那个"扣掉 δ"也就不是在扣噪声、而是在放大 —— 结论仍然
+        # 是"对不上"，但别把它说成量化误差。
+        print(f'              ^ 这就是重力方向的量化误差 δ'
+              f'（{np.median(res_deg):.3f}°），不随走多远变')
+    else:
+        print('              ^ 超死线了，这一项不是量化误差，是真差了')
     print(f'  平移        中位 {np.median(res_mm):.2f} mm  最大 '
           f'{res_mm.max():.2f} mm  ← 含 δ·|t_cb|，会跟着走远涨，不作判据')
     print(f'  扣掉 δ 之后 中位 {np.median(left_mm):.3f} mm  最大 '
