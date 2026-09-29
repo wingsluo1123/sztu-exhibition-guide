@@ -22,6 +22,26 @@ from .waypoints import (
 )
 
 
+def spin_node_once(node, timeout_sec: float = 0.1) -> None:
+    """
+    推一下这个节点的回调；只有它此刻**真的**归别人的执行器管时才改成等。
+
+    判据不能写成 `node.executor is None`：rclpy 的 `remove_node()` 不会把
+    `node.executor` 清回 None，而 `rclpy.spin_once(node)` 内部就是
+    add_node -> spin -> remove_node，所以自己 spin 一次之后它就永远非空了。
+    老写法的后果在这里比在 SlamManager 那边更重：控制循环是**这个节点上的
+    定时器**，等待循环不 spin 它，control_loop 就一次都不会被调到 ——
+    机器人一步不走，然后报导航超时。完整的机制和实测见
+    `sztu_slam/slam_manager.py` 里同名函数的注释（两个包互不依赖，
+    所以这段是有意重复的）。
+    """
+    executor = node.executor
+    if executor is not None and node in executor.get_nodes():
+        time.sleep(min(timeout_sec, 0.05))
+    else:
+        rclpy.spin_once(node, timeout_sec=timeout_sec)
+
+
 class NavigationManager(Node):
     def __init__(self):
         super().__init__('navigation_manager')
@@ -220,9 +240,8 @@ class NavigationManager(Node):
         timeout = self.navigation_timeout if timeout is None else timeout
         deadline = time.monotonic() + timeout
 
-        # 这个节点可能已经被外部执行器（rclpy.spin / MultiThreadedExecutor）
-        # 转着了。那种情况下再调 spin_once 会和执行器抢回调，触发
-        # "cannot spin while another thread is spinning"。所以先看有没有人在转。
+        # 控制循环是这个节点上的定时器，所以这里必须**持续**推它的回调。
+        # 判据见模块顶部的 spin_node_once()：不能只看 self.executor 是不是 None。
         while self.is_navigating and rclpy.ok():
             if time.monotonic() > deadline:
                 self.get_logger().error(
@@ -232,10 +251,7 @@ class NavigationManager(Node):
                 self.stop()
                 return False
 
-            if self.executor is None:
-                rclpy.spin_once(self, timeout_sec=0.1)
-            else:
-                time.sleep(0.05)
+            spin_node_once(self, timeout_sec=0.1)
 
         return self.last_result == 'arrived'
 

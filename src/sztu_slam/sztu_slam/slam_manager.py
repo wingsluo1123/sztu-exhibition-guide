@@ -15,6 +15,34 @@ from geometry_msgs.msg import Pose
 import time
 
 
+def spin_node_once(node, timeout_sec: float = 0.1) -> None:
+    """
+    推一下这个节点的回调；如果它此刻真的归别人的执行器管，就只等不抢。
+
+    **判据必须是"此刻在不在别人的节点表里"，不能写成 `node.executor is None`。**
+    rclpy 的 `Executor.add_node()` 会设 `node.executor`，而 `remove_node()`
+    **不会把它清回 None**。偏偏 `rclpy.spin_once(node)` 内部就是
+    add_node -> spin -> remove_node —— 所以只要自己 spin 过一次，
+    `node.executor` 就永远非空了，尽管节点早已不在那个执行器里。
+
+    照"非空就 sleep"的老写法，等待循环只会 spin 第一下，之后一路睡到超时。
+    2026-09-29 在真机上实测：SlamManager 的 `wait_until_localized` 只赶上
+    第一个 0.1 秒的 spin（那会儿话题发现还没完成），剩下 9.9 秒纯睡觉，
+    而 `/slam/lidar_odom` 一直稳稳地在 10 Hz 发。同一进程里另建一个普通节点、
+    用同样的 BEST_EFFORT QoS 订同一个话题，0.17 秒就收到了数据。
+    偶尔"成功"是因为第一下 spin 碰巧赶上了，所以这个 bug 看着像是时好时坏。
+
+    留着 sleep 这个分支仍然是必要的：节点被 `rclpy.spin()` 或
+    MultiThreadedExecutor 真正接管时再去 spin_once，会抛
+    "cannot spin while another thread is spinning"。
+    """
+    executor = node.executor
+    if executor is not None and node in executor.get_nodes():
+        time.sleep(min(timeout_sec, 0.05))
+    else:
+        rclpy.spin_once(node, timeout_sec=timeout_sec)
+
+
 class SlamManager(Node):
     def __init__(self, **node_kwargs):
         """
@@ -203,20 +231,15 @@ class SlamManager(Node):
         哪怕 /slam/lidar_odom 正以 10 Hz 稳稳地发着 —— 真机上就这么卡住过一次，
         讲解走到"检查定位"这一步直接返回，看日志完全看不出是谁的错。
 
-        executor 的判断和 navigation_manager.navigate_to 里是同一个道理：节点
-        可能已经被外部执行器（rclpy.spin / MultiThreadedExecutor）转着了，那时
-        候再调 spin_once 会和执行器抢回调，抛 "cannot spin while another thread
-        is spinning"。所以先看有没有人在转，有人转就只管睡着等标志位。
+        executor 的判断见模块顶部的 spin_node_once()：**不能**只看
+        `self.executor is None`，那样只会 spin 第一下，剩下的时间纯睡觉。
         """
         if self.is_localized:
             return True
 
         deadline = time.monotonic() + timeout
         while rclpy.ok() and time.monotonic() < deadline:
-            if self.executor is None:
-                rclpy.spin_once(self, timeout_sec=0.1)
-            else:
-                time.sleep(0.05)
+            spin_node_once(self, timeout_sec=0.1)
             if self.is_localized:
                 return True
 

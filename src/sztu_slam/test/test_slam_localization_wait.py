@@ -18,6 +18,12 @@ SlamManager 定位就绪判据的测试（**需要真的 rclpy 和 aimdk_msgs，
   3. 超时：没人发 -> 必须返回 False，而且要真的等满，不能立刻就说失败
   4. 外部执行器在转的时候不能自己再 spin（会抛 "cannot spin while another
      thread is spinning"）
+  5. **第二个 bug，第一版修复漏掉的那个**：节点先被别处 spin 过一次之后，
+     wait_until_localized 必须照样能收到位姿。第一版守卫写的是
+     `if self.executor is None: spin`，而 rclpy 的 remove_node() 不把
+     node.executor 清回 None，于是自己 spin 过一次就再也不 spin 了。
+     第 1 条正对照抓不到它 —— 同进程收发太快，第一下 spin 就够了。
+  6. 把 rclpy 那个行为本身钉住（remove_node 之后 executor 仍然非空）
 """
 
 import threading
@@ -194,3 +200,50 @@ def test_wait_works_under_external_executor(slam, source):
         executor.shutdown()
         executor.remove_node(slam)
         spinner.join(timeout=2.0)
+
+
+# --- 5. 被别处 spin 过一次之后，还得继续 spin -------------------------------
+
+def test_wait_still_spins_after_an_earlier_spin_once(slam, source):
+    """
+    真机上第二次卡住的就是这个：位姿 10 Hz 好好地发着，gate 照样等满 10 秒。
+
+    触发条件很日常 —— guide_manager 在进程里 new 各个子系统时，TtsController /
+    EmotionController / GestureController 的构造函数都会
+    spin_until_future_complete，而 SlamManager 自己的 load_map 也会。
+    这些调用走的都是全局执行器的 add_node -> spin -> remove_node，
+    而 remove_node **不会**把 node.executor 清回 None。于是第一版守卫
+    `if self.executor is None: spin_once(...) else: sleep(...)` 从第二圈起
+    就只剩 sleep，节点再没人转，回调一条都进不来。
+
+    这条用例里那次 spin_once 是故意的、也是充分的：它一次就把 node.executor
+    留成了非空。判据是"照样等得到位姿"。
+    """
+    rclpy.spin_once(slam, timeout_sec=0.0)
+    slam.is_localized = False
+    slam.current_pose = None
+
+    assert slam.executor is not None, 'rclpy 的行为变了，这条用例已经测不到那个分支'
+    assert slam not in slam.executor.get_nodes(), '节点还在执行器里，那就不是"陈旧"的情形'
+
+    assert slam.wait_until_localized(5.0) is True
+    assert slam.current_pose is not None
+
+
+# --- 6. 把 rclpy 那个行为本身钉住 -------------------------------------------
+
+def test_rclpy_leaves_executor_set_after_spin_once(ros):
+    """
+    判据为什么要看 get_nodes() 而不是看 executor 是否为空，全部理由就在这里。
+
+    哪天上游 rclpy 改成在 remove_node 里把 node.executor 清掉，这条会变红 ——
+    那时候可以回去简化 spin_node_once，而不是把这条用例删了。
+    """
+    node = Node('test_stale_executor_probe')
+    try:
+        assert node.executor is None
+        rclpy.spin_once(node, timeout_sec=0.0)
+        assert node.executor is not None
+        assert node not in node.executor.get_nodes()
+    finally:
+        node.destroy_node()
