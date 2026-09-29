@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 
 from pick_waypoints import (                                    # noqa: E402
-    clearance, edt, nearest_wall_yaw, order_tour, path_is_clear,
+    chain_pick, clearance, edt, nearest_wall_yaw, order_tour, path_is_clear,
     read_map, reachable, render_yaml, spread_pick, to_cell, yaw_to_quat,
 )
 from gridmap import PGM_FREE, PGM_OCC, PGM_UNK, write_pgm       # noqa: E402
@@ -201,6 +201,132 @@ def test_order_tour_visits_nearest_first():
     order, dropped = order_tour(pts, lambda a, b: True)
     assert order == [0, 2, 1]
     assert dropped == []
+
+
+# --- 顺着可见性铺点（chain_pick）--------------------------------------------
+
+def ring_candidates(step=0.25):
+    """绕着一块中心障碍的环形可行走区，和实测房间同一个拓扑。
+
+    外框 10 x 8 m，中间 4 x 3 m 一整块展柜。环上的点两两之间，凡是要
+    穿过中心那块的都走不通 —— 这正是最远点采样塌掉的那个形状。
+    """
+    xs = np.arange(0.5, 9.51, step)
+    ys = np.arange(0.5, 7.51, step)
+    gx, gy = np.meshgrid(xs, ys)
+    p = np.column_stack([gx.ravel(), gy.ravel()])
+    inner = ((p[:, 0] > 3.0) & (p[:, 0] < 7.0)
+             & (p[:, 1] > 2.5) & (p[:, 1] < 5.5))
+    return p[~inner]
+
+
+def ring_is_clear(a, b, n=64):
+    """a 到 b 的直线穿过中心那块展柜吗？穿了就不通。"""
+    t = np.linspace(0.0, 1.0, n)
+    x = a[0] + (b[0] - a[0]) * t
+    y = a[1] + (b[1] - a[1]) * t
+    hit = ((x > 3.0) & (x < 7.0) & (y > 2.5) & (y < 5.5))
+    return not bool(hit.any())
+
+
+def test_chain_pick_keeps_every_consecutive_leg_clear_in_a_ring_room():
+    """核心判据：**构造上**每条相邻边都直线畅通。
+
+    这是真机上暴露出来的那个失败：可行走区是环形，最远点采样把点铺到
+    环的两头，7 个点有 6 个连不上。
+    """
+    cand = ring_candidates()
+    pts = chain_pick(cand, (0.5, 0.5), 7, 1.5, ring_is_clear)
+    assert len(pts) == 7, f'只铺下 {len(pts)} 个点'
+    for i in range(len(pts) - 1):
+        assert ring_is_clear(pts[i], pts[i + 1]), \
+            f'第 {i + 1} 段穿过了中心展柜：{pts[i]} -> {pts[i + 1]}'
+
+
+def test_spread_pick_is_the_thing_that_fails_on_a_ring_room():
+    """负对照：换回最远点采样，环形房间里相邻边就是断的。
+
+    这条测试是为了把"为什么不能用更简单的那个做法"钉住 —— 不然下次
+    有人看 chain_pick 觉得绕，改回 spread_pick，机器人就直直走进展柜。
+    """
+    cand = ring_candidates()
+    pts = spread_pick(cand, (0.5, 0.5), 7, 1.5)
+    broken = sum(not ring_is_clear(pts[i], pts[i + 1])
+                 for i in range(len(pts) - 1))
+    assert broken > 0, '这个形状本该让最远点采样出现不畅通的边'
+
+
+def test_chain_pick_respects_spacing_against_all_picked_points():
+    """间距要对**所有**已选点成立，不只是对上一个 —— 否则会原地打转。"""
+    cand = ring_candidates()
+    pts = chain_pick(cand, (0.5, 0.5), 7, 1.5, ring_is_clear)
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            d = math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1])
+            assert d >= 1.5 - 1e-9, f'点 {i} 和点 {j} 只隔 {d:.3f} m'
+
+
+def test_chain_pick_spreads_out_rather_than_hugging_the_start():
+    """还是要铺得开：7 个点不能全挤在出发点那个角。"""
+    cand = ring_candidates()
+    pts = chain_pick(cand, (0.5, 0.5), 7, 1.5, ring_is_clear)
+    span_x = pts[:, 0].max() - pts[:, 0].min()
+    span_y = pts[:, 1].max() - pts[:, 1].min()
+    assert span_x > 5.0 and span_y > 3.0, f'铺开范围只有 {span_x} x {span_y}'
+
+
+def test_chain_pick_stops_instead_of_returning_an_unreachable_point():
+    """没有畅通的下一个点时，宁可少给几个点，也不能给一个走不到的。"""
+    cand = np.array([[5.0, 0.0], [6.0, 0.0]])
+    pts = chain_pick(cand, (0.0, 0.0), 5, 1.0, lambda a, b: False)
+    assert len(pts) == 1
+    assert tuple(pts[0]) == (0.0, 0.0)
+
+
+def test_chain_pick_is_deterministic():
+    cand = ring_candidates()
+    a = chain_pick(cand, (0.5, 0.5), 6, 1.5, ring_is_clear)
+    b = chain_pick(cand, (0.5, 0.5), 6, 1.5, ring_is_clear)
+    assert np.array_equal(a, b)
+
+
+def test_chain_pick_starts_at_the_given_start():
+    """讲解从出发点开始：content 里 point_01 就是"入口欢迎区"。"""
+    cand = ring_candidates()
+    pts = chain_pick(cand, (0.5, 0.5), 5, 1.5, ring_is_clear)
+    assert tuple(pts[0]) == (0.5, 0.5)
+
+
+def test_chain_pick_uses_the_real_clearance_check_on_a_ring_grid():
+    """把 ring 拓扑做成真格子，用真的 path_is_clear 走一遍。
+
+    上面几条用的是解析版的 ring_is_clear，这条换成真正的净空判据，
+    确认两者对这个形状的结论一致 —— 判据不能只在自己的玩具函数上成立。
+    """
+    res = 0.05
+    w, h = int(10.0 / res), int(8.0 / res)
+    g = np.full((h, w), PGM_OCC, np.uint8)
+    g[1:-1, 1:-1] = PGM_FREE
+    g[int(2.5 / res):int(5.5 / res), int(3.0 / res):int(7.0 / res)] = PGM_OCC
+    clr = clearance(g, res)
+    radius, margin = 0.40, 0.15
+    cy, cx = np.nonzero(clr >= radius + margin)
+    cand = np.column_stack([(cx + 0.5) * res, (cy + 0.5) * res])
+    assert len(cand) > 0
+
+    def is_clear(a, b):
+        return path_is_clear(clr, a, b, res, 0.0, 0.0, radius)
+
+    start = cand[int(np.argmin(np.hypot(cand[:, 0] - 1.0,
+                                        cand[:, 1] - 1.0)))]
+    pts = chain_pick(cand, start, 7, 1.5, is_clear)
+    assert len(pts) == 7
+    for i in range(len(pts) - 1):
+        assert is_clear(pts[i], pts[i + 1])
+    # 每个点都要站得下，且留了余量
+    for p in pts:
+        ix, iy = to_cell([p], res, 0.0, 0.0)
+        assert clr[iy[0], ix[0]] >= radius + margin - 1e-9
 
 
 # --- 朝向 -------------------------------------------------------------------

@@ -54,7 +54,15 @@ MARK_ARROW = 70      # 朝向箭头
 DEFAULT_RADIUS = 0.40    # 机器人半径（米）。仓库里没有 footprint 规格，
 #                          取的保守值，用 --radius 可改。
 DEFAULT_SPACING = 1.5    # 点位之间的最小间距（米）
-DEFAULT_NEAR_TRAJ = 2.0  # 离轨迹最远多少米还算可达（米）
+DEFAULT_NEAR_TRAJ = 1.0  # 离轨迹最远多少米还算可达（米）。1 m 不是随便取的：
+#                          这是室内，2 m 开外基本就是"门的另一边"了 ——
+#                          实测房间用 2.0 时候选区被撑到 11.8 x 9.7 m，
+#                          而机器人只走过 8.6 x 5.9 m。
+DEFAULT_MARGIN = 0.15    # 点位净空要比机器人半径再宽这么多（米）。
+#                          没有这条余量，选点会挑在净空恰好等于半径的
+#                          刀尖上 —— 实测房间里选出来的点净空 0.403 m，
+#                          机器人半径 0.40 m，只剩 3 mm。往任何方向挪
+#                          0.1 m 就撞，经过这个点的每条边也都判不通过。
 
 
 def read_map(base):
@@ -202,6 +210,11 @@ def spread_pick(cand, start, n, spacing):
     比"按格子均匀铺"好在不用假设房间是方的；比随机采样好在结果确定，
     同样的图跑两次给同样的点。start 固定是第一个点（讲解从出发点开始，
     content 里 point_01 就是"入口欢迎区"）。
+
+    **注意：这个函数只管铺得开，不管走得通。** 单独用它选点在实测房间里
+    会塌掉 —— 测试房间的可行走区是绕着中间一堆展柜的一个环，最远点恰好
+    落在环的两头，两点直线要穿过中间的展柜。7 个点有 6 个连不上。
+    所以实际选点走 chain_pick()，这个函数留着给它做对照测试。
     """
     cand = np.asarray(cand, dtype=float).reshape(-1, 2)
     if len(cand) == 0:
@@ -215,6 +228,50 @@ def spread_pick(cand, start, n, spacing):
         picked.append(cand[far])
         d = np.minimum(d, np.hypot(cand[:, 0] - cand[far][0],
                                    cand[:, 1] - cand[far][1]))
+    return np.asarray(picked)
+
+
+def chain_pick(cand, start, n, spacing, is_clear):
+    """顺着"看得见"往前铺点：下一个点必须从当前点直线畅通。
+
+    这是这个工具的核心。换掉「先按几何铺开、再筛掉走不通的」那种做法是
+    因为它在实测房间里塌掉了：可行走区是绕着中间展柜的一个环，
+    最远点采样把点铺到环的两头，直线要穿过中间的展柜 —— 7 个点位里
+    6 个被筛掉，只剩出发点。
+
+    约束放进选择里，而不是放在选择之后：
+      - 从当前点直线畅通（`is_clear`）—— 控制律只会先转身再直行，
+        没有路径规划，也没有避障，不畅通就是直直走进墙里；
+      - 离**每个**已选点都 ≥ spacing —— 不然会在一小块地方反复打转；
+      - 在满足上面两条的候选里，挑离已选点集最远的 —— 还是要铺得开。
+
+    这样每条相邻边都是**构造上**畅通的，不需要事后剔点。在环形房间里
+    它的行为正好是沿着环一路走下去，对讲解路线来说也是对的。
+    """
+    cand = np.asarray(cand, dtype=float).reshape(-1, 2)
+    start = np.asarray(start, dtype=float)
+    if len(cand) == 0:
+        return np.asarray([start])
+    picked = [start]
+    # dmin[i]：候选 i 离已选点集的最近距离。每选一个点就更新一次。
+    dmin = np.hypot(cand[:, 0] - start[0], cand[:, 1] - start[1])
+    while len(picked) < n:
+        cur = picked[-1]
+        # 由远及近试：第一个直线畅通的就是"铺得最开又走得通"的那个。
+        # 只试间距够的候选，并且一旦剩下的都挤在一起就收工。
+        cands = np.nonzero(dmin >= spacing)[0]
+        if len(cands) == 0:
+            break
+        nxt = None
+        for i in cands[np.argsort(-dmin[cands])]:
+            if is_clear(cur, cand[i]):
+                nxt = i
+                break
+        if nxt is None:
+            break
+        picked.append(cand[nxt])
+        dmin = np.minimum(dmin, np.hypot(cand[:, 0] - cand[nxt][0],
+                                         cand[:, 1] - cand[nxt][1]))
     return np.asarray(picked)
 
 
@@ -353,6 +410,9 @@ def main():
                     help=f'点位最小间距（米），默认 {DEFAULT_SPACING}')
     ap.add_argument('--near-traj', type=float, default=DEFAULT_NEAR_TRAJ,
                     help=f'离轨迹多远还算可达（米），默认 {DEFAULT_NEAR_TRAJ}')
+    ap.add_argument('--margin', type=float, default=DEFAULT_MARGIN,
+                    help=f'点位净空比半径多留的余量（米），'
+                         f'默认 {DEFAULT_MARGIN}')
     args = ap.parse_args()
 
     grid, res, x0, y0 = read_map(args.map_base)
@@ -387,11 +447,14 @@ def main():
     tmask[tiy[k], tix[k]] = True
 
     near = edt(tmask, res) <= args.near_traj
-    ok = (clr >= args.radius) & near
+    # 站点要留余量（radius + margin），但**通行**只要求 radius ——
+    # 窄处照样能过去，只是不在窄处停下来讲解。
+    ok = (clr >= args.radius + args.margin) & near
     reach = reachable(ok, list(zip(tiy[k], tix[k])))
     print(f'候选区 {int(reach.sum())} 格 = '
           f'{reach.sum() * res * res:.1f} m²'
-          f'（净空 ≥ {args.radius} m、离轨迹 ≤ {args.near_traj} m、和轨迹连通）')
+          f'（净空 ≥ {args.radius + args.margin:.2f} m、'
+          f'离轨迹 ≤ {args.near_traj} m、和轨迹连通）')
     if not reach.any():
         raise SystemExit(
             '一个候选格都没有 —— 要么 --radius 给大了，要么这张图的空闲区\n'
@@ -401,19 +464,25 @@ def main():
     wx, wy = to_world(cx, cy, res, x0, y0)
     cand = np.column_stack([wx, wy])
     start = traj[0]
-    pts = spread_pick(cand, start, n, args.spacing)
-    if len(pts) < n:
-        print(f'  ! 只铺得下 {len(pts)} 个点（要 {n} 个）。'
-              f'房间就这么大，把 --spacing 调小些再试。')
 
     def is_clear(a, b):
         return path_is_clear(clr, a, b, res, x0, y0, args.radius)
 
-    order, dropped = order_tour(pts, is_clear)
-    if dropped:
-        print(f'  ! {len(dropped)} 个点和路线之间没有直线畅通的边，已剔除。'
-              '（控制律只会直线走，没有路径规划，也没有避障）')
-    pts = pts[order]
+    pts = chain_pick(cand, start, n, args.spacing, is_clear)
+    if len(pts) < n:
+        print(f'  ! 只铺得下 {len(pts)} 个点（要 {n} 个）。相邻两点必须直线'
+              f'畅通，\n    走过的这一圈里就只排得开这么多。'
+              f'把 --spacing 调小些再试。')
+
+    # 每条相邻边都是 chain_pick 构造出来的，这里再独立验一遍：
+    # 万一哪天改坏了，宁可在这儿炸，不要等机器人撞墙。
+    bad = [i for i in range(len(pts) - 1)
+           if not is_clear(pts[i], pts[i + 1])]
+    if bad:
+        raise SystemExit(
+            f'内部错误：第 {[i + 1 for i in bad]} 段直线不畅通，'
+            'chain_pick 本该保证这件事。没写出配置。')
+
     meta = meta[:len(pts)]
     yaws = [nearest_wall_yaw(grid, res, x0, y0, p) for p in pts]
 
@@ -426,8 +495,15 @@ def main():
 
     legs = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
             for i in range(len(pts) - 1)]
-    print(f'路线全长 {sum(legs):.1f} m，最长一段 {max(legs):.1f} m'
-          if legs else '只有一个点')
+    if legs:
+        print(f'路线全长 {sum(legs):.1f} m，最长一段 {max(legs):.1f} m')
+        # 能不能闭环回起点，关系到能不能连着跑第二趟。报出来，不强求。
+        back = math.hypot(pts[0][0] - pts[-1][0], pts[0][1] - pts[-1][1])
+        shut = is_clear(pts[-1], pts[0])
+        print(f'末点回到起点 {back:.1f} m，'
+              f'{"直线畅通（这一圈能闭环）" if shut else "直线不畅通（回程要人扶）"}')
+    else:
+        print('只有一个点')
 
     out_path = args.out or args.config
     with open(out_path, 'w', encoding='utf-8') as fh:
