@@ -29,6 +29,7 @@ from gridmap import (  # noqa: E402
     ray_samples,
     write_pgm,
     write_png,
+    within_range,
     write_yaml,
 )
 
@@ -340,3 +341,28 @@ def test_a_single_pose_draws_nothing():
 def test_path_value_is_not_one_of_the_three_states():
     """轨迹的灰度不能撞上占据/空闲/未知，否则人看图会读错。"""
     assert PGM_PATH not in (PGM_OCC, PGM_FREE, PGM_UNK)
+
+
+# --- 命中和碾空闲必须共用一个地平线 ----------------------------------------
+
+def test_range_horizon_drops_far_points():
+    o = np.array([1.0, 1.0])
+    xy = np.array([[1.0, 6.0], [1.0, 20.0], [4.0, 5.0]])
+    assert len(within_range(xy, o, 15.0)) == 2
+
+
+def test_far_hits_would_otherwise_never_be_cleared():
+    """回归测试：命中不限距、碾空闲限距，远处的假障碍就永远擦不掉。
+
+    造一个 30 m 外的孤立击中，碾空闲的地平线是 15 m。如果命中不裁，这个
+    格子会一直是占据；裁了就根本不进图。
+    """
+    o = np.array([0.0, 0.0])
+    far = np.array([[30.0, 0.0]])
+    assert len(within_range(far, o, 15.0)) == 0
+    b, r = bearing_min_range(far - o, NB, 15.0)
+    assert len(b) == 0, '碾空闲这一侧本来就够不着它'
+
+
+def test_horizon_keeps_points_exactly_on_it():
+    assert len(within_range(np.array([[15.0, 0.0]]), np.zeros(2), 15.0)) == 1

@@ -150,6 +150,18 @@ def ray_samples(origin, bins, ranges, n_bear, step):
                             origin[1] + t * np.sin(th)])
 
 
+def within_range(xy, origin, max_range):
+    """只留下传感器 max_range 以内的点。
+
+    命中和碾空闲必须用**同一个地平线**。先前命中不限距、碾空闲限 15 m，
+    结果 15 m 外的击中永远擦不掉 —— 图上那些长条毛刺就是这么来的。
+    远处本来也不该信：0.2° 的方位分辨率在 30 m 上就是 10 cm，比一格还粗。
+    """
+    xy = np.asarray(xy, dtype=float).reshape(-1, 2)
+    d = xy - np.asarray(origin, dtype=float).reshape(2)
+    return xy[np.hypot(d[:, 0], d[:, 1]) <= max_range]
+
+
 def classify(n_hit, n_free, min_hits, occ_ratio, min_free):
     """命中/穿过两张计数图 -> 三态栅格（PGM 灰度）。
 
@@ -292,7 +304,7 @@ def main():
                     metavar=('下界', '上界'),
                     help='切层带，离地高度（米）。下界要高过姿态漂移')
     ap.add_argument('--range', type=float, default=15.0,
-                    help='参与碾空闲区的最远距离（米）')
+                    help='地平线（米）。命中和碾空闲共用，不能只限一边')
     ap.add_argument('--stride', type=int, default=1, help='每几帧用一帧')
     ap.add_argument('--bearings', type=int, default=1800,
                     help='方位角分多少桶。1800 = 0.2°')
@@ -345,7 +357,14 @@ def main():
     print(f'\n切层带 离地 {lo:.2f} ~ {hi:.2f} m：{len(sl)} 帧，{nslab} 点'
           f'（占全部的 {nslab/npts*100:.1f}%）')
 
-    allxy = np.vstack([q[:, :2] for _, q in sl]).astype(float)
+    # 先按地平线裁一遍，图幅才不会被远处几个孤点撑大
+    sl = [(o, within_range(q[:, :2], o[:2], args.range)) for o, q in sl]
+    sl = [(o, q) for o, q in sl if len(q)]
+    nnear = sum(len(q) for _, q in sl)
+    print(f'  {args.range:.0f} m 地平线以内 {nnear} 点'
+          f'（裁掉 {nslab-nnear}，命中和碾空闲用同一个地平线）')
+
+    allxy = np.vstack([q for _, q in sl]).astype(float)
     x0, y0 = allxy.min(axis=0) - 1.0
     x1, y1 = allxy.max(axis=0) + 1.0
     W = int(math.ceil((x1 - x0) / args.res))
@@ -363,7 +382,7 @@ def main():
     n_free = np.zeros(W * H, dtype=np.int32)
     step = args.res * 0.5
     for i, (o, q) in enumerate(sl):
-        xy = q[:, :2].astype(float)
+        xy = q.astype(float)
         np.add.at(n_hit, flat(xy), 1)
         b, r = bearing_min_range(xy - o[:2], args.bearings, args.range)
         np.add.at(n_free, flat(ray_samples(o, b, r, args.bearings, step)), 1)
