@@ -45,6 +45,7 @@ from check_lever import (  # noqa: E402
     EXTRA_DEG,
     OUTLIER_FRAC,
     RESID_DEG,
+    RATE_MIN_DEG_S,
     STALE_MAX_MS,
     judge,
 )
@@ -263,3 +264,51 @@ def test_slow_chain_hides_staleness():
     res = with_stale(healthy(), slice(None), dt_ms=100, rate=0.1)
     code, _ = judge(res, np.full(N, 0.1), CHAIN_DEG, DELTA_BOUND)
     assert code == 0
+
+
+# --- 链转太慢的帧：推不出 dt，不能当成"推出一个很大的 dt" ------------------
+
+SLOW = RATE_MIN_DEG_S / 4         # 0.5°/s：腰几乎没动
+
+
+def test_slow_frame_does_not_fake_a_stale_violation():
+    """慢帧不该因为除了个接近零的数就虚报"破了 150 ms 上界"。
+
+    这是一条**假阳性**的回归测试。换算式 dt ≈ 超出角/角速度 在角速度接近零
+    时是病态的：真机负对照里它算出过 9,498,678 ms。物理上腰不转时新旧 TF
+    本来就一样，退旧值观测不到，所以这些帧应该是"推不出 dt"，而不是"推出
+    一个很大的 dt"。
+    """
+    res = with_stale(healthy(), [500], dt_ms=300, rate=SLOW)
+    naive_ms = (res[500] - DELTA_BOUND) / SLOW * 1000
+    assert naive_ms > STALE_MAX_MS, '这一档本来就该能把老写法诱出假阳'
+    code, d = judge(res, np.full(N, SLOW), CHAIN_DEG, DELTA_BOUND)
+    assert d['n_slow'] == 1
+    assert d['worst_ms'] == 0.0, '一帧都不该换算出毫秒'
+    assert not d['bad_stale'], '慢帧不该触发 bad_stale'
+    assert code == 0
+
+
+def test_slow_frames_still_count_toward_the_fraction():
+    """慢帧推不出 dt，但仍然算超标帧 —— 成片出现照样要抓。"""
+    n_over = int(N * OUTLIER_FRAC) + 20
+    res = with_stale(healthy(), np.arange(n_over), dt_ms=300, rate=SLOW)
+    code, d = judge(res, np.full(N, SLOW), CHAIN_DEG, DELTA_BOUND)
+    assert d['n_slow'] == n_over
+    assert d['worst_ms'] == 0.0
+    assert d['bad_frac'], '换算不出毫秒，但占比这一关还在'
+    assert code == 1
+
+
+def test_fast_frame_beyond_bound_still_caught_among_slow_ones():
+    """慢帧里混一个快帧真超界 —— 剔慢帧不能把快帧那条顺带弄丢。"""
+    rates = np.full(N, SLOW)
+    rates[700] = RATE
+    res = with_stale(healthy(), np.arange(5), dt_ms=300, rate=SLOW)
+    res = with_stale(res, [700], dt_ms=STALE_MAX_MS * 2, rate=RATE)
+    code, d = judge(res, rates, CHAIN_DEG, DELTA_BOUND)
+    assert d['n_slow'] == 5
+    assert d['worst_ms'] == pytest.approx(
+        STALE_MAX_MS * 2 - ms_shortfall(RATE), abs=0.5)
+    assert d['bad_stale']
+    assert code == 1

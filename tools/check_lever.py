@@ -162,6 +162,17 @@ OUTLIER_FRAC = 0.02
 # 转接层 tf_stale_max_ms 的默认值。超标帧换算成"TF 旧了多少毫秒"之后不该
 # 越过它 —— 越过了说明退让没守住自己的上界。
 STALE_MAX_MS = 150.0
+# 换算毫秒时链角速度的下限。
+#
+# 换算式是 dt ≈ 超出角 / 角速度，链几乎不转的时候这个除法是病态的：角速度
+# 0.5°/s 配一个刚过线的 0.11° 就能算出 dt = 220 ms，看着像转接层破了自己的
+# 150 ms 上界，其实只是除以了一个接近零的数。
+#
+# 物理上也该这样：腰不转的时候新旧 TF 本来就一样，退旧值**观测不到** ——
+# 所以这些帧推不出 dt，不是"推出一个很大的 dt"。低于这个门的帧从 dt 推断里
+# 剔掉（仍然计入超标占比）。取 2°/s，真机实测角速度中位 9.6°/s、90 分位
+# 37°/s，正常帧基本都在门上。
+RATE_MIN_DEG_S = 2.0
 # 算链角速度用的半窗。
 RATE_DT = 0.025
 # 平移残差扣掉 δ 预测项之后的余量。**只作参考不作判据**：预测项
@@ -409,14 +420,17 @@ def judge(res_deg, rates, chain_deg, delta_bound):
     extra = res_deg - delta_bound
     over = np.where(extra > EXTRA_DEG)[0]
     frac = len(over) / len(res_deg) if len(res_deg) else 0.0
-    # 退让 dt 的换算：多出来的转角 ≈ 链角速度 × dt
-    dt_ms = (extra[over] / np.maximum(rates[over], 1e-6) * 1000
-             if len(over) else np.zeros(0))
+    # 退让 dt 的换算：超出的转角 ≈ 链角速度 × dt。链转太慢的帧推不出 dt
+    # （见 RATE_MIN_DEG_S），从这一步剔掉，但它们仍然计入上面的占比。
+    ok = over[rates[over] >= RATE_MIN_DEG_S] if len(over) else over
+    slow = len(over) - len(ok)
+    dt_ms = (extra[ok] / rates[ok] * 1000 if len(ok) else np.zeros(0))
     d = {
         'med': float(np.median(res_deg)) if len(res_deg) else 0.0,
         'delta_bound': delta_bound,
         'extra': extra, 'over': over, 'frac': frac,
-        'dt_ms': dt_ms, 'worst_ms': float(dt_ms.max()) if len(dt_ms) else 0.0,
+        'dt_ms': dt_ms, 'n_slow': slow,
+        'worst_ms': float(dt_ms.max()) if len(dt_ms) else 0.0,
         'bad_base': float(np.median(res_deg)) > RESID_DEG if len(res_deg)
         else False,
         'bad_frac': frac > OUTLIER_FRAC,
@@ -546,12 +560,23 @@ def main():
         print(f'\n=== 超出 δ 界 {EXTRA_DEG}° 的帧 ===')
         print(f'  {len(over)} / {len(rows)} 帧（{100*d["frac"]:.2f}%），'
               f'死线 {OUTLIER_FRAC*100:.0f}%')
-        for i, r8, d8 in list(zip(over, all_rates[over], dt_ms))[:10]:
-            print(f'    t+{rows[i][0]-rows[0][0]:7.2f}s  多 '
-                  f'{extra[i]:.4f}°  链角速度 {r8:6.2f}°/s  '
-                  f'-> TF 旧了约 {d8:6.1f} ms')
-        print(f'  换算成 TF 旧了多少：最大 {d["worst_ms"]:.0f} ms，'
-              f'转接层的上界是 {STALE_MAX_MS:.0f} ms')
+        shown = 0
+        for i in over:
+            r8 = all_rates[i]
+            slow = r8 < RATE_MIN_DEG_S
+            ms = '链转太慢，推不出' if slow else \
+                f'TF 旧了约 {extra[i]/r8*1000:6.1f} ms'
+            print(f'    t+{rows[i][0]-rows[0][0]:7.2f}s  超 '
+                  f'{extra[i]:.4f}°  链角速度 {r8:6.2f}°/s  -> {ms}')
+            shown += 1
+            if shown >= 10:
+                break
+        if d['n_slow']:
+            print(f'  其中 {d["n_slow"]} 帧链角速度 < {RATE_MIN_DEG_S}°/s，'
+                  '推不出毫秒（腰不转时退旧值本来就观测不到），不计入下面')
+        if len(dt_ms):
+            print(f'  能换算的帧里最大旧了 {d["worst_ms"]:.0f} ms，'
+                  f'转接层的上界是 {STALE_MAX_MS:.0f} ms')
         if stale is not None:
             print(f'  bridge.log 自己报的：退用最新值 {stale[0]} 条，'
                   f'最差旧了 {stale[1]:.0f} ms')
