@@ -297,12 +297,13 @@ def main():
     # 所以这里用源包 IMU 量出来的方向，而不是想当然地用 z。
     if not r['up_measured']:
         if args.topic != '/Odometry':
+            # 转接层的输出本来就是重力对齐的，按 z 算是对的，不是问题。
             print(f'  按 z 朝上算 —— {args.topic} 已经是重力对齐的（REP-105），'
                   '这是对的')
         else:
             print(f'  {Y}⚠{N} 不知道哪个轴朝上（没给 --src-bag），'
                   '下面按 z 朝上算 —— 对 X2 胸前雷达这是错的')
-        problems += 1
+            problems += 1
     axis = '沿重力' if r['up_measured'] else '沿 z 轴'
     if r['vert_range'] > VERT_M:
         print(f'  {Y}⚠{N} {axis}起伏 {r["vert_range"]:.2f} m'

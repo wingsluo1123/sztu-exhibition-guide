@@ -17,27 +17,58 @@
 的位姿跟着动是对的，不是 bug。实测那趟里 base_link 动得还比 body 多。拿两条
 轨迹的幅度对照根本说明不了问题。
 
-所以这里改成**反解**。转接层算的是
+也不能只和 `waist_pitch` 一个关节比（第二版这么写的，也错的）
+------------------------------------------------------------
+
+这条链上有**三个**动关节：`pelvis -> waist_yaw_link`、
+`waist_yaw_link -> waist_pitch_link`、`waist_pitch_link -> torso_link`。
+弯腰那两趟以 pitch 为主，所以单比 pitch 碰巧对上了（21.63° vs 21.60°）；
+走路那趟腰主要在**偏航**，单比 pitch 就成了 13.27° vs 5.24°，看着像转接层
+坏了，其实是判据太窄 —— 那 13.27° 和 `waist_yaw` 的 13.35° 才是一对。
+
+所以现在**直接和整条链比**
+--------------------------
+
+转接层算的是（`odom_transform.odom_pose_to_base`）
 
     T_odom_base = R_grav · T_cam_body · (T_base_body)⁻¹
 
-其中 `T_cam_body` 就是 `/Odometry`、`T_odom_base` 就是 `/slam/lidar_odom`，
-两条都在包里，而且 stamp 是原样抄过去的、能一一配对。于是把杠杆臂本身解出来
+`/Odometry` 是 `T_cam_body`、`/slam/lidar_odom` 是 `T_odom_base`，两条都在包
+里而且 stamp 原样抄过、能一一配对，于是可以**反解**出节点当时实际用的那个
+杠杆臂：
 
-    T_base_body = ((R_grav · T_cam_body)⁻¹ · T_odom_base)⁻¹
+    T_body_base(解) = (R_grav · T_cam_body)⁻¹ · T_odom_base
 
-逐帧看它变不变：常数 = 被缓存了；跟着腰关节变 = 每帧确实重查了。这个判据
-不依赖"哪个部位物理上动了"，也就绕开了上面那个坑。
+另一边，把 `/tf` + `/tf_static` 里那 6 段按 stamp 插值composed 起来，得到同一
+时刻**本该**是多少：
+
+    T_body_base(真) = (T_base_pelvis · T_pelvis_yaw · … · T_chest_imu)⁻¹
+
+两个一减就是残差。缓存了常数、退旧值退太狠、链接错了，都会在残差里现形，
+而且这个判据不依赖"哪个部位物理上动了"、也不依赖腰往哪个方向动。
+
+残差里有个说清楚的噪声底
+------------------------
+
+我这边的 `R_grav` 是从 `bridge.log` 抠的，只有三位小数，和节点真用的那个
+差 δ ≲ 0.03°。推一下这个 δ 怎么传到残差里：
+
+    解 = T_cam_body⁻¹ · Δ · T_cam_body · 真        （Δ = 我的 R_grav⁻¹ · 它的）
+
+展开后旋转部分是 `R_cb ᵀ δR R_cb`（大小就是 δ，和走多远无关），**平移部分是
+`R_cb ᵀ (δR − I) t_cb`，大小约 δ·|t_cb|** —— 会随着离起点越来越远而涨。走
+27 m 时 0.03° 就是 14 mm。所以下面的平移残差要和这个上界比，不能和一个固定
+的毫米数比；转角残差没这个问题，直接卡死线。
 
 用法:
     tools/check_lever.py <run_dir>          # run_lio_live.sh --bridge 的产物目录
     tools/check_lever.py <bag_dir>          # 或者直接指包目录
 
-退出码 0 = 通过，1 = 杠杆臂被当成常数了，2 = 这趟数据判不了（腰没动，或者
-包里没有腰关节的 TF —— 静态假 TF 的回放就是这种）。
+退出码 0 = 通过，1 = 对不上，2 = 这趟数据判不了（链没动，或者包里没有 /tf ——
+静态假 TF 的回放就是这种）。
 
-需要包里有 /Odometry、/slam/lidar_odom、/tf；重力方向优先从同目录的
-bridge.log 里读（那是节点当时真用的那个），读不到就拿 IMU 静止段现算。
+需要包里有 /Odometry、/slam/lidar_odom、/tf、/tf_static；重力方向优先从同目录
+的 bridge.log 里读（那是节点当时真用的那个），读不到就拿 IMU 静止段现算。
 """
 
 import math
@@ -57,17 +88,18 @@ from sztu_slam.odom_transform import (  # noqa: E402
 
 NAV_TOPIC = '/slam/lidar_odom'
 IMU_TOPIC = '/aima/hal/sensor/lidar_chest_front/imu'
+BASE_FRAME = 'base_link'
+BODY_FRAME = 'lidar_imu_chest_front'
 STATIC_S = 2.0
-# 腰关节那条动态边。杠杆臂要是在动，就该是跟着它在动。
-WAIST_CHILD = 'waist_pitch_link'
-# 判"在动"的线。反解出来的量有个噪声底：bridge.log 里的重力方向只有三位小数
-# （~0.03° 的量化误差），乘上 1 m 量级的杠杆臂就是毫米级的残差。开发机上用静态
-# 假 TF 实测这个底是 **1.2 mm / 0.03°**；真机动腰时是 **20 mm / 21.6°** ——
-# 差十几倍到几百倍，所以线定在中间很安全。
-STILL_MM = 5.0
-STILL_DEG = 1.0
-# 腰关节至少得动这么多，这趟才算测到了东西。
-WAIST_MIN_DEG = 1.0
+
+# 转角残差的死线。噪声底只有 R_grav 的量化误差（~0.03°），留 20 倍余量。
+RESID_DEG = 0.5
+# 平移残差除了 δ·|t_cb| 那一项，还有四元数往返、float32 的 TF 之类的碎渣。
+RESID_FLOOR_MM = 2.0
+# 整条链至少得动这么多，这趟才算测到了东西。
+CHAIN_MIN_DEG = 1.0
+# bridge.log 里的重力方向只有三位小数，每个分量 ±0.0005 -> δ 约 0.0005 rad。
+GRAV_QUANT_RAD = 5e-4
 
 
 def find_bag(path):
@@ -88,8 +120,8 @@ def read_topics(db3, wanted):
     from sensor_msgs.msg import Imu
     from tf2_msgs.msg import TFMessage
 
-    types = {'/Odometry': Odometry, NAV_TOPIC: Odometry,
-             IMU_TOPIC: Imu, '/tf': TFMessage}
+    types = {'/Odometry': Odometry, NAV_TOPIC: Odometry, IMU_TOPIC: Imu,
+             '/tf': TFMessage, '/tf_static': TFMessage}
     out = {t: [] for t in wanted}
     db = sqlite3.connect(db3)
     try:
@@ -115,15 +147,15 @@ def gravity_from_log(run_dir):
     """从 bridge.log 里抠出节点当时实测的重力方向。
 
     优先用它而不是自己现算：要验的是节点做得对不对，重力这一步得用**它用过的
-    那个值**，不然反解出来的残差里会混进重力估计的差异，分不清是谁的锅。
-    日志里只有三位小数（~0.06° 的量化误差），对这个判据够了。
+    那个值**，不然残差里会混进重力估计的差异，分不清是谁的锅。
     """
     path = os.path.join(run_dir, 'bridge.log')
     if not os.path.isfile(path):
         return None
     with open(path, encoding='utf-8', errors='replace') as f:
         m = re.search(r'重力方向实测完成：上 = \['
-                      r'\s*([-+0-9.]+),\s*([-+0-9.]+),\s*([-+0-9.]+)\]', f.read())
+                      r'\s*([-+0-9.]+),\s*([-+0-9.]+),\s*([-+0-9.]+)\]',
+                      f.read())
     return np.array([float(m.group(i)) for i in (1, 2, 3)]) if m else None
 
 
@@ -143,6 +175,90 @@ def gravity_from_imu(imu):
     return acc / norm
 
 
+# --- TF 链 -----------------------------------------------------------------
+
+def build_chain(tf_msgs, static_msgs):
+    """从 /tf + /tf_static 里把 base_link -> body 那条链拼出来。
+
+    返回 [(parent, child, stamps|None, quats, trans), ...]，从 base_link 往下。
+    stamps 是 None 表示这一段是静态的。
+    """
+    parent, samples = {}, {}
+    for msgs, is_static in ((static_msgs, True), (tf_msgs, False)):
+        for _, tfm in msgs:
+            for tr in tfm.transforms:
+                parent[tr.child_frame_id] = (tr.header.frame_id, is_static)
+                q, v = tr.transform.rotation, tr.transform.translation
+                samples.setdefault(tr.child_frame_id, []).append((
+                    tr.header.stamp.sec + tr.header.stamp.nanosec / 1e9,
+                    (q.x, q.y, q.z, q.w), (v.x, v.y, v.z)))
+
+    chain, cur = [], BODY_FRAME
+    seen = set()
+    while cur in parent and cur != BASE_FRAME:
+        if cur in seen:
+            raise SystemExit(f'TF 链有环，卡在 {cur}')
+        seen.add(cur)
+        par, is_static = parent[cur]
+        rows = sorted(samples[cur])
+        chain.append((
+            par, cur,
+            None if is_static else np.array([r[0] for r in rows]),
+            np.array([r[1] for r in rows]),
+            np.array([r[2] for r in rows])))
+        cur = par
+    if cur != BASE_FRAME:
+        raise SystemExit(
+            f'从 {BODY_FRAME} 往上走到 {cur} 就断了，接不到 {BASE_FRAME}。\n'
+            '包里的 /tf_static 不全？（--bridge 会录它，但只在启动时发一次，'
+            '录包起晚了就会漏）')
+    chain.reverse()
+    return chain
+
+
+def slerp(q0, q1, u):
+    """两个四元数之间插值。tf2 就是这么做的，所以要对齐它。"""
+    d = float(np.dot(q0, q1))
+    if d < 0:                      # 走短弧，不然会绕远路
+        q1, d = -q1, -d
+    if d > 0.9995:                 # 几乎重合，线性插值就够，避免除以 sin≈0
+        q = q0 + u * (q1 - q0)
+        return q / np.linalg.norm(q)
+    th = math.acos(max(-1.0, min(1.0, d)))
+    s = math.sin(th)
+    return (math.sin((1 - u) * th) / s) * q0 + (math.sin(u * th) / s) * q1
+
+
+def sample_edge(edge, t):
+    """一段链在时刻 t 的变换。静态段直接返回；动态段按 stamp 插值。
+
+    返回 (R, tvec, gap_s)，gap_s 是 t 落在采样点之外多远（0 表示在区间内）。
+    """
+    _, _, stamps, quats, trans = edge
+    if stamps is None:
+        return quat_to_matrix(quats[0]), trans[0], 0.0
+    i = int(np.searchsorted(stamps, t))
+    if i == 0:
+        return quat_to_matrix(quats[0]), trans[0], stamps[0] - t
+    if i >= len(stamps):
+        return quat_to_matrix(quats[-1]), trans[-1], t - stamps[-1]
+    t0, t1 = stamps[i - 1], stamps[i]
+    u = 0.0 if t1 == t0 else (t - t0) / (t1 - t0)
+    q = slerp(quats[i - 1], quats[i], u)
+    v = trans[i - 1] + u * (trans[i] - trans[i - 1])
+    return quat_to_matrix(q), v, 0.0
+
+
+def chain_at(chain, t):
+    """整条链在时刻 t 的 T_base_body，外加最大外推间隙。"""
+    R, v, gap = np.eye(3), np.zeros(3), 0.0
+    for edge in chain:
+        Re, ve, g = sample_edge(edge, t)
+        R, v = compose(R, v, Re, ve)
+        gap = max(gap, g)
+    return R, v, gap
+
+
 def pose_of(m):
     p, q = m.pose.pose.position, m.pose.pose.orientation
     return quat_to_matrix((q.x, q.y, q.z, q.w)), np.array([p.x, p.y, p.z])
@@ -152,9 +268,10 @@ def stamp_key(m):
     return (m.header.stamp.sec, m.header.stamp.nanosec)
 
 
-def quat_angle(q, ref):
-    """两个四元数之间的转角（度）。取 |点积| 是为了不管正负号那一对。"""
-    return math.degrees(2 * math.acos(min(1.0, abs(float(np.dot(q, ref))))))
+def rot_angle(R):
+    """一个旋转矩阵对应的转角（度）。"""
+    return math.degrees(math.acos(
+        max(-1.0, min(1.0, (float(np.trace(R)) - 1.0) / 2.0))))
 
 
 def main():
@@ -165,109 +282,115 @@ def main():
 
     up = gravity_from_log(target)
     src = 'bridge.log（节点当时实测的）'
-    msgs = read_topics(db3, ['/Odometry', NAV_TOPIC, '/tf'] +
-                       ([] if up is not None else [IMU_TOPIC]))
+    topics = ['/Odometry', NAV_TOPIC, '/tf', '/tf_static']
+    msgs = read_topics(db3, topics + ([] if up is not None else [IMU_TOPIC]))
     if up is None:
         up = gravity_from_imu(msgs.get(IMU_TOPIC, []))
         src = '包里 IMU 的静止段（bridge.log 里没读到）'
     if up is None:
         raise SystemExit('拿不到重力方向：bridge.log 里没有，IMU 静止段也不可信')
     print(f'重力方向 上 = [{up[0]:+.3f}, {up[1]:+.3f}, {up[2]:+.3f}]'
-          f'   来自 {src}\n')
+          f'   来自 {src}')
     R_grav = gravity_align_matrix(up)
 
-    # --- 逐帧反解杠杆臂 -----------------------------------------------------
+    chain = build_chain(msgs['/tf'], msgs['/tf_static'])
+    print(f'\n=== {BASE_FRAME} -> {BODY_FRAME} 这条链（{len(chain)} 段）===')
+    chain_deg = 0.0
+    for par, ch, stamps, quats, _ in chain:
+        if stamps is None:
+            print(f'  静  {par:>22} -> {ch}')
+            continue
+        d = np.degrees(2 * np.arccos(
+            np.clip(np.abs(quats @ quats[0]), -1, 1))).max()
+        chain_deg = max(chain_deg, d)
+        print(f'  动  {par:>22} -> {ch:<26} {len(quats):>5} 条  转了 {d:6.2f}°')
+
+    # --- 逐帧：反解 vs 按链算 ----------------------------------------------
     body = {stamp_key(m): m for _, m in msgs['/Odometry']}
-    levers, quats, stamps = [], [], []
+    rows = []
     for _, mb in msgs[NAV_TOPIC]:
         mbody = body.get(stamp_key(mb))
         if mbody is None:
             continue
+        t = mb.header.stamp.sec + mb.header.stamp.nanosec / 1e9
         R_cb, t_cb = pose_of(mbody)
         R_ob, t_ob = pose_of(mb)
+        # 反解：节点当时实际用的那个杠杆臂（的逆）
         R_l, t_l = compose(R_grav, np.zeros(3), R_cb, t_cb)
         R_i, t_i = invert(R_l, t_l)
-        R_bb, t_bb = compose(R_i, t_i, R_ob, t_ob)   # = (T_base_body)⁻¹
-        levers.append(t_bb)
-        quats.append(matrix_to_quat(R_bb))
-        stamps.append(mb.header.stamp.sec + mb.header.stamp.nanosec / 1e9)
+        R_s, t_s = compose(R_i, t_i, R_ob, t_ob)          # T_body_base 解
+        # 按链算：同一时刻本该是多少
+        R_c, t_c, gap = chain_at(chain, t)                # T_base_body 真
+        R_t, t_t = invert(R_c, t_c)                       # T_body_base 真
+        # 残差
+        R_e, t_e = compose(*invert(R_t, t_t), R_s, t_s)
+        rows.append((t, np.linalg.norm(t_e) * 1000, rot_angle(R_e),
+                     GRAV_QUANT_RAD * np.linalg.norm(t_cb) * 1000, gap,
+                     t_s, matrix_to_quat(R_s), matrix_to_quat(R_t)))
 
     n_nav = len(msgs[NAV_TOPIC])
-    if len(levers) < 2:
+    if len(rows) < 2:
         raise SystemExit(
-            f'配对成功的帧只有 {len(levers)} / {n_nav} —— 没法判。\n'
+            f'配对成功的帧只有 {len(rows)} / {n_nav} —— 没法判。\n'
             'stamp 应该是原样抄的，配不上说明转接层改了 stamp，那是另一个 bug。')
-    print(f'按 stamp 配对成功 {len(levers)} / {n_nav} 帧')
-    if len(levers) < n_nav:
-        print(f'  （{n_nav - len(levers)} 帧配不上 —— 录包起止时刻差一点，正常）')
+    print(f'\n按 stamp 配对成功 {len(rows)} / {n_nav} 帧')
+    if len(rows) < n_nav:
+        print(f'  （{n_nav - len(rows)} 帧配不上 —— 录包起止时刻差一点，正常）')
 
-    L = np.array(levers)
-    off = np.linalg.norm(L - L.mean(axis=0), axis=1) * 1000
-    arm = np.linalg.norm(L, axis=1)
-    ang = np.array([quat_angle(q, quats[0]) for q in quats])
-    print('\n=== 反解出来的杠杆臂（base_link -> body，body 在 base_link 里的位置）===')
-    print(f'  均值       [{L[:, 0].mean():+.4f}, {L[:, 1].mean():+.4f},'
-          f' {L[:, 2].mean():+.4f}] m')
-    print(f'  长度       {arm.min():.4f} ~ {arm.max():.4f} m')
-    print(f'  离均值最远 {off.max():.1f} mm')
-    print(f'  姿态相对首帧转角 {ang.min():.2f}° ~ {ang.max():.2f}°')
+    res_mm = np.array([r[1] for r in rows])
+    res_deg = np.array([r[2] for r in rows])
+    bound_mm = np.array([r[3] for r in rows]) + RESID_FLOOR_MM
+    gaps = np.array([r[4] for r in rows])
+    solved_t = np.array([r[5] for r in rows])
+    sq = np.array([r[6] for r in rows])
+    tq = np.array([r[7] for r in rows])
+    solved_deg = np.array([math.degrees(2 * math.acos(
+        min(1.0, abs(float(np.dot(q, sq[0])))))) for q in sq])
+    truth_deg = np.array([math.degrees(2 * math.acos(
+        min(1.0, abs(float(np.dot(q, tq[0])))))) for q in tq])
+
+    print(f'\n=== 反解出来的杠杆臂（T_body_base，即 {BASE_FRAME} 在 body 系里）===')
+    print(f'  均值   [{solved_t[:, 0].mean():+.4f}, {solved_t[:, 1].mean():+.4f},'
+          f' {solved_t[:, 2].mean():+.4f}] m')
+    print(f'  相对首帧转角  解 {solved_deg.max():.2f}°  /  '
+          f'按链算 {truth_deg.max():.2f}°')
+    if gaps.max() > 0:
+        print(f'  有帧的 stamp 落在 /tf 采样区间之外，最多 '
+              f'{gaps.max() * 1000:.0f} ms（按端点值算的）')
+
+    print('\n=== 残差（反解 − 按链算）===')
+    print(f'  转角   中位 {np.median(res_deg):.3f}°  最大 {res_deg.max():.3f}°'
+          f'   死线 {RESID_DEG}°')
+    print(f'  平移   中位 {np.median(res_mm):.2f} mm  最大 {res_mm.max():.2f} mm')
+    print(f'         上界 {bound_mm.min():.1f} ~ {bound_mm.max():.1f} mm'
+          '（δ·|t_cb| + 碎渣，见文件头；跟着走多远涨）')
+    n_over = int((res_mm > bound_mm).sum())
 
     print('\n=== 判据 ===')
-    # 先看腰动了没有。腰不动的时候杠杆臂本来就该是常数，那种"不变"说明不了
-    # 代码有问题 —— 所以判据得两件事一起看，不能光看杠杆臂变没变。
-    waist = [(tr.header.stamp.sec + tr.header.stamp.nanosec / 1e9,
-              tr.transform.rotation)
-             for _, tfm in msgs['/tf'] for tr in tfm.transforms
-             if tr.child_frame_id == WAIST_CHILD]
-    if not waist:
-        print(f'  ? 判不了：包里没有 {WAIST_CHILD} 的 TF。')
-        print('    腰关节是这条链上唯一的动关节，没有它就没有可动的东西，')
-        print(f'    杠杆臂"不变"是必然的（这趟实测残差 {off.max():.1f} mm、'
-              f'{ang.max():.2f}°，就是数值噪声底）。')
-        print('    开发机上用静态假 TF 回放就是这种情况 —— 这一层只能在真机上验。')
-        return 2
-
-    wt = np.array([t for t, _ in waist])
-    wq = np.array([[q.x, q.y, q.z, q.w] for _, q in waist])
-    # 把腰角对齐到"配对上的那些帧"，而且**和杠杆臂用同一个参考帧**（都相对第
-    # 一个配对帧）。不这么做的话两个数没法比：/tf 从回放一开始就在录，而转接层
-    # 要等重力测完才开始发，两串的首帧不是同一个时刻、腰的相位也不一样，比出来
-    # 的差值是假的（实测过一次 25.63° vs 15.00°，看着像错了，其实只是基准不同）。
-    # 取最近邻而不是插值：插值角度在大角度下不线性，最近邻只差半个 /tf 周期。
-    idx = np.clip(np.searchsorted(wt, stamps), 0, len(wt) - 1)
-    near = np.abs(wt[idx] - np.array(stamps))
-    wsel = wq[idx]
-    wang = np.array([quat_angle(q, wsel[0]) for q in wsel])
-    print(f'  {WAIST_CHILD} 在这段里动了 {wang.min():.2f}° ~ {wang.max():.2f}°'
-          f'（对齐到里程计的时刻，最远差 {near.max() * 1000:.0f} ms）')
-    if wang.max() < WAIST_MIN_DEG:
-        print('  ? 判不了：这一趟腰基本没动，没测到东西。')
+    if chain_deg < CHAIN_MIN_DEG:
+        print(f'  ? 判不了：整条链最多才动了 {chain_deg:.2f}°，没测到东西。')
         print('    重跑一趟，跑的时候让机器人动一下腰（弯腰或转腰都行）。')
         print('    注意腰要在转接层开始发之后再动 —— 它要先花 2 秒测重力。')
         return 2
 
-    if off.max() < STILL_MM and ang.max() < STILL_DEG:
-        print(f'  ✗ 腰动了 {wang.max():.2f}°，杠杆臂却几乎没变'
-              f'（{off.max():.2f} mm、{ang.max():.2f}°）')
-        print('    杠杆臂被当成常数了 —— 去看 lookup_base_body 是不是被缓存了，')
-        print('    或者 TF 退用旧值退得太狠（看 bridge.log 里的"TF 退用最新值"）。')
+    bad_deg = res_deg.max() > RESID_DEG
+    bad_mm = n_over > 0.01 * len(rows)     # 偶尔一两帧超界不算
+    if bad_deg or bad_mm:
+        print(f'  ✗ 对不上：链动了 {chain_deg:.2f}°，但反解出来的和按链算的'
+              '差得超出噪声底')
+        if bad_deg:
+            print(f'    转角残差最大 {res_deg.max():.3f}° > {RESID_DEG}°')
+        if bad_mm:
+            print(f'    平移残差有 {n_over}/{len(rows)} 帧超出上界')
+        print('    去看：lookup_base_base 是不是被缓存了；bridge.log 里'
+              '「TF 退用最新值」的「最差旧了」是不是很大；')
+        print('    或者 base_frame / body_frame 参数指错了地方。')
         return 1
 
-    print(f'  ✓ 腰动了 {wang.max():.2f}°，杠杆臂跟着动了'
-          f'（平移 {off.max():.1f} mm、姿态 {ang.max():.2f}°）')
-    print('    -> 每帧确实重查了 TF')
-    print(f'    杠杆臂姿态 {ang.max():.2f}° vs 腰关节 {wang.max():.2f}°，'
-          f'差 {abs(ang.max() - wang.max()):.2f}°')
-    print('    （腰是这条链上唯一的动关节，这两个数该对得上；差得多说明'
-          '退旧值退太狠，看 bridge.log 的"最差旧了"）')
-    # 幅度对得上还可能是巧合，时间上同步就不是了。
-    # 拿两个**同参考帧的转角**比，不要拿"平移离均值多远"比：后者是个绝对值，
-    # 腰来回摆过均值时它是 V 形的，和转角不单调 —— 实测那样算出来只有 +0.26，
-    # 看着像不相关，其实只是统计量选错了。
-    if ang.ptp() > STILL_DEG:
-        c = float(np.corrcoef(wang, ang)[0, 1])
-        print(f'    腰角 vs 杠杆臂转角 相关系数 {c:+.3f}'
-              '（接近 +1 说明是跟着腰在变，不是噪声）')
+    print(f'  ✓ 链动了 {chain_deg:.2f}°，反解出来的杠杆臂和按链算的对得上')
+    print(f'    转角残差最大 {res_deg.max():.3f}°（死线 {RESID_DEG}°），'
+          f'平移残差全部在上界内')
+    print('    -> 每帧确实重查了 TF，而且用的就是当帧那个值')
     return 0
 
 
