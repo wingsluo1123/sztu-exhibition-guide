@@ -429,7 +429,8 @@ def main():
 
     print(f'\n=== 反解出来的杠杆臂（T_body_base，'
           f'即 {BASE_FRAME} 在 body 系里）===')
-    print(f'  均值   [{solved_t[:, 0].mean():+.4f}, {solved_t[:, 1].mean():+.4f},'
+    print(f'  均值   [{solved_t[:, 0].mean():+.4f},'
+          f' {solved_t[:, 1].mean():+.4f},'
           f' {solved_t[:, 2].mean():+.4f}] m')
     print(f'  相对首帧转角  解 {solved_deg.max():.2f}°  /  '
           f'按链算 {truth_deg.max():.2f}°')
