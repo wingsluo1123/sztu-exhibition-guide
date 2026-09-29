@@ -1433,7 +1433,9 @@ tools/tour_precheck.py /tmp/map36b
 source ~/sztu/setup.sh
 systemctl --user stop sztu-bridge
 pgrep -af 'navigation_[m]anager'      # 应当没有输出
-ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true
+# 空跑要把单点超时压短：dry_run 下机器人不动、位姿不变，每个点位都会走满
+# navigation_timeout（默认 120 秒）才报超时。见「空跑该怎么看」。
+ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true -p navigation_timeout:=8.0
 ros2 run sztu_guide guide_manager
 # 走完
 systemctl --user start sztu-bridge
@@ -1550,7 +1552,7 @@ is spinning"。
 修完在真机上验的是完整路径：构造 `GuideManager` 全套子系统之后过定位闸，
 7 个点位加载正常，闸 0.00 秒通过，位姿 (0.008, -0.242)。
 
-#### 测试
+#### 前两个 bug 的测试
 
 `src/sztu_slam/test/test_slam_localization_wait.py`（7 条，用真 rclpy 收发）。
 两条负对照把两个 bug 的机理分别钉住：
@@ -1569,6 +1571,53 @@ is spinning"。
 真位姿 —— 断言拿到的是现场数据，"通过"和"失败"都跟被测逻辑无关。
 所以 `SlamManager` 的 `odom_topic` 现在是 ROS 参数，用例指到一个真机上
 不存在的私有话题。**在活着的机器人上跑测试，第一件事是把话题隔开。**）
+
+#### 第三个 bug：导航侧那份位姿也没人送（275ec42）
+
+定位闸修好之后，真机上又往前挪了一步就卡住：闸刚报 `Localization successful`，
+紧接着 7 个点位在**1 秒内**全部报
+
+```
+[ERROR] [navigation_manager]: Current pose not available, cannot navigate
+```
+
+整场讲解跑完，一步没走。
+
+**根子是两个节点、两份 `current_pose`。**`guide_manager` 过的是
+`SlamManager` 的定位闸，而 `set_goal` 判的是 `NavigationManager` **自己那份**
+`/slam/lidar_odom` 订阅。后者的 `odom_callback` 只会在 `navigate_to` 的等待
+循环里被调到，而那个循环在 `set_goal` 成功之后才开始转 —— 一帧都还没来就
+先被拒了。鸡生蛋。
+
+修法：`navigate_to` 先 `wait_for_pose()`（转着等第一帧，默认上限
+`pose_wait_timeout` 10 秒 —— 话题发现实测要 2.19 秒，不能只留一两帧余量），
+等到了再交给 `set_goal`。新鲜度和"非 None"一起判：只判非 None 的话，
+位姿流断了的场合会拿一个冻住的旧值起步。
+
+`set_goal` 保持拒绝不变 —— 它是非阻塞路径（bridge 用），不该自己去转节点。
+只是错误信息现在说明是"这个节点自己没收到"，并指向 `navigate_to`。
+
+真机验的是完整路径（`dry_run=true`）：SLAM 定位闸 0.00 s → 导航侧位姿 0.00 s
+→ `navigate_to(当前位置, yaw=None)` 返回 True、`last_result='arrived'`、0.08 s。
+测试见 `src/sztu_navigation/test/test_navigation_pose_wait.py`（4 条，真 rclpy 收发）。
+
+**这三个 bug 是同一个形状**：进程内 new 出来的子节点，没有执行器在转它，
+于是"某个标志位/字段永远是初始值"。在这个仓库里判断"某个子节点的状态字段"
+之前，先问一句：**谁在转它？**
+
+#### 空跑（dry_run）该怎么看
+
+`navigation_timeout` 默认 **120 秒**，而 `dry_run` 下底盘不动、位姿不变，
+所以除了本来就已经在容差内的点位，**每个点位都会走满 120 秒再报超时**——
+7 个点 14 分钟，看着像全线失败，其实是空跑的必然结果。空跑时把它压短：
+
+```bash
+ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true -p navigation_timeout:=8.0
+```
+
+空跑要看的是三件事：不再报 `Current pose not available`；每个点位有
+`Navigating to target: x=... y=... yaw=...`；以及 `[dry_run] 本该下发
+linear=... angular=...`（1 Hz 节流）的方向对不对。
 
 ### ⚠️ 位姿流会无征兆地停一阵子 —— 已加闸，但原因没查清
 

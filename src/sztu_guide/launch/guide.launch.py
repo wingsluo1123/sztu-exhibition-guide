@@ -30,9 +30,12 @@ sztu-bridge 已经跑着一个 navigation_manager（**没带 dry_run**），
 所以实走只用一条命令：
     ros2 run sztu_guide guide_manager
 空跑（不下发速度，只看日志）：
-    ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true
+    ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true -p navigation_timeout:=8.0
 （实测过：不带节点名的 -p 会透进进程内自建的每个子节点，包括
- navigation_manager。注意 dry_run 只拦底盘，胳膊和嘴照常动。）
+ navigation_manager。注意 dry_run 只拦底盘，胳膊和嘴照常动。
+ navigation_timeout 要一起压短：dry_run 下机器人不动、位姿不变，
+ 每个点位都会走满默认的 120 秒才报超时 —— 7 个点 14 分钟，看着像全线失败，
+ 其实是空跑的必然结果。）
 
 这个 launch 留给"只想起子系统、自己写上层逻辑"的场景。
 """
