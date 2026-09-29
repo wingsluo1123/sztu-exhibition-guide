@@ -29,8 +29,6 @@ import math
 import os
 import sys
 
-import numpy as np
-
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from gridmap import PGM_FREE, PGM_OCC, PGM_UNK           # noqa: E402
