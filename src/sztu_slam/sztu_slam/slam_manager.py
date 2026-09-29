@@ -48,9 +48,12 @@ class SlamManager(Node):
         )
 
         # 订阅者：位姿数据（用于监控定位状态）
+        # 话题名存成属性：调用方报"定位没就绪，去查这个话题"的时候要能说出
+        # 到底订的是哪个，写死两遍早晚会漂。
+        self.odom_topic = '/slam/lidar_odom'
         self.odom_sub = self.create_subscription(
             Odometry,
-            '/slam/lidar_odom',
+            self.odom_topic,
             self.odom_callback,
             odom_qos
         )
@@ -170,25 +173,56 @@ class SlamManager(Node):
 
         # 等待定位成功
         self.is_localized = False
-        timeout = 30.0
-        start_time = time.time()
 
-        while not self.is_localized and (time.time() - start_time) < timeout:
-            rclpy.spin_once(self, timeout_sec=0.1)
-
-        if self.is_localized:
+        if self.wait_until_localized(30.0):
             self.get_logger().info('Relocalization successful')
             return True
         else:
             self.get_logger().error('Relocalization timeout')
             return False
 
+    def wait_until_localized(self, timeout: float = 10.0) -> bool:
+        """
+        等到收到第一帧位姿为止，最多等 timeout 秒。返回是否等到了。
+
+        **为什么必须有这个方法，而不是让调用方自己看 is_ready()：**
+        is_localized 只在 odom_callback 里被置位，而回调只有在有人 spin 这个
+        节点的时候才会被调到。SlamManager 经常是被别的节点在进程内 new 出来的
+        子节点（guide_manager.py 就是这么用的），那种情况下没有任何执行器在转
+        它。调用方如果只 `if not slam.is_ready()` 看一眼，得到的永远是 False，
+        哪怕 /slam/lidar_odom 正以 10 Hz 稳稳地发着 —— 真机上就这么卡住过一次，
+        讲解走到"检查定位"这一步直接返回，看日志完全看不出是谁的错。
+
+        executor 的判断和 navigation_manager.navigate_to 里是同一个道理：节点
+        可能已经被外部执行器（rclpy.spin / MultiThreadedExecutor）转着了，那时
+        候再调 spin_once 会和执行器抢回调，抛 "cannot spin while another thread
+        is spinning"。所以先看有没有人在转，有人转就只管睡着等标志位。
+        """
+        if self.is_localized:
+            return True
+
+        deadline = time.monotonic() + timeout
+        while rclpy.ok() and time.monotonic() < deadline:
+            if self.executor is None:
+                rclpy.spin_once(self, timeout_sec=0.1)
+            else:
+                time.sleep(0.05)
+            if self.is_localized:
+                return True
+
+        return self.is_localized
+
     def get_current_pose(self):
         """Get current pose"""
         return self.current_pose if self.is_localized else None
 
     def is_ready(self):
-        """Check if SLAM is ready (localized)"""
+        """
+        瞬时查询定位标志位，不等待。
+
+        没人 spin 这个节点的时候它恒为 False，见 wait_until_localized。
+        要"判断能不能开走"请用 wait_until_localized。
+        """
         return self.is_localized
 
 

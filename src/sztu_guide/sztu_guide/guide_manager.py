@@ -46,6 +46,12 @@ class GuideManager(Node):
         self.is_guiding = False
         self.current_point_index = 0
 
+        # 开走前等定位的上限。10 秒是给位姿源留的启动余量：lio_odom_bridge 正常
+        # 是 10 Hz，第一帧通常 1 秒内就到，等到 10 秒还没有就是它没在跑。
+        self.declare_parameter('localization_timeout', 10.0)
+        self.localization_timeout = float(
+            self.get_parameter('localization_timeout').value)
+
         # 加载配置
         self.waypoints = []
         self.content = {}
@@ -128,10 +134,18 @@ class GuideManager(Node):
         self.emotion.show_emotion('greeting')
         self.gesture.perform_gesture('wave')
 
-        # Check localization status
-        if not self.slam.is_ready():
-            self.get_logger().warn('Localization not ready, attempting to load map...')
-            # TODO: Auto load map or notify admin
+        # 等定位就绪。这里必须是"等"而不是"查一眼"：SlamManager 是上面在进程内
+        # new 出来的子节点，没有任何执行器在转它，它的 odom_callback 只会在
+        # wait_until_localized 里的 spin_once 里被调到。原来这里写的是
+        # `if not self.slam.is_ready()`，于是标志位永远是 False —— 真机上实测
+        # 到过：/slam/lidar_odom 以 10 Hz 正常发着，欢迎词、表情、手势全做完了，
+        # 到这一步直接 return False，日志只有一行 "Localization not ready"。
+        # （TTS / 表情 / 手势没出这个问题，是因为它们各自在
+        #  spin_until_future_complete 里自己转自己。）
+        if not self.slam.wait_until_localized(self.localization_timeout):
+            self.get_logger().error(
+                f'定位未就绪：等了 {self.localization_timeout:.0f} 秒没收到位姿。'
+                f'检查位姿源是否在发：ros2 topic hz {self.slam.odom_topic}')
             return False
 
         self.is_guiding = True
