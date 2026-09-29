@@ -122,7 +122,8 @@ class LocomotionController(Node):
                  lateral_threshold: float = DEFAULT_LATERAL_THRESHOLD,
                  angular_threshold: float = DEFAULT_ANGULAR_THRESHOLD,
                  node_name: str = 'locomotion_controller'):
-        """
+        """构造一个走跑控制器。
+
         release_after 为 None 时（默认）零速度会一直发下去，把输入源保持在
         active —— 遥控场景要的就是这个，松手后机器人保持停住。自主导航应当传
         一个秒数（例如 1.0），停车若干秒后彻底停发，让 MC 把我们超时摘掉，
