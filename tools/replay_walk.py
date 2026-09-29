@@ -104,6 +104,45 @@ def quat_yaw(x, y, z, w):
     return math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
 
 
+def read_tf(conn, t0_ns, t1_ns, topic='/tf'):
+    """按 (父, 子) 统计每一节 TF 的 yaw 变了多少。
+
+    为什么要看这个：`/slam/lidar_odom` 是 `/Odometry`（雷达系）乘上
+    `base_link -> body` 这一节 TF 换算出来的。两条流的 yaw 对不上时，
+    差额必然出在这条链里 —— 与其猜是哪个关节，不如把每一节都列出来。
+    """
+    row = conn.execute(
+        'select id, type from topics where name = ?', (topic,)).fetchone()
+    if row is None:
+        raise SystemExit(f'包里没有 {topic}')
+    topic_id, type_name = row
+
+    from rclpy.serialization import deserialize_message
+    from rosidl_runtime_py.utilities import get_message
+    msg_cls = get_message(type_name)
+
+    seen = {}
+    for ts, blob in conn.execute(
+            'select timestamp, data from messages where topic_id = ? '
+            'and timestamp >= ? and timestamp <= ? order by timestamp',
+            (topic_id, t0_ns, t1_ns)):
+        for tr in deserialize_message(bytes(blob), msg_cls).transforms:
+            key = (tr.header.frame_id, tr.child_frame_id)
+            q = tr.transform.rotation
+            yaw = quat_yaw(q.x, q.y, q.z, q.w)
+            rec = seen.get(key)
+            if rec is None:
+                seen[key] = {'n': 1, 'first': yaw, 'last': yaw,
+                             'turned': 0.0, 't0': ts / 1e9, 't1': ts / 1e9}
+            else:
+                d = (yaw - rec['last'] + math.pi) % (2 * math.pi) - math.pi
+                rec['n'] += 1
+                rec['turned'] += abs(d)
+                rec['last'] = yaw
+                rec['t1'] = ts / 1e9
+    return seen
+
+
 def read_poses(conn, topic, t0_ns, t1_ns):
     """按时间顺序读出 (epoch 秒, x, y, yaw)。"""
     row = conn.execute(
@@ -239,6 +278,8 @@ def main():
     ap.add_argument('--every', type=float, default=2.0,
                     help='表格每多少秒打一行（0 = 全打，默认 2）')
     ap.add_argument('--no-table', action='store_true')
+    ap.add_argument('--tf', action='store_true',
+                    help='不看位姿，改成列出每一节 TF 的 yaw 变化')
     ap.add_argument('--map', help='gridmap 的 -o（<base>.pgm/.yaml），用来出图')
     ap.add_argument('--config', default='config/waypoints.yaml')
     ap.add_argument('--render', help='输出的 .png')
@@ -261,6 +302,23 @@ def main():
 
     t0 = parse_time(args.t_from, first_ns) if args.t_from else first_ns
     t1 = parse_time(args.t_to, first_ns) if args.t_to else last_ns
+
+    if args.tf:
+        seen = read_tf(conn, t0, t1)
+        print(f'\n窗口 {clock(t0 / 1e9)} .. {clock(t1 / 1e9)}：'
+              f'{len(seen)} 节 TF，按 yaw 净变化排序')
+        print(f'{"父 -> 子":<52} {"帧数":>7} {"起":>8} {"止":>8} '
+              f'{"净变":>8} {"累计":>8}')
+        rows = sorted(seen.items(),
+                      key=lambda kv: -abs(kv[1]['last'] - kv[1]['first']))
+        for (parent, child), r in rows:
+            net = math.degrees(
+                (r['last'] - r['first'] + math.pi) % (2 * math.pi) - math.pi)
+            print(f'{parent + " -> " + child:<52} {r["n"]:>7} '
+                  f'{math.degrees(r["first"]):8.1f} '
+                  f'{math.degrees(r["last"]):8.1f} {net:8.1f} '
+                  f'{math.degrees(r["turned"]):8.1f}')
+        return
 
     samples = read_poses(conn, args.topic, t0, t1)
     print(f'\n窗口 {clock(t0 / 1e9)} .. {clock(t1 / 1e9)}：'
