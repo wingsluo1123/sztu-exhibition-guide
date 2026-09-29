@@ -191,6 +191,37 @@ source 之后跑全量测试：**187 passed，0 failed，0 skipped，0 error。*
 > （`AMENT_TRACE_SETUP_FILES` 等），在 `set -u` 下直接报错退出，
 > 所以 source 它们必须临时 `set +u`。
 
+#### 补记（2026-09-29）：这个脚本在**机器人上**一条用例都跑不起来
+
+在真机上跑 `tools/run_tests.sh`，输出是一行 `1 skipped`，绿的，看着像通过。
+实际是 4 个包 400 多条用例**一条都没跑**。两个原因叠在一起：
+
+1. **脚本只认开发机的 AimDK 布局**（`~/aimdk/install/setup.bash`）。机器人上
+   厂商的 `aimdk_msgs` 在 `/agibot` 里，**没有 setup.bash 可以 source**，
+   要手工挂三条路径，缺一不可（每条缺了报什么都验过）：
+
+   | 路径 | 缺了报什么 |
+   |---|---|
+   | `/agibot/software/common/local/lib/python3.10/dist-packages` | `ModuleNotFoundError: aimdk_msgs` |
+   | 同上 + `/aimdk_msgs` | `ImportError: libaimdk_msgs__rosidl_generator_py.so` |
+   | `/agibot/software/common/lib`（`LD_LIBRARY_PATH`） | `ImportError: libaimdk_msgs__rosidl_typesupport_c.so` |
+
+   后两种都会收敛成 `UnsupportedTypeSupport`，把用例报成 **ERROR 而不是 skip**
+   —— 也就是说「少挂一条路径」和「代码坏了」在输出里长得一模一样。
+
+2. **机器人上，任何一个模块层的 skip 会把整轮 collection 一起掐掉。**
+   只要有一个测试文件在模块层 `importorskip` / `pytest.skip(allow_module_level=True)`，
+   整个 session 收集到 0 条，打印 `1 skipped`，**没有红字**。开发机上同样版本的
+   pytest（6.2.5，py 1.10.0，pluggy 0.13.0）不这样：同一份合成用例给出
+   `1 passed, 1 skipped`。按插件逐个 `-p no:` 二分过：`launch_testing` 能让
+   `--collect-only` 恢复正常，但**救不了真跑**，全关也一样。机制没查到底，
+   这里只记现象和唯一可靠的信号：**exit code 是 5**（"no tests collected"）。
+
+   `run_tests.sh` 现在把 `rc == 5` 单独拎出来报，因为它是唯一一种
+   "输出看着像通过、实际一条没跑"的失败。
+
+挂对环境之后的真实数字（真机，2026-09-29）：**417 passed, 5 skipped**。
+
 现状：仓库里 `colcon test` 和 `pytest` 这两个字符串**在任何 .sh/.md/.txt 里出现 0 次**。没有 CI（`.github/` 不存在），没有 `pytest.ini` / `tox.ini` / `pyproject.toml`，没有 runner 脚本。而且直接 `pytest src/` 会因为 12 个 `ament_*` lint 文件死在 collection 阶段（`Interrupted: 12 errors during collection`），一个测试都不跑。
 
 要做：加一个 `tools/run_tests.sh`，负责 source ROS + AimDK、设好 PYTHONPATH、排除 lint 文件。当前可用的命令是：
