@@ -229,7 +229,14 @@ report() {
     if [ "$BRIDGE" -eq 1 ]; then
         if [ -s "$RUN_DIR/bridge.log" ]; then
             # 转接层的收尾统计是几行 print，直接照搬；它自己会标哪条不正常。
-            grep -E '转发|丢弃|没转发|重力方向实测完成' "$RUN_DIR/bridge.log" \
+            #
+            # 这里**不要**用关键词白名单挑行。之前挑的是「转发|丢弃|没转发」，
+            # 结果「TF 退用最新值 9 条（最差旧了 59 ms）」一个词都不沾，被
+            # 静静吞掉了 —— 我还因此以为退让路径没触发过。改成认收尾块本身：
+            # 从「[lio_odom_bridge] 转发」那行起，往下收缩进两格的明细行。
+            grep -E '重力方向实测完成' "$RUN_DIR/bridge.log" | sed 's/^/  /'
+            sed -n '/^\[lio_odom_bridge\] 转发 /,$p' "$RUN_DIR/bridge.log" \
+                | awk 'NR==1 || /^  /{print; next} {exit}' \
                 | sed 's/^/  /'
         else
             hmm "  bridge.log 是空的 —— 转接层没起来？"
