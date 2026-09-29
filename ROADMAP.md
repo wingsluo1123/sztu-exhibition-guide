@@ -1409,17 +1409,46 @@ B3 做完之后，整条"定点讲解"链上**没有编的数了**。要你在�
 
 ### 实走的三条命令
 
+**每开一个新终端，第一件事是 `source ~/sztu/setup.sh`。** 机器人的
+`~/.bashrc` 里没有自动 source（login shell 的 `AMENT_PREFIX_PATH` 是空的），
+漏了会连着踩两个报错，而且两个都不提"你没 source"：
+
+| 报错 | 缺的是 |
+|---|---|
+| `Package 'sztu_guide' not found` | `~/sztu/install/setup.bash`（本工作空间的 overlay） |
+| `ModuleNotFoundError: No module named 'aimdk_msgs'` | 厂商预编译库的 PYTHONPATH |
+
+`setup.sh` 一条命令把 ROS 2 base、AimDK 预编译库、本工作空间三样都加载了。
+
 ```
 # 终端 1：位姿源。必须带 --bridge —— guide.launch.py 起的 slam_manager 不发位姿
+#（run_lio_live.sh 自己会 source，这个终端可以不用先 source setup.sh）
 tools/run_lio_live.sh --bridge
 
 # 站在贴胶带的出发点，先自检坐标系对齐
+source ~/sztu/setup.sh
 tools/tour_precheck.py /tmp/map36b
 
 # 终端 2：讲解系统。先空跑一遍看日志，再真走
+source ~/sztu/setup.sh
 ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true
 ros2 run sztu_guide guide_manager
 ```
+
+**改了代码不用重新 colcon build。** 工作空间是 `--symlink-install` 建的
+（`build/<pkg>/<pkg>` 是指向 `src/` 的软链，install 里放的是 egg-link），
+所以 `git pull` 之后 Python 改动立刻生效。只有**新增 console_scripts 入口点**
+（改 `setup.py`）才需要重新 build。
+
+### ⚠️ `dry_run` 只拦底盘，不拦胳膊和嘴
+
+`dry_run` 这个参数只在 `navigation_manager` 里（全仓库只有那一个文件有它），
+它拦的是 `set_velocity` —— **机器人不会走**。但 `gesture_controller` 照样
+发机械臂指令、调 `SetMcPresetMotion` 预设动作，`tts_controller` 照样说话。
+
+所以空跑那一遍：**人要站开，胳膊会动。** 这不是 bug，空跑本来就是为了验
+"坐标对不对、朝哪个方向走"，把代价从撞墙降到看日志；要连胳膊都不动，
+现在得直接 Ctrl-C 不进菜单。
 
 ### ⚠️ 不要用 `ros2 launch sztu_guide guide.launch.py`
 
