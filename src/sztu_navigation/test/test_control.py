@@ -5,7 +5,12 @@ import math
 
 import pytest
 
-from sztu_navigation.control import HEADING_ROTATE_THRESHOLD, compute_velocity
+from sztu_navigation.control import (
+    HEADING_ROTATE_THRESHOLD,
+    MIN_ODOM_STALE_TIMEOUT,
+    compute_velocity,
+    odom_stale_timeout,
+)
 
 
 TOL = dict(position_tolerance=0.3, angle_tolerance=0.26)
@@ -160,3 +165,51 @@ def test_closed_loop_reaches_goal():
 
     assert math.hypot(x - target[0], y - target[1]) < TOL['position_tolerance']
     assert step * dt < 60, f'到达耗时 {step * dt:.1f}s，超出合理范围'
+
+
+# --- 位姿过期上限 -----------------------------------------------------------
+#
+# 这几条测的是"多旧算旧"这个判据本身，而不是它在节点里怎么用。判据来自物理量
+# （位置容差 / 最大线速度），所以能算出准确值，不需要"差不多"的断言。
+
+def test_stale_timeout_is_tolerance_over_speed():
+    # 0.3 m 的容差、0.5 m/s 的限速 -> 冻住 0.6 秒正好走完整个容差
+    assert odom_stale_timeout(0.3, 0.5) == pytest.approx(0.6)
+
+
+def test_stale_timeout_tightens_when_tolerance_shrinks():
+    # 容差减半，允许的冻结时长也要减半 —— 写成常数就做不到这件事
+    loose = odom_stale_timeout(0.3, 0.5)
+    tight = odom_stale_timeout(0.15, 0.5)
+    assert tight == pytest.approx(loose / 2)
+
+
+def test_stale_timeout_tightens_when_speed_rises():
+    slow = odom_stale_timeout(0.3, 0.5)
+    fast = odom_stale_timeout(0.3, 1.0)
+    assert fast == pytest.approx(slow / 2)
+
+
+def test_stale_timeout_never_below_a_few_frames():
+    """
+    负对照：容差很小、速度很大时推出来的值会小到没法用。
+
+    位姿源标称 10 Hz，阈值要是掉到 0.02 秒，正常抖动就会被判成断流，
+    每次导航都会被自己的看门狗打断。下限必须兜住。
+    """
+    assert odom_stale_timeout(0.01, 2.0) == MIN_ODOM_STALE_TIMEOUT
+    assert odom_stale_timeout(0.3, 0.0) == MIN_ODOM_STALE_TIMEOUT
+    assert odom_stale_timeout(0.3, -1.0) == MIN_ODOM_STALE_TIMEOUT
+
+
+def test_stale_timeout_bounds_the_blind_distance():
+    """
+    换个角度验同一件事：按这个上限，位姿冻住期间机器人最多"盲走"多远。
+
+    盲走距离 = 最大线速度 x 上限，必须不超过位置容差（下限兜底的那档除外，
+    那一档是被 10 Hz 的帧率约束住的，本来就允许盲走得多一点）。
+    """
+    for tolerance, speed in [(0.3, 0.5), (0.5, 0.5), (0.4, 0.8), (1.0, 0.5)]:
+        blind = speed * odom_stale_timeout(tolerance, speed)
+        assert blind <= tolerance + 1e-9, (
+            f'容差 {tolerance} / 限速 {speed}：盲走 {blind:.2f} m 超过容差')

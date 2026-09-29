@@ -13,7 +13,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 
-from .control import compute_velocity
+from .control import compute_velocity, odom_stale_timeout
 from .locomotion import LocomotionController
 from .waypoints import (
     DEFAULT_NAVIGATION_PARAMS,
@@ -57,6 +57,14 @@ class NavigationManager(Node):
         self.navigation_timeout = self.get_parameter('navigation_timeout').value
         self.obstacle_distance = self.get_parameter('obstacle_distance').value
 
+        # 位姿过期上限。默认 0 表示按容差和速度推（见 control.odom_stale_timeout），
+        # 不要拍一个常数上去：容差或限速改了，这个上限要跟着变。
+        self.declare_parameter('odom_stale_timeout', 0.0)
+        configured_stale = float(self.get_parameter('odom_stale_timeout').value)
+        self.odom_stale_timeout = (
+            configured_stale if configured_stale > 0.0
+            else odom_stale_timeout(self.position_tolerance, self.max_linear_speed))
+
         # QoS 配置
         odom_qos = QoSProfile(
             depth=10,
@@ -93,9 +101,10 @@ class NavigationManager(Node):
         self.locomotion_timer = self.create_timer(0.02, self.locomotion.tick)
 
         # 订阅者：当前位姿
+        self.odom_topic = str(self.get_parameter('odom_topic').value)
         self.odom_sub = self.create_subscription(
             Odometry,
-            self.get_parameter('odom_topic').value,
+            self.odom_topic,
             self.odom_callback,
             odom_qos
         )
@@ -113,8 +122,9 @@ class NavigationManager(Node):
         self.target_pose = None
         self.is_navigating = False
         self.obstacle_detected = False
-        self.last_result = None  # 'arrived' | 'timeout' | 'canceled' | None
+        self.last_result = None  # 'arrived' | 'timeout' | 'canceled' | 'odom_stale' | None
         self._goal_start_time = None
+        self._last_odom_time = None
 
         # 控制循环
         self.control_timer = self.create_timer(0.1, self.control_loop)  # 10Hz
@@ -124,6 +134,15 @@ class NavigationManager(Node):
     def odom_callback(self, msg: Odometry):
         """位姿回调"""
         self.current_pose = msg.pose.pose
+        # 记到达时刻，不用消息里的 header.stamp：这里要判的是"这条链还活着吗"，
+        # 而 stamp 是发布端自己写的，发布端卡住的时候它不会告诉你它卡住了。
+        self._last_odom_time = time.monotonic()
+
+    def pose_age(self):
+        """最后一帧位姿到现在多久了（秒）。一帧都没收到过返回 None。"""
+        if self._last_odom_time is None:
+            return None
+        return time.monotonic() - self._last_odom_time
 
     def lidar_callback(self, msg: PointCloud2):
         """Lidar callback: simple obstacle detection"""
@@ -165,6 +184,16 @@ class NavigationManager(Node):
 
         if self.current_pose is None:
             self.get_logger().error('Current pose not available, cannot navigate')
+            return False
+
+        # 开一个新目标之前也要看位姿新不新。位姿流断掉以后 current_pose 还留着
+        # 旧值，不拦的话每个点位都会照常起步、走上 0.6 秒再被控制循环停下来 ——
+        # 明明一开始就知道走不了。
+        age = self.pose_age()
+        if age is not None and age > self.odom_stale_timeout:
+            self.get_logger().error(
+                f'位姿已经 {age:.1f} 秒没更新，拒绝导航请求。'
+                f'先确认位姿源在发：ros2 topic hz {self.odom_topic}')
             return False
 
         yaw_text = 'any' if yaw is None else f'{yaw:.2f}'
@@ -216,6 +245,19 @@ class NavigationManager(Node):
             return
 
         if self.current_pose is None:
+            return
+
+        # 位姿过期就停车。`current_pose is None` 拦不住这种情况：位姿流断了以后
+        # current_pose 不是 None，而是一个**冻住的旧值** —— 控制律会以为机器人
+        # 一直没动，于是一直往同一个方向发速度，人看到的是它闷头往前走。
+        age = self.pose_age()
+        if age is not None and age > self.odom_stale_timeout:
+            self.get_logger().error(
+                f'位姿已经 {age:.1f} 秒没更新（上限 {self.odom_stale_timeout:.1f} 秒），'
+                f'停车。位姿源可能断了：ros2 topic hz {self.odom_topic}')
+            self.stop()
+            self.is_navigating = False
+            self.last_result = 'odom_stale'
             return
 
         # 超时也在控制循环里判一次：set_goal() 这条非阻塞路径没有等待循环，

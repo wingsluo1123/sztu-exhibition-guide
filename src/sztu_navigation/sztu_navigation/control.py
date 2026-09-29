@@ -16,6 +16,37 @@ from .waypoints import normalize_angle
 # 航向误差超过这个值就原地转，不要一边大角度转一边往前冲
 HEADING_ROTATE_THRESHOLD = 0.5  # 弧度，约 29°
 
+# 位姿最少要允许迟到这么久。位姿源标称 10 Hz（fastlio 配置里 scan_rate: 10），
+# 一帧 0.1 秒，给 3 帧的抖动余量。比这更短就成了惊弓之鸟，网络抖一下就中止导航。
+MIN_ODOM_STALE_TIMEOUT = 0.3  # 秒
+
+
+def odom_stale_timeout(position_tolerance: float, max_linear_speed: float,
+                       floor: float = MIN_ODOM_STALE_TIMEOUT) -> float:
+    """
+    位姿多旧就不能再拿来算控制量。
+
+    判据是从物理量推出来的，不是照着实测数据挑的：位姿冻住以后控制律看到的
+    位置不再变，机器人却还在按上一拍的速度走。走过的距离 = 速度 x 冻结时长。
+    要让这段"看不见的位移"不至于吃掉到点容差，就得
+
+        冻结时长 <= 位置容差 / 最大线速度
+
+    现在的默认值是 0.3 m / 0.5 (m/s) = 0.6 秒。容差调小或速度调大，这个上限
+    自动跟着收紧 —— 所以不要把它写成一个常数。
+
+    下限 floor 是另一头的约束：位姿源本身 10 Hz，阈值不能比几帧的抖动还短。
+
+    为什么需要这道闸：navigation_manager 的 odom_callback 只存位姿不记时间，
+    control_loop 只判 `current_pose is None`。位姿流一停，current_pose 是旧值
+    而不是 None，控制律会拿着一个冻住的位置继续算、继续发速度，机器人就这么
+    闷头往前走。2026-09-29 在真机上实测到过 /slam/lidar_odom 连续约 100 秒
+    一帧不出（fastlio 和转接层进程都活着、CPU 也在涨），所以这不是假想。
+    """
+    if max_linear_speed <= 0.0:
+        return floor
+    return max(floor, position_tolerance / max_linear_speed)
+
 
 @dataclass
 class VelocityCommand:
