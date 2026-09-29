@@ -73,23 +73,40 @@
 **随距离变松紧**的判据 —— 走 27 m 那趟剩 1.2 mm 通过，走 36 m 那趟同样健康
 的数据剩 11.5 mm 就报 ✗。我又一次用了一个会随无关变量漂的量。
 
-真判据：转角残差本该是一条平线，看谁高出来
-------------------------------------------
+真判据：转角残差有一个**算得出来**的上界，看谁超出去
+----------------------------------------------------
 
 注意上面那个 M 的旋转 = `R_cbᵀ · δR · R_cb` —— 这是个**共轭**，所以它的
-转角**恒等于 |δ|**，和 `R_cb` 无关、和走多远无关。也就是说：一切正常时
-`res_deg` 就该是一条平线，中位数就是 δ。
+转角**恒等于 |δ|**，和 `R_cb` 无关、和走多远无关。
 
-于是判据变成看**每帧比这条平线高出多少**。高出的部分只可能来自"节点当时
-用的 TF ≠ 按链插值算的 TF"，正是要验的东西，而且不随距离涨。再把高出的角
+而 |δ| 的上界是能**直接算出来**的：`bridge.log` 里那个向量是 `%+.3f` 打的，
+每个分量最多差半个最低位 = 5e-4，于是方向角误差 ≤ |(5e-4,5e-4,5e-4)|
+= 8.66e-4 rad = **0.0496°**。真机两趟实测 0.016° 和 0.044°，都在界内。
+
+所以判据是：每帧的转角残差超出这个界多少。超出的部分只可能来自"节点当时
+用的 TF ≠ 按链插值算的 TF"，正是要验的东西，而且不随距离涨。再把超出的角
 除以链的角速度，就直接换算成"这帧的 TF 旧了多少毫秒"，可以和 `bridge.log`
 里转接层自己报的「TF 退用最新值 / 最差旧了」**对照**。
 
-个别帧超标是正常的 —— 单线程调度抖动会让转接层退用最新的 TF（它自己记了
-次数和最差值）。所以判据是三条：中位别超 δ 的死线（全程都差）、超标帧别
-成片（占比）、换算出的毫秒别越过转接层自己的上界 `tf_stale_max_ms`。
+基线绝不能从待检数据里估（第五版改的，前一版是错的）
+----------------------------------------------------
 
-不用假设 δ 有多大 —— 它是量出来的。
+第四版之后我曾把基线取成残差的**中位数**（理由是"正常时它是一条平线，中位
+就是 δ"）。这个理由本身没错，但判据瞎了一个方向：**如果每一帧都退旧了同样
+多**，中位数会把这个偏移一起吸掉，`res − 中位` 处处为零。真机上链的角速度
+一直在变，所以侥幸能抓到；合成一条匀速转的链就能让它漏报 —— 这正是
+`test_check_lever_judge.py::test_systematic_stale_is_caught` 一开始跑出来的
+结果，测试写完当场就抓到了。
+
+教训：**基线不能跟着被测量一起漂**。改成上面那个算出来的界之后，同样的
+测试就过了。
+
+个别帧超标是正常的
+------------------
+
+单线程调度抖动会让转接层退用最新的 TF（它自己记了次数和最差值）。所以判据
+是三条：中位别超 `RESID_DEG`（全程都差）、超标帧别成片（占比）、换算出的
+毫秒别越过转接层自己的上界 `tf_stale_max_ms`。
 
 用法:
     tools/check_lever.py <run_dir>          # run_lio_live.sh --bridge 的产物目录
@@ -123,16 +140,21 @@ BASE_FRAME = 'base_link'
 BODY_FRAME = 'lidar_imu_chest_front'
 STATIC_S = 2.0
 
-# 转角残差的死线。这一项就是重力方向的量化误差 δ（bridge.log 只有三位小数），
-# 实测 0.016° ~ 0.044°。留一个数量级的余量。
+# 转角残差的死线。它本该只剩重力方向的量化误差 δ，而 δ 的上界是**算出来的**
+# （见 gravity_from_log），实测 0.016° / 0.044°，算出来的界 0.0496°。
 RESID_DEG = 0.5
-# 单帧"多出来的"转角残差（= 本帧转角残差 - 全程中位）的死线。
+# 自己从 IMU 现算重力时给 δ 的余量。走这条路算法和数据都和节点一样，理论上
+# δ = 0，只剩 float 往返那点渣。
+IMU_DELTA_DEG = 0.01
+# 单帧转角残差超过「δ 的上界 + 这个数」就算超标。
 #
-# 为什么用"多出来的"而不是绝对值：残差 M = C⁻¹·Δ·C，它的**转角恒等于 |Δ|**，
-# 和 C 无关、和走多远无关（推导见文件头）。所以只要一切正常，res_deg 就该是
-# 一条平线，中位数就是 δ。任何一帧高出这条平线，高出的那部分只可能来自
-# "节点当时用的 TF ≠ 按链插值算出来的 TF" —— 正是要验的东西，而且**不随
-# 距离涨**，可以卡一个固定的小数。
+# 为什么基线用**算出来的 δ 上界**、而不是残差的中位数（第五版改的）：
+# 残差 M = C⁻¹·Δ·C 是个共轭，转角恒等于 |Δ|，所以正常时它是一条平线、中位
+# 数就是 δ —— 这一点没错。但**如果每一帧都退旧了同样多**，中位数会把这个
+# 偏移一起吸掉，`res - 中位` 处处为零，判据就瞎了。真机上链的角速度在变，
+# 所以侥幸能抓到；合成一条匀速转的链就能让它漏报（见
+# test_check_lever_judge.py::test_systematic_stale_is_caught）。
+# 基线不能从待检数据里估 —— 这是第 5 次栽在"基线跟着被测量一起漂"上。
 EXTRA_DEG = 0.10
 # 超标帧最多能占多少。个别帧是 TF 退用最新值（转接层自己会报数），
 # 成片超标才是真出问题。
@@ -216,6 +238,11 @@ def gravity_from_log(run_dir):
 
     优先用它而不是自己现算：要验的是节点做得对不对，重力这一步得用**它用过的
     那个值**，不然残差里会混进重力估计的差异，分不清是谁的锅。
+
+    返回 (up, δ 的上界（度）)。日志里那个向量是 `%+.3f` 打的，所以每个分量
+    最多差半个最低位 = 5e-4，方向角误差 ≤ |(5e-4,5e-4,5e-4)| = 8.66e-4 rad
+    = 0.0496°。这个界是**算出来的**，不是从数据里估的 —— 见文件头为什么这一
+    点重要。
     """
     path = os.path.join(run_dir, 'bridge.log')
     if not os.path.isfile(path):
@@ -224,11 +251,23 @@ def gravity_from_log(run_dir):
         m = re.search(r'重力方向实测完成：上 = \['
                       r'\s*([-+0-9.]+),\s*([-+0-9.]+),\s*([-+0-9.]+)\]',
                       f.read())
-    return np.array([float(m.group(i)) for i in (1, 2, 3)]) if m else None
+    if not m:
+        return None
+    # 从字面量本身读小数位数，别假设它一直是 3 位 —— 哪天日志格式改了，
+    # 这个界要跟着变，而不是静静地失准。
+    digits = min(len(s.split('.')[1]) if '.' in s else 0
+                 for s in (m.group(i) for i in (1, 2, 3)))
+    half = 0.5 * 10 ** (-digits)
+    bound = math.degrees(math.sqrt(3.0) * half)
+    return np.array([float(m.group(i)) for i in (1, 2, 3)]), bound
 
 
 def gravity_from_imu(imu):
-    """退路：拿开头静止段的平均加速度当"上"。"""
+    """退路：拿开头静止段的平均加速度当"上"。
+
+    返回 (up, δ 的上界（度）)。这条路走的是和节点**同样的算法、同样的数据**，
+    所以理论上 δ = 0，只剩 float 往返那点渣；给 IMU_DELTA_DEG 的余量。
+    """
     if not imu:
         return None
     t0 = imu[0][0]
@@ -240,7 +279,7 @@ def gravity_from_imu(imu):
     norm = np.linalg.norm(acc)
     if not 0.7 * 9.81 < norm < 1.3 * 9.81:
         return None      # 开头没静止，这个方向不可信
-    return acc / norm
+    return acc / norm, IMU_DELTA_DEG
 
 
 # --- TF 链 -----------------------------------------------------------------
@@ -349,23 +388,67 @@ def chain_rate(chain, t):
     return rot_angle(R1 @ R0.T) / (2 * RATE_DT)
 
 
+def judge(res_deg, rates, chain_deg, delta_bound):
+    """判据本身。抽成纯函数是为了能在没有真机包的情况下测。
+
+    这个判据我改错过五次（见文件头），所以它自己也得有负对照 ——
+    见 src/sztu_slam/test/test_check_lever_judge.py。
+
+    参数
+      res_deg      每帧的转角残差（度）
+      rates        每帧的链角速度（°/s），和 res_deg 等长
+      chain_deg    整条链这趟最多动了多少度
+      delta_bound  δ 的上界（度），**算出来的**，不是从 res_deg 估的
+
+    返回 (退出码, 明细 dict)。退出码 0 = 通过，1 = 对不上，2 = 判不了。
+    """
+    res_deg = np.asarray(res_deg, dtype=float)
+    rates = np.asarray(rates, dtype=float)
+    # 基线是算出来的 δ 上界，不是数据的中位数 —— 中位数会把"每帧都退同样多"
+    # 这种系统性偏移一起吸掉。
+    extra = res_deg - delta_bound
+    over = np.where(extra > EXTRA_DEG)[0]
+    frac = len(over) / len(res_deg) if len(res_deg) else 0.0
+    # 退让 dt 的换算：多出来的转角 ≈ 链角速度 × dt
+    dt_ms = (extra[over] / np.maximum(rates[over], 1e-6) * 1000
+             if len(over) else np.zeros(0))
+    d = {
+        'med': float(np.median(res_deg)) if len(res_deg) else 0.0,
+        'delta_bound': delta_bound,
+        'extra': extra, 'over': over, 'frac': frac,
+        'dt_ms': dt_ms, 'worst_ms': float(dt_ms.max()) if len(dt_ms) else 0.0,
+        'bad_base': float(np.median(res_deg)) > RESID_DEG if len(res_deg)
+        else False,
+        'bad_frac': frac > OUTLIER_FRAC,
+    }
+    d['bad_stale'] = d['worst_ms'] > STALE_MAX_MS
+    if chain_deg < CHAIN_MIN_DEG:
+        return 2, d
+    if d['bad_base'] or d['bad_frac'] or d['bad_stale']:
+        return 1, d
+    return 0, d
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit(__doc__.strip().split('用法:')[-1].strip())
     target = sys.argv[1]
     db3 = find_bag(target)
 
-    up = gravity_from_log(target)
+    got = gravity_from_log(target)
     src = 'bridge.log（节点当时实测的）'
     topics = ['/Odometry', NAV_TOPIC, '/tf', '/tf_static']
-    msgs = read_topics(db3, topics + ([] if up is not None else [IMU_TOPIC]))
-    if up is None:
-        up = gravity_from_imu(msgs.get(IMU_TOPIC, []))
+    msgs = read_topics(db3, topics + ([] if got is not None else [IMU_TOPIC]))
+    if got is None:
+        got = gravity_from_imu(msgs.get(IMU_TOPIC, []))
         src = '包里 IMU 的静止段（bridge.log 里没读到）'
-    if up is None:
+    if got is None:
         raise SystemExit('拿不到重力方向：bridge.log 里没有，IMU 静止段也不可信')
+    up, delta_bound = got
     print(f'重力方向 上 = [{up[0]:+.3f}, {up[1]:+.3f}, {up[2]:+.3f}]'
           f'   来自 {src}')
+    print(f'  由此算出的 δ 上界 {delta_bound:.4f}°'
+          '（残差的基线，不从数据里估）')
     R_grav = gravity_align_matrix(up)
 
     chain = build_chain(msgs['/tf'], msgs['/tf_static'])
@@ -440,39 +523,34 @@ def main():
 
     print('\n=== 残差（解 · 真⁻¹）===')
     med_deg = float(np.median(res_deg))
-    extra = res_deg - med_deg
-    print(f'  转角        中位 {med_deg:.3f}°  最大 '
-          f'{res_deg.max():.3f}°   死线 {RESID_DEG}°')
-    if res_deg.max() <= RESID_DEG:
-        # 只有在这一项足够小的时候，才能说它"就是"重力量化误差。大了的话它是
-        # 真误差，下面那个"扣掉 δ"也就不是在扣噪声、而是在放大 —— 结论仍然
-        # 是"对不上"，但别把它说成量化误差。
-        print(f'              ^ 中位那一项就是重力方向的量化误差 δ'
-              f'（{med_deg:.3f}°），不随走多远变')
-    else:
-        print('              ^ 超死线了，这一项不是量化误差，是真差了')
-    print(f'  多出中位的  中位 {np.median(extra):.4f}°  最大 '
-          f'{extra.max():.4f}°   死线 {EXTRA_DEG}°  ← 判据')
+    all_rates = np.array([chain_rate(chain, r[0]) for r in rows])
+    code, d = judge(res_deg, all_rates, chain_deg, delta_bound)
+    extra = d['extra']
+    over = d['over']
+    print(f'  转角        中位 {med_deg:.4f}°  最大 '
+          f'{res_deg.max():.4f}°   死线 {RESID_DEG}°')
+    print(f'              δ 的上界 {delta_bound:.4f}°（算出来的）—— '
+          + ('中位落在界内' if med_deg <= delta_bound
+             else '中位超界了，这不是量化误差，是真差了'))
+    print(f'  超出 δ 界的 中位 {np.median(extra):+.4f}°  最大 '
+          f'{extra.max():+.4f}°   死线 {EXTRA_DEG}°  ← 判据')
     print(f'  平移        中位 {np.median(res_mm):.2f} mm  最大 '
           f'{res_mm.max():.2f} mm  ← 含 δ·|t_cb|，会跟着走远涨')
     print(f'  扣掉 δ 之后 中位 {np.median(left_mm):.3f} mm  最大 '
           f'{left_mm.max():.3f} mm  ← 只作参考，δ 的预测项被 |t_cb| 放大了')
 
     # 超标帧：看它们是不是 TF 退用最新值那几次
-    over = np.where(extra > EXTRA_DEG)[0]
     stale = stale_from_log(target)
     if len(over):
-        rates = np.array([chain_rate(chain, rows[i][0]) for i in over])
-        # 退让 dt 的换算：多出来的转角 ≈ 链角速度 × dt
-        dt_ms = extra[over] / np.maximum(rates, 1e-6) * 1000
-        print(f'\n=== 超 {EXTRA_DEG}° 的帧 ===')
-        print(f'  {len(over)} / {len(rows)} 帧（{100*len(over)/len(rows):.2f}%），'
+        dt_ms = d['dt_ms']
+        print(f'\n=== 超出 δ 界 {EXTRA_DEG}° 的帧 ===')
+        print(f'  {len(over)} / {len(rows)} 帧（{100*d["frac"]:.2f}%），'
               f'死线 {OUTLIER_FRAC*100:.0f}%')
-        for i, r8, d8 in list(zip(over, rates, dt_ms))[:10]:
+        for i, r8, d8 in list(zip(over, all_rates[over], dt_ms))[:10]:
             print(f'    t+{rows[i][0]-rows[0][0]:7.2f}s  多 '
                   f'{extra[i]:.4f}°  链角速度 {r8:6.2f}°/s  '
                   f'-> TF 旧了约 {d8:6.1f} ms')
-        print(f'  换算成 TF 旧了多少：最大 {dt_ms.max():.0f} ms，'
+        print(f'  换算成 TF 旧了多少：最大 {d["worst_ms"]:.0f} ms，'
               f'转接层的上界是 {STALE_MAX_MS:.0f} ms')
         if stale is not None:
             print(f'  bridge.log 自己报的：退用最新值 {stale[0]} 条，'
@@ -482,48 +560,44 @@ def main():
             print('  bridge.log 读不到，没法和转接层自己的计数对照')
 
     print('\n=== 判据 ===')
-    if chain_deg < CHAIN_MIN_DEG:
+    if code == 2:
         print(f'  ? 判不了：整条链最多才动了 {chain_deg:.2f}°，没测到东西。')
         print('    重跑一趟，跑的时候让机器人动一下腰（弯腰或转腰都行）。')
         print('    注意腰要在转接层开始发之后再动 —— 它要先花 2 秒测重力。')
         return 2
 
-    frac = len(over) / len(rows)
-    bad_base = med_deg > RESID_DEG
-    bad_frac = frac > OUTLIER_FRAC
-    bad_stale = len(over) > 0 and (
-        extra[over] / np.maximum(
-            np.array([chain_rate(chain, rows[i][0]) for i in over]), 1e-6)
-    ).max() * 1000 > STALE_MAX_MS
-    if bad_base or bad_frac or bad_stale:
+    frac = d['frac']
+    if code == 1:
         print(f'  ✗ 对不上：链动了 {chain_deg:.2f}°，但反解出来的和按链算的'
               '差得超出噪声底')
-        if bad_base:
-            print(f'    转角残差的中位 {med_deg:.3f}° > {RESID_DEG}° —— '
+        if d['bad_base']:
+            print(f'    转角残差的中位 {med_deg:.4f}° > {RESID_DEG}° —— '
                   '这是全程都差，不是个别帧')
-        if bad_frac:
-            print(f'    超 {EXTRA_DEG}° 的帧占 {frac*100:.2f}% > '
+        if d['bad_frac']:
+            print(f'    超出 δ 界 {EXTRA_DEG}° 的帧占 {frac*100:.2f}% > '
                   f'{OUTLIER_FRAC*100:.0f}% —— 成片超标')
-        if bad_stale:
-            print(f'    有帧换算出的 TF 旧了 > {STALE_MAX_MS:.0f} ms —— '
-                  '退让没守住自己的上界')
+        if d['bad_stale']:
+            print(f'    有帧换算出的 TF 旧了 {d["worst_ms"]:.0f} ms > '
+                  f'{STALE_MAX_MS:.0f} ms —— 退让没守住自己的上界')
         print('    去看：lookup_base_body 是不是被缓存了；bridge.log 里'
               '「TF 退用最新值」的「最差旧了」是不是很大；')
         print('    或者 base_frame / body_frame 参数指错了地方。')
         return 1
 
     print(f'  ✓ 链动了 {chain_deg:.2f}°，反解出来的杠杆臂和按链算的对得上')
-    print(f'    转角残差中位 {med_deg:.3f}°（= 重力量化误差 δ，死线 '
-          f'{RESID_DEG}°），而且是一条平线')
+    print(f'    转角残差中位 {med_deg:.4f}°，落在算出来的 δ 上界 '
+          f'{delta_bound:.4f}° 以内')
     if len(over):
-        print(f'    高出这条平线 > {EXTRA_DEG}° 的只有 {len(over)} 帧'
-              f'（{frac*100:.2f}%，死线 {OUTLIER_FRAC*100:.0f}%）', end='')
+        print(f'    超出 δ 界 > {EXTRA_DEG}° 的只有 {len(over)} 帧'
+              f'（{frac*100:.2f}%，死线 {OUTLIER_FRAC*100:.0f}%），'
+              f'换算最多旧了 {d["worst_ms"]:.0f} ms'
+              f'（上界 {STALE_MAX_MS:.0f} ms）', end='')
         if stale is not None and stale[0]:
             print(f'，和 bridge.log 报的 {stale[0]} 次「TF 退用最新值」对得上')
         else:
             print()
     else:
-        print(f'    没有一帧高出这条平线 {EXTRA_DEG}° 以上')
+        print(f'    没有一帧超出 δ 界 {EXTRA_DEG}° 以上')
     print('    -> 每帧确实重查了 TF，而且用的就是当帧那个值')
     return 0
 
