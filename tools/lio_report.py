@@ -90,8 +90,15 @@ def gravity_from_bag(bag_dir, imu_topic=DEFAULT_IMU_TOPIC):
     return tuple(v / norm for v in acc)
 
 
-def load_odom(bag_dir):
-    """从 rosbag2 的 db3 里读 /Odometry，返回 [(t_sec, x, y, z, qx,qy,qz,qw), ...]"""
+def load_odom(bag_dir, topic='/Odometry'):
+    """从 rosbag2 的 db3 里读里程计，返回 [(t_sec, x, y, z, qx,qy,qz,qw), ...]
+
+    默认读 FAST-LIO 原始的 `/Odometry`（位姿是 **body**，即胸前雷达的 IMU）。
+    转接层的输出 `/slam/lidar_odom` 是 **base_link**，两者的闭环误差**不是
+    同一个数**：杠杆臂随腰的姿态变，起终点姿势不一样的话 base_link 的终点
+    会多差一截（杠杆臂 0.33 m，腰差 20° 就是几厘米）。导航吃的是后者，所以
+    两个都要量。
+    """
     db3 = None
     for name in sorted(os.listdir(bag_dir)):
         if name.endswith('.db3'):
@@ -106,13 +113,15 @@ def load_odom(bag_dir):
     db = sqlite3.connect(db3)
     try:
         ids = {n: i for n, i in db.execute('select name,id from topics')}
-        if '/Odometry' not in ids:
+        if topic not in ids:
             raise SystemExit(
-                f'包里没有 /Odometry（有这些：{", ".join(sorted(ids))}）。\n'
-                'FAST-LIO 一条里程计都没发出来 —— 先看它自己的日志。')
+                f'包里没有 {topic}（有这些：{", ".join(sorted(ids))}）。\n'
+                + ('FAST-LIO 一条里程计都没发出来 —— 先看它自己的日志。'
+                   if topic == '/Odometry' else
+                   '转接层没起来，或者这趟没加 --bridge。'))
         rows = db.execute(
             'select data from messages where topic_id=? order by timestamp',
-            (ids['/Odometry'],)).fetchall()
+            (ids[topic],)).fetchall()
     finally:
         db.close()
 
@@ -203,18 +212,32 @@ def main():
                     help='原始数据包目录。用它的 IMU 静止段量出哪边是"上"；'
                          '不给就假设 z 朝上（对 X2 胸前雷达是错的，见文件头）')
     ap.add_argument('--imu-topic', default=DEFAULT_IMU_TOPIC)
+    ap.add_argument('--topic', default='/Odometry',
+                    help='量哪条里程计。默认 /Odometry（位姿是 body，即胸前'
+                         '雷达 IMU）；导航吃的是转接层的 /slam/lidar_odom'
+                         '（位姿是 base_link），那条要单独量一遍')
     ap.add_argument('--live', action='store_true',
                     help='这趟是真机实时跑的，不是回放（只影响结尾那句提醒）')
     args = ap.parse_args()
 
-    odom = load_odom(args.bag)
-    up = gravity_from_bag(args.src_bag, args.imu_topic) if args.src_bag else None
+    odom = load_odom(args.bag, args.topic)
+    # 转接层的输出已经是重力对齐的（odom 系按 REP-105，z 就是上），再拿 IMU
+    # 实测的方向去转一遍是错的 —— 那个方向是 camera_init 系里的，只对
+    # /Odometry 成立。所以非 /Odometry 一律用 z，并且不算"实测"。
+    if args.topic == '/Odometry':
+        up = gravity_from_bag(args.src_bag, args.imu_topic) \
+            if args.src_bag else None
+    else:
+        up = None
     r = analyze(odom, up)
 
     G, R, Y, B, N = ('\033[0;32m', '\033[0;31m', '\033[1;33m', '\033[1m', '\033[0m')
 
     print()
-    print(f'{B}FAST-LIO 输出评估{N}')
+    if args.topic == '/Odometry':
+        print(f'{B}FAST-LIO 输出评估{N}')
+    else:
+        print(f'{B}{args.topic} 评估{N}（转接层的输出，位姿是 base_link）')
     print('-' * 62)
 
     if r['n'] < 2:
@@ -273,8 +296,12 @@ def main():
     # 前提是得知道哪边是"上"。camera_init 不是重力对齐的（见文件头），
     # 所以这里用源包 IMU 量出来的方向，而不是想当然地用 z。
     if not r['up_measured']:
-        print(f'  {Y}⚠{N} 不知道哪个轴朝上（没给 --src-bag），'
-              '下面按 z 朝上算 —— 对 X2 胸前雷达这是错的')
+        if args.topic != '/Odometry':
+            print(f'  按 z 朝上算 —— {args.topic} 已经是重力对齐的（REP-105），'
+                  '这是对的')
+        else:
+            print(f'  {Y}⚠{N} 不知道哪个轴朝上（没给 --src-bag），'
+                  '下面按 z 朝上算 —— 对 X2 胸前雷达这是错的')
         problems += 1
     axis = '沿重力' if r['up_measured'] else '沿 z 轴'
     if r['vert_range'] > VERT_M:

@@ -250,10 +250,19 @@ report() {
         # --src-bag 指自己这趟录的包：里面有 IMU，报告用它定重力方向。
         python3 "$WS/tools/lio_report.py" "$RUN_DIR/odom" --no-loop \
             --src-bag "$RUN_DIR/odom" --imu-topic "$IMU_TOPIC" --live || true
+        if [ "$BRIDGE" -eq 1 ]; then
+            # 转接层的输出要单独量：它的位姿是 base_link，而上面那个是 body。
+            # 两者的闭环误差不是同一个数（杠杆臂随腰的姿态变），而导航吃的
+            # 是 base_link 这条。
+            python3 "$WS/tools/lio_report.py" "$RUN_DIR/odom" --no-loop \
+                --topic "$NAV_TOPIC" --live || true
+        fi
         say ""
         say "  ${BOLD}如果你是走回起点的${NC}，闭环误差才有意义，手动再算一次："
         say "    python3 tools/lio_report.py $RUN_DIR/odom \\"
         say "        --src-bag $RUN_DIR/odom --imu-topic $IMU_TOPIC"
+        [ "$BRIDGE" -eq 1 ] && \
+            say "    python3 tools/lio_report.py $RUN_DIR/odom --topic $NAV_TOPIC"
         if [ "$MAP" -eq 1 ]; then
             say ""
             say "  拼地图:"
