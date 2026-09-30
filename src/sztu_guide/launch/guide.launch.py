@@ -28,9 +28,18 @@ sztu-bridge 已经跑着一个 navigation_manager（**没带 dry_run**），
 （一个都没跑时数出 1）。详见 ROADMAP「这个自检我先前给错了两版」。
 
 所以实走只用一条命令：
+    source ~/sztu/setup.sh
     ros2 run sztu_guide guide_manager
 空跑（不下发速度，只看日志）：
     ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true -p navigation_timeout:=8.0
+（那句 source 不能省，而且**不等于** `source install/setup.bash`：
+ guide_manager 一路 import 到 `sztu_slam.slam_manager`，它要厂商的
+ `aimdk_msgs`，而那个包既不在 /opt/ros 里也不在本工作区里，是从
+ `~/aimdk/src/aimdk_msgs/prebuilt_aarch64` 靠 PYTHONPATH /
+ LD_LIBRARY_PATH / AMENT_PREFIX_PATH 三个变量挂上去的 —— setup.sh 干的
+ 就是这件事。只 source 前两个的话报的是 `ModuleNotFoundError:
+ No module named 'aimdk_msgs'`，看着像包没装，其实是环境没配全。
+ 终端 1 的 run_lio_live.sh 不用管，它自己 source。）
 （实测过：不带节点名的 -p 会透进进程内自建的每个子节点，包括
  navigation_manager。注意 dry_run 只拦底盘，胳膊和嘴照常动。
  navigation_timeout 要一起压短：dry_run 下机器人不动、位姿不变，
