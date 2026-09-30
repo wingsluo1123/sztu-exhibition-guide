@@ -16,6 +16,10 @@
 #   tools/run_lio_live.sh --no-record    # 连 /Odometry 都不录，只看实时频率
 #   tools/run_lio_live.sh --rviz         # 顺便开 rviz
 #   tools/run_lio_live.sh -t 120         # 跑 120 秒自动收尾（默认一直跑）
+#   tools/run_lio_live.sh --bridge --map-frame /tmp/regen.yaml
+#                                        # 走已有的图时**必须**加这个：把重力方向
+#                                        # 钉成建图时那个值，否则转接层自测一个
+#                                        # 不同的，位姿和图整体错开，还不报错
 #
 # 坑 1：FASTRTPS_DEFAULT_PROFILES_FILE 不设，点云静默丢 92%。
 #     一帧 801 KB，Fast DDS 的 SHM 默认段只有 512 KB，塞不进去就悄悄回落
@@ -71,12 +75,21 @@ DURATION=0
 RAW_TOPIC="/aima/hal/sensor/lidar_chest_front/lidar_pointcloud"
 IMU_TOPIC="/aima/hal/sensor/lidar_chest_front/imu"
 NAV_TOPIC="/slam/lidar_odom"
+UP=""            # --up：把重力方向钉给转接层，见下面 --up 的处理
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --rviz)      RVIZ=1 ;;
         --map)       MAP=1 ;;
         --bridge)    BRIDGE=1 ;;
+        --up)        UP="$2"; shift ;;
+        --map-frame) UP="$(awk -F'[][, ]+' '/^sztu_up:/{print $2","$3","$4}' \
+                          "${2%.yaml}.yaml")"
+                     [ -n "$UP" ] || { say "${2%.yaml}.yaml 里没有 sztu_up ——"
+                         say "  这张图是老版 gridmap 出的，没记重力方向。"
+                         say "  重新跑一次 tools/gridmap.py 生成，或者用 --up 手给。"
+                         exit 2; }
+                     shift ;;
         --no-record) RECORD=0 ;;
         -t|--time)   DURATION="$2"; shift ;;
         -h|--help)
@@ -320,9 +333,24 @@ ok "cloud_to_velodyne (pid ${pids[-1]}) -> adapter.log"
 if [ "$BRIDGE" -eq 1 ]; then
     # 转接层自己也要静测 2 秒 IMU 定重力方向，和 FAST-LIO 的静止要求重合，
     # 所以和它一起起、一起等，不用多站一次。
-    "$BR_EXE" > "$RUN_DIR/bridge.log" 2>&1 &
-    pids+=($!)
-    ok "lio_odom_bridge (pid ${pids[-1]}) -> bridge.log"
+    if [ -n "$UP" ]; then
+        # 钉死重力方向，不让转接层自己测。
+        #
+        # 为什么必须钉：建图时那张图是在某个重力系里摊平的，实走时转接层
+        # 会**重新**从 IMU 静止段测一个。两个数不一样，差多少没人知道，
+        # 而且没有任何东西会报错 —— 位姿和地图整体错开一个转角，机器人
+        # 照着点位信心十足地走进墙里。钉成同一个值，两边就是按构造一个系。
+        "$BR_EXE" --ros-args -p "up_axis:=[${UP//,/, }]" \
+            > "$RUN_DIR/bridge.log" 2>&1 &
+        pids+=($!)
+        ok "lio_odom_bridge (pid ${pids[-1]}) -> bridge.log  重力方向已钉死 [$UP]"
+    else
+        "$BR_EXE" > "$RUN_DIR/bridge.log" 2>&1 &
+        pids+=($!)
+        ok "lio_odom_bridge (pid ${pids[-1]}) -> bridge.log"
+        hmm "重力方向由转接层自测 —— 要照着已有的图走点位的话，"
+        say "     加 --map-frame <图>.yaml 把它钉成建图时那个值，否则两边错开"
+    fi
     hmm "${BOLD}正在往 $NAV_TOPIC 发位姿 —— 导航栈读的就是这个话题${NC}"
     say "     确认周围有空间、有人能按急停（见脚本头部坑 6）"
 fi

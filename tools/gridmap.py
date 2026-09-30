@@ -225,9 +225,21 @@ def write_pgm(path, img):
         fh.write(img.tobytes())
 
 
-def write_yaml(path, pgm_name, res, origin):
-    """Nav2 map_server 的 .yaml。阈值用的是它的默认值。"""
-    with open(path, 'w') as fh:
+def write_yaml(path, pgm_name, res, origin, up=None, up_src=None):
+    """Nav2 map_server 的 .yaml。阈值用的是它的默认值。
+
+    额外写一个 `sztu_up`：这张图是在**哪个重力系**里摊平的。
+
+    这个值必须记下来，否则这张图的坐标系是**定义不出来**的。实走时
+    lio_odom_bridge 会自己从 IMU 静止段测一个 up，那和建图用的 up 不是
+    同一个数 —— 两者差多少没人知道，也没有任何东西会报错，机器人就
+    带着一个整体转过的位姿估计照着点位走。把它记进 yaml，实走时用
+    `run_lio_live.sh --up`（转成 bridge 的 up_axis 参数）钉回同一个值，
+    图和实走就是**按构造**同一个系，不靠运气。
+
+    map_server 不认识的键会被忽略，所以加这个键不影响导航读图。
+    """
+    with open(path, 'w', encoding='utf-8') as fh:
         fh.write(
             f'image: {pgm_name}\n'
             f'resolution: {res}\n'
@@ -235,6 +247,15 @@ def write_yaml(path, pgm_name, res, origin):
             'negate: 0\n'
             'occupied_thresh: 0.65\n'
             'free_thresh: 0.196\n')
+        if up is not None:
+            fh.write(
+                '\n# 这张图摊平用的重力方向。实走时必须把它钉给转接层，\n'
+                '# 否则 bridge 自测的 up 和这个不是一个数，图和位姿整体错开。\n'
+                f'#   tools/run_lio_live.sh --bridge --up '
+                f'{up[0]:.6f},{up[1]:.6f},{up[2]:.6f}\n'
+                f'sztu_up: [{up[0]:.6f}, {up[1]:.6f}, {up[2]:.6f}]\n')
+            if up_src:
+                fh.write(f'sztu_up_source: "{up_src}"\n')
 
 
 def ascii_preview(img, width=100):
@@ -602,7 +623,7 @@ def main():
     # 给人看的那张才叠轨迹 —— 画进 .pgm 就成了一排假障碍
     write_png(base + '.png', draw_path(img.copy(), path, x0, y0, args.res))
     write_yaml(base + '.yaml', os.path.basename(base) + '.pgm',
-               args.res, (x0, y0))
+               args.res, (x0, y0), up, up_src)
 
     tot = W * H
     for name, v in (('占据', PGM_OCC), ('空闲', PGM_FREE), ('未知', PGM_UNK)):

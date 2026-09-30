@@ -8,6 +8,7 @@
 
 import math
 import os
+import re
 import sys
 
 import numpy as np
@@ -366,3 +367,72 @@ def test_far_hits_would_otherwise_never_be_cleared():
 
 def test_horizon_keeps_points_exactly_on_it():
     assert len(within_range(np.array([[15.0, 0.0]]), np.zeros(2), 15.0)) == 1
+
+
+# --- 地图的 yaml 要记住自己是在哪个重力系里摊平的 --------------------------
+#
+# 为什么这件事要有测试：实走时 lio_odom_bridge 会**自己**从 IMU 静止段测一个
+# 重力方向，那和建图用的不是同一个数。两者差多少没人知道，也没有任何东西会
+# 报错 —— 位姿和地图整体错开一个转角，机器人照着点位信心十足地走进墙里。
+# 把 up 写进 yaml，实走时用 run_lio_live.sh --map-frame 钉回同一个值，
+# 图和实走就是**按构造**同一个系。这组用例钉的就是"写进去了"和"取得出来"。
+
+def test_map_yaml_records_the_gravity_frame_it_was_flattened_in(tmp_path):
+    p = tmp_path / 'm.yaml'
+    up = (-0.998875, 0.027349, -0.038753)
+    write_yaml(str(p), 'm.pgm', 0.05, (-3.25, 7.5), up, '轨迹平面（测试）')
+    import yaml
+    d = yaml.safe_load(p.read_text(encoding='utf-8'))
+    # map_server 原有的键一个都不能少、不能变
+    assert d['image'] == 'm.pgm'
+    assert d['resolution'] == 0.05
+    assert d['origin'] == [-3.25, 7.5, 0.0]
+    # 新增的键
+    assert d['sztu_up'] == pytest.approx(list(up), abs=1e-6)
+    assert '轨迹平面' in d['sztu_up_source']
+
+
+def test_map_yaml_without_up_is_still_valid_but_distinguishable(tmp_path):
+    """负对照：老版图（没记 up）必须能被认出来，而不是悄悄当成 0。
+
+    --map-frame 取不到值时会拒绝开走，靠的就是这里的 `not in`。
+    如果哪天 write_yaml 改成"没给 up 就写个默认值"，这条会红 —— 那正是
+    要拦的：一个编出来的重力方向和没有重力方向一样危险，但更难发现。
+    """
+    p = tmp_path / 'old.yaml'
+    write_yaml(str(p), 'old.pgm', 0.05, (0.0, 0.0))
+    import yaml
+    d = yaml.safe_load(p.read_text(encoding='utf-8'))
+    assert 'sztu_up' not in d
+    assert 'sztu_up_source' not in d
+
+
+def test_the_shell_one_liner_that_reads_sztu_up_actually_works(tmp_path):
+    """run_lio_live.sh --map-frame 里那行 awk，在真文件上跑一遍。
+
+    那行 awk 写在 shell 里，没有别的东西会验它；写错了要等到现场开走前
+    才发现，而那时候人和机器人都已经站好了。这里直接拿它跑。
+    """
+    import subprocess
+    p = tmp_path / 'm.yaml'
+    up = (-0.998875, 0.027349, -0.038753)
+    write_yaml(str(p), 'm.pgm', 0.05, (0.0, 0.0), up, 'x')
+
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        '..', '..', '..')
+    sh = os.path.join(root, 'tools', 'run_lio_live.sh')
+    line = None
+    with open(sh, encoding='utf-8') as fh:
+        for ln in fh:
+            if 'sztu_up' in ln and 'awk' in ln:
+                line = ln
+                break
+    assert line is not None, 'run_lio_live.sh 里找不到读 sztu_up 的那行 awk'
+    # 从那行里把 -F 的分隔符和 awk 程序原样抠出来，用的就是脚本里的字符串，
+    # 不是这里另抄一份 —— 抄一份的话脚本改了这条测试照样绿。
+    m = re.search(r"awk -F'([^']*)'\s+'([^']*)'", line)
+    assert m, f'这行的写法变了，抠不出 awk 程序：{line!r}'
+    got = subprocess.run(['awk', '-F', m.group(1), m.group(2), str(p)],
+                         capture_output=True, text=True).stdout.strip()
+    assert got == '-0.998875,0.027349,-0.038753', (
+        f'awk 取出来的是 {got!r}，和写进去的对不上')
