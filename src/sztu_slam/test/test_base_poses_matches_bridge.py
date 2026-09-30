@@ -43,21 +43,27 @@ RUN_GLOB = os.environ.get(
     'SZTU_LIO_RUNS', os.path.expanduser('~/sztu_lio_runs')) + '/*'
 
 # 别去动**正在写**的那个包。机器人上那台 --bridge 一跑就是几小时，它的包
-# 一直在长；挑到它的话这条测试会读几个 GB 的 /tf 然后把门禁拖到十几分钟，
-# 而且读的还是个写了一半的 sqlite。所以挑**最小的**够用的包，并且设上限。
-MAX_BAG_MB = 400
-# 但"最小"是个代理量：第一次这么挑，挑到的是一趟只走了 0.4 m 的包，79 帧、
-# 几乎没转向 —— 朝向对得上是因为两边都没怎么动，什么都没验到。所以再加两道：
-# 选包时要求 /Odometry 够多，测完还要求这一段**真的有运动**，否则直接红。
+# 一直在长（实测 3 GB）；挑到它的话这条测试会读几个 GB 的 /tf，把门禁拖到
+# 十几分钟，而且读的还是个写了一半的 sqlite。所以设上限，在够用的里面挑小的。
+# 1000 MB 这个值是量出来的：机器人上真转过弯的包是 527 和 828 MB，上一版
+# 卡在 400 就把它们全排除了，只剩几个原地站着的短包 —— 于是全绿而什么都没验。
+MAX_BAG_MB = 1000
+# "最小"本身是个代理量。第一次这么挑，挑到的是一趟只走了 0.4 m 的包，79 帧、
+# 几乎没转向；第二次挑到的走了 1.42 m 但朝向散布 0.1°，一条直线推过去。
+# 位置差 0.143 mm、朝向差 0.018° 全绿，可两边都没转，"朝向算得对"根本没被
+# 验到。所以再加两道：选包时要求 /Odometry 够多，测完还要求这一段**真的
+# 转过**，否则直接红。
 MIN_ODOM_FRAMES = 300            # 10 Hz -> 至少 30 秒
 MIN_YAW_SPAN_DEG = 20.0          # 这一段至少转过这么多
 MIN_PATH_M = 1.0                 # 这一段至少走过这么远
 
 
-def _bag_with_tf():
-    """找一个同时有 /tf 和 /slam/lidar_odom、而且帧数够的包，没有就返回 None。
+def _candidates():
+    """列出所有能用来对账的包，小的排前面。
 
-    在够用的里面挑最小的：够判就行，而最大的那个多半是还在写的。
+    只用 sqlite 元信息挑（大小、帧数、有哪些话题）—— 这一步在**收集期**跑，
+    不能去反序列化几万条 TF。挑得准不准不要紧：真正的判据是下面那道"这一段
+    必须真的转过"，挑错了只会红，不会假绿。
     """
     ok = []
     for run in sorted(glob.glob(RUN_GLOB)):
@@ -67,7 +73,8 @@ def _bag_with_tf():
                 if size > MAX_BAG_MB * 1024 * 1024:
                     continue
                 db = sqlite3.connect(f'file:{db3}?mode=ro', uri=True)
-                ids = {n: i for n, i in db.execute('select name,id from topics')}
+                ids = {n: i for n, i in db.execute(
+                    'select name,id from topics')}
                 need = {'/tf', '/tf_static', '/Odometry', '/slam/lidar_odom'}
                 if not need <= set(ids):
                     db.close()
@@ -80,10 +87,7 @@ def _bag_with_tf():
                 continue
             if cnt >= MIN_ODOM_FRAMES:
                 ok.append((size, run, db3))
-    if not ok:
-        return None
-    _, run, db3 = min(ok)
-    return run, db3
+    return [(run, db3) for _, run, db3 in sorted(ok)]
 
 
 def _have_ros():
@@ -95,10 +99,10 @@ def _have_ros():
     return True
 
 
-_FOUND = _bag_with_tf()
+_FOUND = _candidates()
 
 pytestmark = pytest.mark.skipif(
-    _FOUND is None or not _have_ros(),
+    not _FOUND or not _have_ros(),
     reason='需要一个录了 /tf + /slam/lidar_odom 的包，以及 ROS 2 环境')
 
 
@@ -109,26 +113,29 @@ def _yaw_of(m):
                       1 - 2 * (q.y * q.y + q.z * q.z))
 
 
-def test_base_poses_reproduces_what_the_bridge_actually_published():
-    """离线重算的 base_link 位姿 == 实走时 bridge 发出去的。"""
+def _compare(run, db3):
+    """一个包上的对账结果，或者说明为什么这个包用不了。
+
+    返回 (report, reason)：能判就 report 是个 dict、reason 是 None；
+    判不了就反过来。
+    """
     from check_lever import gravity_align_matrix, gravity_from_log, read_topics
     from gridmap import base_poses
 
-    run, db3 = _FOUND
     grav = gravity_from_log(run)
     if grav is None:
-        pytest.skip(f'{run} 里没有 bridge.log，拿不到当时用的重力方向')
+        return None, f'{os.path.basename(run)}：没有 bridge.log'
     up, up_bound_deg = grav
     up = np.asarray(up, dtype=float)
-    up = up / np.linalg.norm(up)
-    R = gravity_align_matrix(up)
+    R = gravity_align_matrix(up / np.linalg.norm(up))
 
     got = base_poses(db3, R)
-    assert got is not None, '这个包明明有 /tf，base_poses 却说没有'
+    assert got is not None, f'{db3} 明明有 /tf，base_poses 却说没有'
     t, xy, yaw = got
 
     live = read_topics(db3, ['/slam/lidar_odom'])['/slam/lidar_odom']
-    assert len(live) > 50, f'/slam/lidar_odom 只有 {len(live)} 帧，判不了'
+    if len(live) <= 50:
+        return None, f'{os.path.basename(run)}：/slam/lidar_odom 只有 {len(live)} 帧'
 
     # 直接按 stamp 配对。`base_poses` 返回的是**绝对** stamp，正是为了这个：
     # 它会丢掉 stamp 落在 /tf 采样区间外的帧（不外推），所以"第几帧"对不上，
@@ -138,13 +145,11 @@ def test_base_poses_reproduces_what_the_bridge_actually_published():
         s = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
         by_stamp[round(s, 6)] = m
 
-    dp, dy, rmax, n = [], [], 0.0, 0
-    pxy, pyaw = [], []
+    dp, dy, pxy, pyaw, rmax = [], [], [], [], 0.0
     for ti, (x, y), a in zip(t, xy, yaw):
         m = by_stamp.get(round(float(ti), 6))
         if m is None:
             continue
-        n += 1
         p = m.pose.pose.position
         dp.append(math.hypot(x - p.x, y - p.y))
         rmax = max(rmax, math.sqrt(p.x ** 2 + p.y ** 2 + p.z ** 2))
@@ -153,39 +158,64 @@ def test_base_poses_reproduces_what_the_bridge_actually_published():
         pxy.append((x, y))
         pyaw.append(a)
 
-    assert n > 50, (f'只配上 {n} 帧（base_poses {len(t)}、'
-                    f'/slam/lidar_odom {len(live)}）—— stamp 对不上，'
-                    'bridge 不是原样透传 stamp 了？')
+    n = len(dp)
+    if n <= 50:
+        return None, (f'{os.path.basename(run)}：只配上 {n} 帧'
+                      f'（base_poses {len(t)}、bridge {len(live)}）—— '
+                      'stamp 对不上，bridge 不是原样透传 stamp 了？')
 
-    # 这一段必须真的动过。不加这道的话，一趟站着不动的包也会全绿 ——
+    # 这一段必须真的**转过**。不加这道的话，一趟直着推过去的包也会全绿 ——
     # 两边都没转，朝向自然对得上，而"朝向算得对"根本没被验到。
-    pxy = np.asarray(pxy)
-    path = float(np.hypot(*np.diff(pxy, axis=0).T).sum()) if n > 1 else 0.0
+    path = float(np.hypot(*np.diff(np.asarray(pxy), axis=0).T).sum())
     u = np.exp(1j * np.asarray(pyaw))
     span = math.degrees(math.sqrt(max(0.0, -2.0 * math.log(abs(u.mean())))))
-    assert path >= MIN_PATH_M and span >= MIN_YAW_SPAN_DEG, (
-        f'这个包太静了，验不出朝向算得对不对：走了 {path:.2f} m（要 '
-        f'{MIN_PATH_M}）、朝向圆周散布 {span:.1f}°（要 {MIN_YAW_SPAN_DEG}）。\n'
-        f'包：{db3}\n'
-        '换一个真走过一圈的包，或者重录一趟 —— 静态样本上的绿灯是假的。')
-    pos_tol = rmax * math.radians(up_bound_deg) + FLOAT_SLACK_M
-    yaw_tol = up_bound_deg + FLOAT_SLACK_DEG
+    if path < MIN_PATH_M or span < MIN_YAW_SPAN_DEG:
+        return None, (f'{os.path.basename(run)}：太静了 —— 走了 {path:.2f} m'
+                      f'（要 {MIN_PATH_M}）、朝向散布 {span:.1f}°'
+                      f'（要 {MIN_YAW_SPAN_DEG}）')
+
+    return dict(run=run, n=n, path=path, span=span, rmax=rmax,
+                dp=dp, dy=dy, bound=up_bound_deg), None
+
+
+def test_base_poses_reproduces_what_the_bridge_actually_published():
+    """离线重算的 base_link 位姿 == 实走时 bridge 发出去的。
+
+    挨个试手上的包，用第一个**真的走过又转过**的。选包只是启发式，判据是
+    上面那道运动下限 —— 挑错了只会红，不会假绿。
+    """
+    why = []
+    rep = None
+    for run, db3 in _FOUND:
+        rep, reason = _compare(run, db3)
+        if rep is not None:
+            break
+        why.append(reason)
+    if rep is None:
+        pytest.skip('手上没有一个包能用来对账：\n  ' + '\n  '.join(why))
+
+    pos_tol = rep['rmax'] * math.radians(rep['bound']) + FLOAT_SLACK_M
+    yaw_tol = rep['bound'] + FLOAT_SLACK_DEG
+    dp, dy = rep['dp'], rep['dy']
     # 印出来：绿灯本身说明不了差多少，而"差多少"是这条链能不能用的那个数。
     # pytest -s 能看到。
-    print(f'\n{os.path.basename(os.path.dirname(os.path.dirname(db3)))}：'
-          f'配上 {n} 帧，走了 {path:.2f} m，朝向散布 {span:.1f}°，'
-          f'最远 {rmax:.1f} m\n'
+    print(f'\n{os.path.basename(rep["run"])}：配上 {rep["n"]} 帧，'
+          f'走了 {rep["path"]:.1f} m，朝向散布 {rep["span"]:.1f}°，'
+          f'最远 {rep["rmax"]:.1f} m\n'
           f'  位置差 中位 {np.median(dp) * 1000:.3f} mm，最大 '
           f'{max(dp) * 1000:.3f} mm（上限 {pos_tol * 1000:.2f}）\n'
           f'  朝向差 中位 {np.median(dy):.5f}°，最大 {max(dy):.5f}°'
           f'（上限 {yaw_tol:.4f}）')
+    if why:
+        print('  （跳过的包：' + '；'.join(why) + '）')
     assert max(dp) < pos_tol, (
-        f'位置差最大 {max(dp) * 1000:.2f} mm（{n} 帧，中位 '
+        f'位置差最大 {max(dp) * 1000:.2f} mm（{rep["n"]} 帧，中位 '
         f'{np.median(dp) * 1000:.2f} mm），要 < {pos_tol * 1000:.2f} mm'
-        f'（= 最远 {rmax:.1f} m x 日志量化 {up_bound_deg:.4f}°）')
+        f'（= 最远 {rep["rmax"]:.1f} m x 日志量化 {rep["bound"]:.4f}°）')
     assert max(dy) < yaw_tol, (
-        f'朝向差最大 {max(dy):.4f}°（{n} 帧，中位 {np.median(dy):.4f}°），'
-        f'要 < {yaw_tol:.4f}°（日志量化 {up_bound_deg:.4f}°）')
+        f'朝向差最大 {max(dy):.4f}°（{rep["n"]} 帧，中位 '
+        f'{np.median(dy):.4f}°），要 < {yaw_tol:.4f}°'
+        f'（日志量化 {rep["bound"]:.4f}°）')
 
 
 def test_base_poses_returns_none_for_a_bag_without_tf():
