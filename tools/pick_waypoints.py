@@ -430,6 +430,7 @@ def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
     got = base_poses(bag, R)
     if got is not None:
         t, xy, yaw = got
+        t = t - t[0]           # base_poses 给的是绝对 stamp，这里只要相对
         print(f'朝向用 base_link（包里有 /tf），{len(t)} 帧 —— '
               '和实走时 bridge 发的是同一个约定')
     else:

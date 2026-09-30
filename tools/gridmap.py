@@ -345,6 +345,10 @@ def base_poses(bag, R, max_gap=0.2):
     """从 /Odometry + /tf 取每帧 **base_link** 在图里的位置和朝向。
 
     返回 (t, xy, yaw)，三个等长的 ndarray；包里没有 /tf 就返回 None。
+    `t` 是**绝对**秒（消息 stamp 原值），不是从第一帧起算 —— 因为这一路会
+    丢帧（见 `max_gap`），相对时刻的零点是"第一个**保住**的帧"，事后没法从
+    别处反推，也就没法拿去和 `/slam/lidar_odom` 按 stamp 对账。要相对值的
+    调用方自己减 `t[0]`。
 
     为什么要有这条路（而不是只用 `sensor_poses` + 量装配角）：实走时
     `lio_odom_bridge` 发的位姿是 base_link 的（`odom_pose_to_base`），点位的
@@ -392,8 +396,8 @@ def base_poses(bag, R, max_gap=0.2):
     if skipped:
         print(f'  base_link 朝向：丢掉 {skipped} 帧（stamp 在 /tf 区间外 '
               f'> {max_gap}s，不外推）')
-    ts = np.asarray(ts, dtype=float)
-    return ts - ts[0], np.asarray(xy, dtype=float), np.asarray(yaw, dtype=float)
+    return (np.asarray(ts, dtype=float), np.asarray(xy, dtype=float),
+            np.asarray(yaw, dtype=float))
 
 
 def resolve_up(run_dir, bag, explicit=None):

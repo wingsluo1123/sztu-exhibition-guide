@@ -115,17 +115,11 @@ def test_base_poses_reproduces_what_the_bridge_actually_published():
     t, xy, yaw = got
 
     live = read_topics(db3, ['/slam/lidar_odom'])['/slam/lidar_odom']
-    odo = read_topics(db3, ['/Odometry'])['/Odometry']
     assert len(live) > 50, f'/slam/lidar_odom 只有 {len(live)} 帧，判不了'
 
-    # 配对：base_poses 返回的 t 是"相对第一个**保住**的帧"，所以只有在一帧
-    # 都没丢的时候才能按下标反推绝对时刻。丢过帧就跳过 —— 硬凑对齐比不测
-    # 更糟，会把错位当成"差得很小"。
-    if len(t) != len(odo):
-        pytest.skip(f'base_poses 丢了 {len(odo) - len(t)} 帧（/tf 区间外），'
-                    '这个包配不了对')
-    abs0 = odo[0][1].header.stamp.sec + odo[0][1].header.stamp.nanosec * 1e-9
-
+    # 直接按 stamp 配对。`base_poses` 返回的是**绝对** stamp，正是为了这个：
+    # 它会丢掉 stamp 落在 /tf 采样区间外的帧（不外推），所以"第几帧"对不上，
+    # 只有绝对时刻能对。bridge 也是原样透传 stamp，两边严丝合缝。
     by_stamp = {}
     for _, m in live:
         s = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
@@ -133,7 +127,7 @@ def test_base_poses_reproduces_what_the_bridge_actually_published():
 
     dp, dy, rmax, n = [], [], 0.0, 0
     for ti, (x, y), a in zip(t, xy, yaw):
-        m = by_stamp.get(round(abs0 + ti, 6))
+        m = by_stamp.get(round(float(ti), 6))
         if m is None:
             continue
         n += 1
@@ -143,7 +137,7 @@ def test_base_poses_reproduces_what_the_bridge_actually_published():
         d = math.degrees((a - _yaw_of(m) + math.pi) % (2 * math.pi) - math.pi)
         dy.append(abs(d))
 
-    assert n > 50, (f'只配上 {n} 帧（/Odometry {len(t)}、'
+    assert n > 50, (f'只配上 {n} 帧（base_poses {len(t)}、'
                     f'/slam/lidar_odom {len(live)}）—— stamp 对不上，'
                     'bridge 不是原样透传 stamp 了？')
     pos_tol = rmax * math.radians(up_bound_deg) + FLOAT_SLACK_M
