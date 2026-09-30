@@ -1860,3 +1860,78 @@ tools/align_probe.py --odom /slam/lidar_odom --turn 2.0   # 量完再验一遍�
 所以 `angle_tolerance` 降到 ~0.13 rad（7.4°）之前都不会跳过容差带
 （`test_one_step_at_the_floor_stays_inside_the_tolerance_band` 钉着这个关系）。
 真机的滑行量和这里不一定一样，所以**别现在照着仿真数去调**。
+
+
+### ⚠ 开发机和真机一直在同一个 ROS 图里（2026-09-30 发现并隔开）
+
+**结论先说：`ROS_DOMAIN_ID` 两边都没设（=0），`ROS_LOCALHOST_ONLY=0`，开发机和
+机器人在同一个 WiFi 网段 —— 所以它们共用一个 ROS 2 图，话题名完全撞车。**
+
+怎么验的（不是推测，是当场量的）：
+
+* 开发机上 `ros2 node list` 里列着机器人的 `laser_mapping` / `lio_odom_bridge` /
+  `cloud_to_velodyne` / `rosbag2_recorder`，而本机没有对应进程。
+* 开发机上 `ros2 topic hz /slam/lidar_odom` → **10.05 Hz**，收的是机器人的位姿。
+  光有发现不算，数据是真的在流。
+* `ros2 topic info /Odometry --verbose` 的发布者就是机器人的 `laser_mapping`。
+
+撞车的不只是几个话题。两边一模一样的有 `/aima/mc/locomotion/velocity`、
+`/aima/hal/joint/*/command`、`/aima/hal/odom/state`、`/tf`、`/tf_static`。
+其中 `/tf` 和 `/tf_static` 尤其要命：仿真 MC 会把**整棵机器人运动学树**发上去
+（`pelvis` -> `waist_yaw_link` -> ... -> `right_wrist_roll_link`，静态里还有
+`base_link -> pelvis`、`torso_link -> lidar_chest_front`）。机器人是同一个型号，
+**帧名逐字相同**，所以一旦同时在线，两边的 TF 会进同一个 buffer，
+而且事后从包里**分辨不出来**（帧名一样，包里不存发布者身份）。
+
+#### 它先伪造了一个假故障
+
+真机上跑 `tools/turn_probe.py` 报 `✗ 下发通道有问题，测量无效 ... 符合率 51%`，
+停掉 `sztu-bridge` 再跑还是 51%。51% 可疑地接近**正好一半** —— 因为回读把
+话题上**每一帧**都算进了分母，不看 `source`。
+
+而"正好一半"有个现成的来源：`LocomotionController` 的 `release_after` 默认是
+`None`，一个**空闲但还活着**的控制器会永远按 50 Hz 发零速度 —— 和探针自己的
+50 Hz 一比一。
+
+在仿真里复现过（`/tmp/ghost_locomotion.py`，一次性脚本）：
+
+| 场景 | 本源 | 其他源 | 旧判据 | 新判据 |
+|---|---|---|---|---|
+| 干净 | 200 帧 100% | 无 | 100% ✓ | `WIRE_OK` ✓ |
+| 空闲控制器在发零 | 200 帧 100% | `sdk_sztu_ghost` 200 帧，最大\|ω\| 0.000 | **200/400 = 50% ✗** | `WIRE_OK` ✓，并印出是谁 |
+| 别人在发 0.5 rad/s | 200 帧 100% | `sdk_sztu_ghost` 400 帧，最大\|ω\| 0.500 | 33% ✗（对，但理由是错的） | `WIRE_CONTESTED` ✗，理由对 |
+
+第二行就是现场那个 51%。
+
+#### 改了什么
+
+1. **判据搬到 `sztu_navigation/wire_audit.py`，按 `source` 分开记账**，
+   并把"上线"拆成五个各自独立可测的结论：
+   `WIRE_OK` / `WIRE_NO_OWN`（通道真哑了）/ `WIRE_MISMATCH`（漏喂狗）/
+   `WIRE_STARVED`（帧数少得不像在连发）/ `WIRE_CONTESTED`（别人在发非零）。
+   前三种去查我们自己的代码，最后一种才去查优先级 —— 混成一个 ✗ 就是把人
+   往错的地方引。`test_wire_audit.py` 24 个用例，四种坏法各有负对照，
+   还有一条 `test_each_bad_mode_gives_a_different_verdict` 钉着"机制不许合并"。
+2. **起步阈值只留一份**（`wire_audit.apply_start_threshold`），
+   `LocomotionController._publish` 和审计的"预期上线值"用同一个函数。
+   两份拷贝一旦走偏，审计会拿错的预期去判对的指令，而且不会有人发现。
+3. **`tools/sim_up.sh` 默认跑在 `ROS_DOMAIN_ID=42`**（`SIM_DOMAIN_ID` 可覆盖），
+   脚本结尾会提醒每个终端都要 `export ROS_DOMAIN_ID=42`。
+4. **探针开跑前印清楚"我在哪个图上"**（`wire_audit.graph_banner`）：
+   domain 号、速度话题上的订阅者个数，domain 0 直接警告"里面有真机"，
+   订阅者多出来就警告"你的指令可能同时驱动两台机器人"。
+   这件事以前在任何输出里都看不见 —— 这就是它能坑这么久的原因。
+
+#### 还没定的事
+
+* **那 51% 具体是谁发的，现在还不知道。** 新版工具会把 source 名印出来，
+  下次真机上一跑就知道。robot 侧最可能的候选是 `sztu-bridge` 里的
+  `bridge_server`：它和 `navigation_manager` 是**两个进程**，都持有一个
+  `release_after=None` 的 `LocomotionController`。上次只验了
+  `pgrep -af 'navigation_[m]anager'` 为空，没验 `bridge_server`。
+* **12:33 开始那趟 `run_lio_live.sh --bridge` 的 TF 有没有被污染，无法事后判定。**
+  仿真 MC 在 11:02 时确实在图上（MC 日志里有那时的输入源注册），到 12:54 已经
+  从图上掉了（`ros2 service list` 一个 aimdk 服务都没有）—— 掉在 12:33 之前还是
+  之后，查不出来。帧名逐字相同，包里也分辨不出。
+  **所以 `check_lever.py` 的结论按"可能不可信"处理，隔开 domain 之后重录一趟。**
+  重录很便宜，比在一个可能被污染的结论上继续往下推便宜得多。

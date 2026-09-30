@@ -38,6 +38,8 @@ from aimdk_msgs.msg import (
 )
 from aimdk_msgs.srv import SetMcInputSource
 
+from .wire_audit import apply_start_threshold
+
 
 LOCOMOTION_QOS = QoSProfile(
     reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -336,9 +338,10 @@ class LocomotionController(Node):
 
     @staticmethod
     def _apply_threshold(value: float, threshold: float) -> float:
-        """把死区之上、阈值之下的速度抬到阈值，保留方向。"""
-        if abs(value) < VELOCITY_DEADBAND:
-            return 0.0
-        if abs(value) < threshold:
-            return threshold if value > 0 else -threshold
-        return value
+        """把死区之上、阈值之下的速度抬到阈值，保留方向。
+
+        实现在 wire_audit 里，因为 turn_probe 的回读审计要拿**同一条规则**去
+        预测"线上应该是什么值"。两份拷贝走偏的话，审计会拿一条错的预期去判
+        一条对的指令，而且不会有人发现。
+        """
+        return apply_start_threshold(value, threshold, VELOCITY_DEADBAND)

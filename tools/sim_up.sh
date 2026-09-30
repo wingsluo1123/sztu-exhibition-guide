@@ -51,6 +51,26 @@
 #   LOCOMOTION_DEFAULT'**（实测，MC 日志里连一行 TransitionAction 都没有）。
 #   这是厂商的一个 bug：报告成功但什么都没做。别信那个返回值，信 GetMcAction。
 #
+# 坑 6（2026-09-30，**这个最危险**）：仿真和真机默认在**同一个 ROS 图**里。
+#   ROS_DOMAIN_ID 两边都没设（=0），ROS_LOCALHOST_ONLY=0，而开发机和机器人在
+#   同一个 WiFi 网段（192.168.43.x）。实测：开发机上 `ros2 topic hz
+#   /slam/lidar_odom` 收到的是**机器人**的位姿，10.05 Hz；机器人上的
+#   laser_mapping 在开发机的 `ros2 node list` 里明晃晃地列着。
+#
+#   后果有两个，都不轻：
+#     * 话题名完全撞车。/aima/mc/locomotion/velocity、/aima/hal/joint/*/command、
+#       /tf 这些两边一模一样。**开发机上一个发速度指令的进程，它的指令会进到
+#       机器人那边的图里**，而且没有任何东西会报错。
+#     * 反过来也成立，而且已经咬过一次：机器人上跑 tools/turn_probe.py 报
+#       "符合率 51%，下发通道有问题" —— 51% 可疑地接近正好一半，因为回读把
+#       另一台机器上的发布者也算进了分母。LocomotionController 的 release_after
+#       默认是 None，一个**空闲**的控制器会永远按 50 Hz 发零速度，和探针自己的
+#       50 Hz 正好一比一。
+#
+#   所以仿真一律跑在独立的 domain 上（默认 42，用 SIM_DOMAIN_ID 覆盖）。要用
+#   ros2 命令跟仿真说话，先 `export ROS_DOMAIN_ID=42`，脚本最后还会再提醒一次。
+#   别图省事把它去掉 —— 去掉之后开发机上每一次控制律实验都在给真机发指令。
+#
 # 用法:
 #   tools/sim_up.sh            # 起 MC + 仿真器，日志在 /tmp/sim_up/
 #   tools/sim_up.sh --stand    # 同上，但让机器人站起来（跑控制律要用这个）
@@ -70,6 +90,12 @@ LOG_DIR="/tmp/sim_up"
 
 MC_ONLY=0
 STAND=0
+
+# 仿真专用的 ROS domain。见坑 6：不隔开的话开发机上的速度指令会进到真机的图里，
+# 而真机上的发布者会污染开发机的回读（反之亦然）。
+# 这一行必须在起任何进程之前 export —— 子进程只继承，不会自己去读。
+SIM_DOMAIN_ID="${SIM_DOMAIN_ID:-42}"
+export ROS_DOMAIN_ID="$SIM_DOMAIN_ID"
 
 # ROS / AimDK 的 setup.bash 会读未绑定的变量，在 set -u 下直接报错退出。
 # 真 aimdk_msgs 在 ~/aimdk/install 下（开发机布局），不挂它就没有
@@ -277,3 +303,9 @@ else
 fi
 echo
 echo "停止: tools/sim_up.sh --down"
+echo
+echo -e "${YELLOW}这个仿真跑在 ROS_DOMAIN_ID=${SIM_DOMAIN_ID} 上${NC}（坑 6）。"
+echo "要用 ros2 命令或者 tools/ 下的脚本跟它说话，**每个终端都得先**："
+echo "    export ROS_DOMAIN_ID=${SIM_DOMAIN_ID}"
+echo "不 export 的话你看到的是 domain 0 —— 那里面有真机，"
+echo "发出去的速度指令会进到真机的图里。"

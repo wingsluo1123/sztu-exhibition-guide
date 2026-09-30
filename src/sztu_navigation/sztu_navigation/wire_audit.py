@@ -1,0 +1,279 @@
+#!/usr/bin/env python3
+"""
+走跑速度指令的"上线审计"（纯计算，不 import ROS）
+
+干什么
+------
+`/aima/mc/locomotion/velocity` 是一条**多个发布者共用**的话题：我们自己的
+输入源在发，厂商的遥控接收、app 代理等等也可能在发，MC 按优先级仲裁采信谁。
+回读这条话题是为了回答一个很窄的问题：
+
+    **我们下发的那一帧，到底有没有上线？**
+
+历史教训（2026-09-30）
+----------------------
+`tools/turn_probe.py` 原来的回读把这条话题上的**每一帧**都算进分母，不看
+`source`。于是真机上一跑就报"符合率 51%，下发通道有问题，测量无效" ——
+而 51% 可疑地接近正好一半，正是"另有一个发布者，速率和我们差不多"的样子。
+那些帧 MC 本来就会按优先级丢掉，它们根本不该出现在我们的分母里。
+
+结果是一个**假阳的判据**：它把"话题上还有别人"说成"我们的指令没上线"，
+两者该做的事完全相反（前者可能什么都不用做，后者要去查喂狗和输入源）。
+这正是 [[dont-verify-with-proxy-metrics]] 第 7 条：一个 ✗ 能对应几种机制时，
+别在消息里挑一种写死，给每种机制配一个独立能测的量。
+
+所以这里把"上线"拆成四个各自独立可测的结论：
+
+* `WIRE_OK`        —— 我们的帧上线了、值也对，话题上别人即使在发也是零。
+* `WIRE_NO_OWN`    —— 我们的 source 在稳态窗口里**一帧都没出现**。
+                      这才是真的"下发通道哑了"。
+* `WIRE_MISMATCH`  —— 我们的帧出现了，但值不对（典型是被 0.25 s 看门狗
+                      清成零，也就是漏喂狗）。
+* `WIRE_STARVED`   —— 我们的帧值都对，但帧数少得不像在连续发。
+                      不设这一条的话，"只发了两帧、两帧都对"会算 100% 通过。
+* `WIRE_CONTESTED` —— 另有一个 source 在发**非零**指令。这时候机器人到底
+                      在执行谁的命令要看优先级，测量结果不可信。
+
+刻意不 import rclpy / aimdk_msgs：判据要能用合成帧做单元测试，见
+`test/test_wire_audit.py`。真机数据抓不到的盲点只有合成负对照能抓到。
+"""
+
+# 审计结论。含义见模块头部。
+WIRE_OK = 'ok'
+WIRE_NO_OWN = 'no_own'
+WIRE_MISMATCH = 'mismatch'
+WIRE_STARVED = 'starved'
+WIRE_CONTESTED = 'contested'
+
+# 本源帧里"值和意图相符"的比例低于这个数就判 MISMATCH。
+DEFAULT_OK_FRACTION = 0.9
+
+# 本源帧的最低速率（Hz）。发布端标称 50 Hz，这里只要求 10 Hz ——
+# 10 Hz 是 navigation_manager 的 control_loop 速率，已经验证过足够让机器人
+# 连续动作，所以低于它才算"不像在连续发"。留这么大的余量是因为
+# BEST_EFFORT 允许丢帧，而且定时器由 spin_once 驱动，会抖。
+DEFAULT_MIN_OWN_HZ = 10.0
+
+
+def apply_start_threshold(value: float, threshold: float,
+                          deadband: float) -> float:
+    """
+    把死区之上、起步阈值之下的速度抬到阈值，保留方向。
+
+    这是 AimDK 5.1.2 的"静止起步阈值"处理。放在这里是因为**有两个地方需要
+    它**：`locomotion.LocomotionController._publish` 用它算真正要发的值，
+    审计这边用它算"应该在线上看到什么"。两份拷贝一旦走偏，审计就会拿一条
+    错的预期去判一条对的指令，而且不会有人发现 —— 所以只能有一份。
+
+    预期是**推导出来的**，不是"允许差一半"那种松口子：这个变换只会把幅度
+    往上抬，绝不往下压，所以线上值可以精确预测。
+    """
+    if abs(value) < deadband:
+        return 0.0
+    if abs(value) < threshold:
+        return threshold if value > 0 else -threshold
+    return value
+
+
+class WireAudit:
+    """
+    统计一个稳态窗口里 `/aima/mc/locomotion/velocity` 上的帧，按 source 分开。
+
+    用法：`reset(want)` 开一个窗口，每收到一帧调一次 `feed(source, angular)`，
+    窗口结束后看 `verdict()` / `summary()` / `advice()`。
+    """
+
+    def __init__(self, own_source: str, angular_threshold: float,
+                 deadband: float,
+                 ok_fraction: float = DEFAULT_OK_FRACTION,
+                 min_own_hz: float = DEFAULT_MIN_OWN_HZ,
+                 foreign_active_threshold: float = None):
+        self.own_source = own_source
+        self.angular_threshold = angular_threshold
+        self.deadband = deadband
+        self.ok_fraction = ok_fraction
+        self.min_own_hz = min_own_hz
+        # 别人发的指令要多大才算"真的在指挥机器人"。默认取厂商的起步阈值：
+        # 比它更小的角速度指令在站立态下本来就不会让机器人转，算不上竞争。
+        # 这是从文档推的门槛，不是随手挑的小数。
+        self.foreign_active_threshold = (
+            angular_threshold if foreign_active_threshold is None
+            else foreign_active_threshold)
+        self.want = 0.0
+        self.window = 0.0
+        self.own_total = 0
+        self.own_match = 0
+        # source -> [帧数, 最大 |angular|]
+        self.foreign = {}
+
+    def reset(self, want: float, window: float = 0.0) -> None:
+        """开一个新窗口。want 是这一档的意图角速度，window 是窗口时长（秒）。"""
+        self.want = want
+        self.window = window
+        self.own_total = 0
+        self.own_match = 0
+        self.foreign = {}
+
+    def feed(self, source: str, angular: float) -> None:
+        """喂一帧。调用方负责只在稳态窗口里喂。"""
+        if source == self.own_source:
+            self.own_total += 1
+            if angular == self.expected():
+                self.own_match += 1
+            return
+        slot = self.foreign.setdefault(source, [0, 0.0])
+        slot[0] += 1
+        slot[1] = max(slot[1], abs(angular))
+
+    def expected(self) -> float:
+        """这一档**应该**在线上看到的角速度。"""
+        return apply_start_threshold(
+            self.want, self.angular_threshold, self.deadband)
+
+    @property
+    def own_fraction(self) -> float:
+        """本源帧里值对得上的比例。一帧都没有时是 0。"""
+        if not self.own_total:
+            return 0.0
+        return self.own_match / self.own_total
+
+    @property
+    def min_own_frames(self) -> int:
+        """本源帧至少该有多少。窗口时长未知（0）时不设这个门槛。"""
+        if self.window <= 0.0:
+            return 0
+        return int(self.min_own_hz * self.window)
+
+    def active_foreign(self):
+        """在发非零指令的其他源，按帧数从多到少。返回 [(source, 帧数, 最大值)]。"""
+        out = [(s, c, m) for s, (c, m) in self.foreign.items()
+               if m >= self.foreign_active_threshold]
+        out.sort(key=lambda r: -r[1])
+        return out
+
+    def quiet_foreign(self):
+        """在发但全是零的其他源。它们无害，只是解释了分母为什么会翻倍。"""
+        out = [(s, c, m) for s, (c, m) in self.foreign.items()
+               if m < self.foreign_active_threshold]
+        out.sort(key=lambda r: -r[1])
+        return out
+
+    def verdict(self) -> str:
+        """给出结论。含义见模块头部。"""
+        # 先看别人：即使我们的帧完全正常，有人在发非零指令，这次测量也不可信。
+        # 放在最后判会让"我们的帧都对"盖住它。
+        if abs(self.want) < self.deadband:
+            # 意图是停，没有"上线值"可验；只剩"有没有人在乱发"这一问。
+            return WIRE_CONTESTED if self.active_foreign() else WIRE_OK
+        if not self.own_total:
+            return WIRE_NO_OWN
+        if self.own_fraction < self.ok_fraction:
+            return WIRE_MISMATCH
+        if self.own_total < self.min_own_frames:
+            return WIRE_STARVED
+        if self.active_foreign():
+            return WIRE_CONTESTED
+        return WIRE_OK
+
+    def summary(self) -> str:
+        """一行话说清这个窗口在线上看到了什么。成功失败都值得印。"""
+        parts = [f'本源 {self.own_source} {self.own_total} 帧 '
+                 f'{self.own_fraction * 100:.0f}% 符合'
+                 f'（意图 {self.want:+.2f} -> 预期上线 {self.expected():+.2f}）']
+        if self.foreign:
+            others = '，'.join(
+                f'{s} {c} 帧 最大|ω| {m:.3f}'
+                for s, (c, m) in sorted(self.foreign.items(),
+                                        key=lambda r: -r[1][0]))
+            parts.append(f'其他源 {others}')
+        else:
+            parts.append('话题上没有其他源')
+        return '；'.join(parts)
+
+    def advice(self):
+        """按结论给出**只针对这个机制**的下一步。返回若干行文本。"""
+        v = self.verdict()
+        if v == WIRE_OK:
+            return []
+        if v == WIRE_NO_OWN:
+            return [
+                f'✗ 我们的输入源 {self.own_source} 在回读里一帧都没出现 —— '
+                '这才是真的"下发通道哑了"，测量无效。',
+                '  查：register_input_source 是不是真的成功了；'
+                'tick() 的 50 Hz 定时器有没有在跑；',
+                '  回读的 QoS 是不是和发布端一致（LOCOMOTION_QOS，'
+                'BEST_EFFORT + VOLATILE，不一致就收不到）。',
+            ]
+        if v == WIRE_MISMATCH:
+            return [
+                f'✗ 我们的帧上线了（{self.own_total} 帧），但只有 '
+                f'{self.own_fraction * 100:.0f}% 的值等于预期的 '
+                f'{self.expected():+.3f} —— 测量无效。',
+                '  最常见的原因是漏喂狗：set_velocity 只登记目标值，'
+                'tick() 里 0.25 s 没人刷新就会发零。',
+                '  见 tools/turn_probe.py 模块头部坑 4。',
+            ]
+        if v == WIRE_STARVED:
+            return [
+                f'✗ 我们的帧值都对，但只有 {self.own_total} 帧，'
+                f'不到窗口 {self.window:.1f} 秒 × {self.min_own_hz:.0f} Hz = '
+                f'{self.min_own_frames} 帧的下限 —— 不像在连续发，测量无效。',
+                '  查：spin 是不是被什么阻塞了；'
+                'tick() 的定时器有没有被别的线程抢着 spin。',
+            ]
+        if v == WIRE_CONTESTED:
+            lines = ['✗ 话题上另有源在发**非零**指令，这次测量不可信：']
+            for s, c, m in self.active_foreign():
+                lines.append(f'    {s}：{c} 帧，最大 |角速度| {m:.3f} rad/s')
+            lines += [
+                '  机器人到底执行谁的命令取决于优先级，这条消息**不知道**谁赢了。'
+                '去问 MC：',
+                '    ros2 service call /aimdk_5Fmsgs/srv/GetCurrentInputSource \\',
+                '      aimdk_msgs/srv/GetCurrentInputSource "{}"',
+                '  如果是遥控器（rc，优先级 80）：把摇杆回中、别碰它，再重测。',
+                '  也别忘了另一种可能：那个源**不在这台机器上**。'
+                '开发机和机器人默认同一个 ROS domain，见 tools/sim_up.sh 坑 6。',
+            ]
+            return lines
+        return [f'✗ 未知结论 {v}']
+
+
+# 一台机器上跑这个脚本时，速度话题上应该有几个订阅者：
+# 运控 1 个 + 脚本自己的回读 1 个。多出来的就得解释。
+EXPECTED_VELOCITY_SUBS = 2
+
+
+def graph_banner(domain_env, velocity_subs,
+                 expected_subs: int = EXPECTED_VELOCITY_SUBS):
+    """
+    开跑前印清楚"我在哪个 ROS 图上、这条命令话题上还有谁"。
+
+    为什么值得占几行输出：2026-09-30 才发现开发机和机器人一直在**同一个
+    ROS domain**（两边都没设 ROS_DOMAIN_ID，ROS_LOCALHOST_ONLY=0，同一个
+    WiFi 网段）。开发机上 `ros2 topic hz /slam/lidar_odom` 收的是真机的位姿。
+    这件事在任何输出里都看不见，于是它先伪造了一个"符合率 51%"的假故障，
+    而真正的风险是反方向：**开发机上的速度指令会进到真机的图里。**
+
+    `domain_env` 直接传 `os.environ.get('ROS_DOMAIN_ID')`（没设就是 None）。
+    """
+    dom = 0 if domain_env in (None, '') else domain_env
+    lines = [f'ROS_DOMAIN_ID={dom}'
+             + ('（没设，默认 0）' if domain_env in (None, '') else '')]
+    if str(dom) == '0':
+        lines.append(
+            '  ⚠ domain 0 是默认图，开发机和真机都在里面 —— 话题名撞车，'
+            '发出去的速度指令两边都收得到。')
+        lines.append(
+            '  仿真请用 tools/sim_up.sh（它跑在独立 domain 上），'
+            '并在这个终端 export 同一个 ROS_DOMAIN_ID。')
+    lines.append(f'速度话题上的订阅者：{velocity_subs} 个'
+                 f'（本机预期 {expected_subs}：运控 + 本脚本的回读）')
+    if velocity_subs > expected_subs:
+        lines.append(
+            f'  ⚠ 多了 {velocity_subs - expected_subs} 个。如果多出来的是'
+            '**另一台机器上的运控**，你下发的速度会同时驱动两台机器人。')
+    elif velocity_subs < expected_subs:
+        lines.append(
+            '  ⚠ 少了。运控可能没在跑 —— 那么速度指令没人执行，'
+            '下面量出来的"不转"没有意义。')
+    return lines

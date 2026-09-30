@@ -64,14 +64,25 @@
    现在由 `_refresh` 定时器按 `--refresh-hz` 持续喂狗。
 
    **并且不能只靠"我记得喂狗了"。** 这个脚本会订阅
-   `/aima/mc/locomotion/velocity` 回读**真正上线的那一帧**，稳态窗口里
+   `/aima/mc/locomotion/velocity` 回读**真正上线的那一帧**，本源的帧里
    上线值和意图值不符的比例超过 10% 就直接中止，报"指令没上线"而不是
    "机器人不转"。这是给测量工具本身加的负对照 —— 判据必须自己被验证过，
    否则一个哑掉的下发通道会把每一档都染成"不转"。
+
+5. **回读必须按 `source` 过滤，否则这个负对照自己会假阳。** 2026-09-30 真机
+   第一次跑就栽在这儿：报"符合率 51%，下发通道有问题"。51% 可疑地接近正好
+   一半 —— 那条话题上另有一个发布者，速率和我们差不多，它的帧被算进了分母。
+   那些帧 MC 本来就按优先级丢掉，根本不该参与"我们的指令上线了没有"。
+   现在判据在 `sztu_navigation.wire_audit.WireAudit` 里，把四种机制分开：
+   本源一帧都没有（通道哑）／本源值不对（漏喂狗）／本源帧太少（不像在连续
+   发）／**别人在发非零指令**（真的有人在抢）。前三种是我们自己的问题，
+   最后一种才需要去查优先级。每一档都会把线上看到的 source 分布印出来，
+   所以下次再出问题不用猜是哪一种。
 """
 
 import argparse
 import math
+import os
 import sys
 import time
 
@@ -84,7 +95,10 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 sys.path.insert(0, '/'.join(__file__.split('/')[:-2]) + '/src/sztu_navigation')
 
 from sztu_navigation.locomotion import LOCOMOTION_QOS   # noqa: E402
+from sztu_navigation.locomotion import VELOCITY_DEADBAND   # noqa: E402
 from sztu_navigation.locomotion import LocomotionController   # noqa: E402
+from sztu_navigation.wire_audit import WIRE_OK, WireAudit   # noqa: E402
+from sztu_navigation.wire_audit import graph_banner   # noqa: E402
 
 DEFAULT_SPEEDS = [0.8, 0.6, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15]
 
@@ -117,10 +131,9 @@ DEFAULT_MAX_TILT = 0.45   # rad
 DEFAULT_REFRESH_HZ = 20.0
 
 # MC 实际收到的走跑速度指令。回读它来确认下发通道没哑（坑 4 的负对照）。
+# **这条话题是多个发布者共用的**，回读必须按 source 过滤，判据在
+# sztu_navigation.wire_audit 里（坑 5）。
 VELOCITY_TOPIC = '/aima/mc/locomotion/velocity'
-
-# 稳态窗口里"上线值和意图值相符"的帧占比低于这个数就判下发通道有问题。
-WIRE_OK_FRACTION = 0.9
 
 
 def quat_rpy(x, y, z, w):
@@ -184,9 +197,6 @@ class TurnProbe(Node):
 
         # 当前意图的角速度。由 _refresh 持续重新登记，见坑 4。
         self.cmd_omega = 0.0
-        # 回读统计：稳态窗口里上线值符合意图的帧数 / 总帧数
-        self.wire_match = 0
-        self.wire_total = 0
 
         qos = QoSProfile(depth=10, reliability=QoSReliabilityPolicy.BEST_EFFORT)
         self.create_subscription(Odometry, odom_topic, self._odom, qos)
@@ -195,6 +205,12 @@ class TurnProbe(Node):
             source=source, priority=priority, release_after=None,
             node_name='turn_probe_locomotion')
         self.ready = self.loco.register_input_source()
+        # 回读审计：按 source 分开统计，见坑 5。阈值和死区从发布端拿，
+        # 不在这里重抄一遍 —— 抄错了审计就会拿错的预期去判对的指令。
+        self.audit = WireAudit(
+            own_source=source,
+            angular_threshold=self.loco.angular_threshold,
+            deadband=VELOCITY_DEADBAND)
         # 50 Hz 连发：输入源 timeout 1000 ms，断流就丢控制权。
         self.create_timer(0.02, self.loco.tick)
         # 持续重新登记目标速度，别让 0.25 s 的看门狗把它清零（坑 4）。
@@ -212,20 +228,14 @@ class TurnProbe(Node):
         self.loco.set_velocity(0.0, 0.0, self.cmd_omega)
 
     def _wire(self, msg):
-        """回读 MC 实际收到的速度指令，确认下发通道没哑。
+        """回读线上的速度指令，交给 WireAudit 按 source 分开记账。
 
-        只在稳态窗口里统计。判"符合意图"用同号 + 幅度不小于意图的一半：
-        `_apply_threshold` 会把小指令抬上去，所以不能要求严格相等。
+        只在稳态窗口里统计。**别在这里做判断** —— 判据在 wire_audit 里，
+        那样它才能用合成帧测（含负对照）。这个回调只负责搬数据。
         """
         if not self.collecting:
             return
-        self.wire_total += 1
-        got = msg.angular_velocity
-        want = self.cmd_omega
-        if abs(want) < 1e-9:
-            return
-        if abs(got) >= abs(want) * 0.5 and (got > 0) == (want > 0):
-            self.wire_match += 1
+        self.audit.feed(msg.source, msg.angular_velocity)
 
     def _odom(self, msg):
         q = msg.pose.pose.orientation
@@ -249,30 +259,29 @@ class TurnProbe(Node):
     def measure(self, omega, settle, dwell):
         """下发 omega，跳过 settle 秒，量 dwell 秒的稳态转速。
 
-        返回 (实际角速度 rad/s, 样本数, 上线符合率)；中途摔了返回 (None, 0, 0)。
-        上线符合率低于 WIRE_OK_FRACTION 说明**指令没真的发出去**，
-        这时候的"不转"是工具的问题，不是机器人的问题。
+        返回 (实际角速度 rad/s, 样本数)；中途摔了角速度返回 None。
+        这一档的回读结论留在 `self.audit` 里 —— `audit.verdict()` 不是
+        `WIRE_OK` 就说明**指令没真的按意图上线**，这时候的"不转"是工具
+        或者别的输入源的问题，不是机器人的问题。
         """
         self.cmd_omega = omega
+        self.audit.reset(omega, window=dwell)
         if not self.spin_for(settle):
-            return None, 0, 0.0
+            return None, 0
 
         self.samples = []
-        self.wire_match = 0
-        self.wire_total = 0
+        self.audit.reset(omega, window=dwell)
         self.collecting = True
         ok = self.spin_for(dwell)
         self.collecting = False
-        wire_frac = (self.wire_match / self.wire_total
-                     if self.wire_total else 0.0)
 
         self.cmd_omega = 0.0
         self.loco.set_velocity(0.0, 0.0, 0.0)
         self.spin_for(1.0)
 
         if not ok:
-            return None, 0, wire_frac
-        return fit_rate(self.samples), len(self.samples), wire_frac
+            return None, 0
+        return fit_rate(self.samples), len(self.samples)
 
 
 def main():
@@ -310,6 +319,13 @@ def main():
             print('✗ 走跑输入源注册失败，速度指令不会被执行。先查 MC 在不在。')
             return 1
 
+        # 先说清"我在哪个图上"。这一段是 2026-09-30 补的，见坑 5/6：
+        # 同一个 domain 里有真机的时候，回读和下发都会串台，而且看不见。
+        for line in graph_banner(os.environ.get('ROS_DOMAIN_ID'),
+                                 node.count_subscribers(VELOCITY_TOPIC)):
+            print(line)
+        print()
+
         print(f'位姿话题 {args.odom}，等第一帧…')
         deadline = time.monotonic() + 10.0
         while not node.samples and time.monotonic() < deadline and rclpy.ok():
@@ -325,31 +341,35 @@ def main():
         print('-' * 46)
 
         results = []
+        wire_shown = False
         for omega in speeds:
             dirs = [1.0] if args.one_way else [1.0, -1.0]
             per_dir = []
             rates = []
             for sign in dirs:
                 cmd = omega * sign
-                rate, n, wire = node.measure(cmd, args.settle, args.dwell)
+                rate, n = node.measure(cmd, args.settle, args.dwell)
                 if rate is None:
                     print(f'{cmd:+8.2f} {"":>4} {"—":>9} {"—":>6}  '
                           f'倾斜 {node.max_tilt_seen * 57.3:.0f}° 超限，中止')
                     node.loco.stop()
                     _report(results, args.min_rate)
                     return 1
-                # 先查下发通道。通道哑了的话下面所有"不转"都是假的（坑 4）。
-                if wire < WIRE_OK_FRACTION:
-                    print(f'{cmd:+8.2f} {"":>4} {"—":>9} {"—":>6}  '
-                          f'指令没上线（符合率 {wire * 100:.0f}%）')
+                # 先查下发通道。通道哑了的话下面所有"不转"都是假的（坑 4/5）。
+                wire_verdict = node.audit.verdict()
+                if wire_verdict != WIRE_OK or not wire_shown:
+                    # 第一档无论成败都把线上的 source 分布印一次：出问题的时候
+                    # 不用再猜是"我们没发"还是"别人也在发"。
+                    print(f'{"":>8} {"":>4} {"":>9} {"":>6}  '
+                          f'回读：{node.audit.summary()}')
+                    wire_shown = True
+                if wire_verdict != WIRE_OK:
                     node.loco.stop()
                     print()
-                    print('✗ 下发通道有问题，测量无效 —— 这**不是**"机器人转不动"。')
-                    print(f'  回读 {VELOCITY_TOPIC} 发现上线的速度和意图不符。')
-                    print('  常见原因：喂狗漏了（set_velocity 要持续调，见模块头部坑 4）、')
-                    print('  或者有更高优先级的输入源把这个源顶掉了。查一下当前采信的源：')
-                    print('    ros2 service call /aimdk_5Fmsgs/srv/GetCurrentInputSource \\')
-                    print('      aimdk_msgs/srv/GetCurrentInputSource "{}"')
+                    print('✗ 回读审计没通过，测量无效 —— 这**不是**'
+                          '"机器人转不动"。')
+                    for line in node.audit.advice():
+                        print(line)
                     return 1
                 ratio = abs(rate) / omega if omega > 0 else 0.0
                 turned = abs(rate) >= args.min_rate
