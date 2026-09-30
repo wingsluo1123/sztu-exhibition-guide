@@ -51,6 +51,7 @@ from gridmap import PGM_FREE, PGM_OCC, draw_path, write_png  # noqa: E402
 MARK_POINT = 40      # 点位圆心
 MARK_ARROW = 70      # 朝向箭头
 MARK_LEG = 100       # 相邻点之间的直线航段
+MARK_CAND = 170      # 站得下的区域（净空够 + 离轨迹近 + 连通）
 
 DEFAULT_RADIUS = 0.40    # 机器人半径（米）。仓库里没有 footprint 规格，
 #                          取的保守值，用 --radius 可改。
@@ -415,7 +416,7 @@ def spread_pick(cand, start, n, spacing):
 
 def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
                  min_s, yaw_offset_deg=None):
-    """从建图那趟的停留段取点位，返回 (pts, yaws)。
+    """从建图那趟的停留段取点位，返回 (pts, yaws, rejected)。
 
     这条路和几何铺点的区别：位置和朝向都是**人当时真站在那儿**测出来的，
     不是从空地里推的。朝向尤其 —— 几何铺点只能猜"朝最近的墙"，而展品挂在
@@ -424,6 +425,11 @@ def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
     朝向的约定必须和实走时一致（`lio_odom_bridge` 发的是 base_link），
     所以优先走 `gridmap.base_poses` 的 TF 路。老包没录 TF 才退回去量装配角，
     并且会把标准误印出来 —— 那条路量出来是 ±1.85°，起步朝向的预算一共才 2°。
+
+    `rejected` 是被净空闸挡掉的段，每项 (序号, x, y, yaw, 净空)。**不在这里
+    为"一个都没剩"报错** —— 调用方拿着它还能出一张"你站的地方 vs 站得下的
+    地方"的图，那比一句错误有用得多。2026-09-30 那趟三个停留点全被拒，
+    净空 0.72/0.88/0.74 差在 0.95 上，光看错误信息不知道该往哪边挪。
     """
     from gridmap import base_poses, sensor_poses
 
@@ -467,18 +473,14 @@ def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
         print(f'  {i}. t={t0:6.1f}~{t1:6.1f}s ({x:+7.3f}, {y:+7.3f}) '
               f'朝向 {math.degrees(a):+7.1f}°  净空 {c:.2f} m{flag}')
         if flag:
-            bad.append(i)
+            bad.append((i, x, y, a, float(c)))
             continue
         pts.append((x, y))
         yaws.append(a)
     if bad:
-        print(f'  丢掉第 {bad} 个 —— 站的位置本身离障碍太近，'
+        print(f'  丢掉第 {[b[0] for b in bad]} 个 —— 站的位置本身离障碍太近，'
               '机器人停在容差带边缘时会压上去。')
-    if not pts:
-        raise SystemExit(
-            f'没有一个停留段能用。录制那趟站够 {min_s:.0f} 秒了吗？'
-            '（maps/README.md 里的第 4 条）')
-    return np.asarray(pts, dtype=float), yaws
+    return np.asarray(pts, dtype=float).reshape(-1, 2), yaws, bad
 
 
 def chain_pick(cand, start, n, spacing, is_clear):
@@ -675,7 +677,7 @@ def blit_number(img, text, cx, cy, scale=2, fg=0, bg=254):
 
 
 def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
-                     zoom=None):
+                     zoom=None, cand=None, legs=True):
     """画一张**能让人真正核对**的图。
 
     第一版渲染是 603x463 全图、点位是没有编号的小黑点、朝向箭头一个像素
@@ -687,6 +689,13 @@ def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
 
     `traj` 允许是空的（`--reorder-only` 没有建图那趟的轨迹可画）：那时候
     只画点位和航段，裁剪范围也只按点位算。
+
+    `cand` 是"站得下的区域"掩码（和 grid 同形状的布尔数组），给了就铺一层
+    浅灰在最底下。这一层是给人回答"那我该站哪"用的 —— 实测房间里空闲区
+    147 m² 而站得下的只有 12.8 m²，光看空闲区会以为到处都能停。
+
+    `legs=False` 时不画点之间的连线。全被拒时画的是**被拒的点**，它们之间
+    没有航段可言，连起来只会误导。
     """
     traj = np.asarray(traj, float).reshape(-1, 2)
     allp = np.vstack([traj, np.asarray(pts, float).reshape(-1, 2)])
@@ -701,13 +710,19 @@ def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
     # draw_path / draw_marker 内部都按 img[h-1-iy] 写，也就是要求传进去的
     # 数组已经是**图像朝向**（第 0 行是 y 最大）。所以先翻，再画。
     sub = np.flipud(grid[j0:j1, i0:i1]).copy()
+    if cand is not None:
+        # 只铺在空闲格上：候选区本来就是空闲区的子集，但掩码是按格算的，
+        # 万一以后口径变了也别把墙涂成浅灰。
+        m = np.flipud(np.asarray(cand, bool)[j0:j1, i0:i1])
+        sub[m & (sub == PGM_FREE)] = MARK_CAND
     sx0, sy0 = x0 + i0 * res, y0 + j0 * res
     if len(traj) >= 2:
         draw_path(sub, traj, sx0, sy0, res)
 
     pts = np.asarray(pts, float).reshape(-1, 2)
-    for a, b in zip(pts[:-1], pts[1:]):
-        draw_path(sub, np.array([a, b]), sx0, sy0, res, value=MARK_LEG)
+    if legs:
+        for a, b in zip(pts[:-1], pts[1:]):
+            draw_path(sub, np.array([a, b]), sx0, sy0, res, value=MARK_LEG)
     for p, yaw in zip(pts, yaws):
         draw_marker(sub, p, yaw, res, sx0, sy0)
 
@@ -956,9 +971,34 @@ def main():
         start = traj[0]
 
         if args.from_dwell:
-            pts, fixed_yaws = dwell_points(
+            pts, fixed_yaws, rejected = dwell_points(
                 args.bag, bag, R, grid, res, x0, y0, clr,
                 args.radius + margin, args.dwell_s, args.yaw_offset)
+            if len(pts) == 0:
+                # 一个都没剩。先把"你站的地方 vs 站得下的地方"画出来再退 ——
+                # 下一趟要改的是站位，光给一句错误信息不知道该往哪边挪。
+                if args.render and rejected:
+                    render_check_png(
+                        args.render, grid, traj,
+                        [(b[1], b[2]) for b in rejected],
+                        [b[3] for b in rejected], res, x0, y0,
+                        cand=reach, legs=False)
+                    print(f'\n出了一张诊断图 {args.render}：'
+                          '浅灰是站得下的区域（净空够 + 离轨迹近 + 连通），'
+                          '带编号的圈是你这趟站的位置。')
+                need = args.radius + margin
+                print('\n每个停留点还差多少净空：')
+                for i, _x, _y, _a, c in rejected:
+                    print(f'  第 {i} 个 {c:.2f} m，要 {need:.2f} m '
+                          f'—— 往空处再退 {need - c:.2f} m')
+                raise SystemExit(
+                    f'没有一个停留段能用。站的位置离障碍 {min(b[4] for b in rejected):.2f}'
+                    f'~{max(b[4] for b in rejected):.2f} m，都不到 {need:.2f} m。\n'
+                    '这道闸没有余量可放：'
+                    f'{need:.2f} = 半径 {args.radius:.2f} + 容差+滑行 {margin:.2f}，'
+                    '机器人停在容差带边缘时车身正好贴上障碍。\n'
+                    '下一趟按诊断图里的浅灰区站 —— 朝向照样对着展品，'
+                    '只是人往后退半步到一步。')
             if len(pts) > n:
                 raise SystemExit(
                     f'找到 {len(pts)} 个停留点，但 {args.config} 里只有 {n} 个'

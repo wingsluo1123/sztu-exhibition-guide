@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 
 from pick_waypoints import (                                    # noqa: E402
-    DEFAULT_MARGIN, MARK_LEG, MARK_POINT, blit_number, chain_pick, circ_mean,
+    DEFAULT_MARGIN, MARK_CAND, MARK_LEG, MARK_POINT, blit_number, chain_pick,
+    circ_mean,
     circ_spread, clearance, find_dwells, travel_yaw_offset,
     edt, map_up, nearest_wall_yaw, order_tour, path_is_clear, read_map,
     reachable,
@@ -946,3 +947,49 @@ def test_travel_yaw_offset_throws_out_the_turning_parts():
     off, spread, n = travel_yaw_offset(t, xy, tangent - known)
     assert math.degrees(off) == pytest.approx(12.0, abs=2.0), (
         '弯道没被滤掉，偏置被拉歪了')
+
+
+def test_render_check_png_shades_the_candidate_area(tmp_path):
+    """站得下的区域要铺在图上，而且只铺在空闲格上。
+
+    为什么值得钉：实测房间空闲区 147 m²，而净空够又离轨迹近的只有 12.8 m²。
+    只看空闲区会以为到处都能停 —— 2026-09-30 那趟三个停留点全被净空闸拒掉，
+    就是因为人按"看着挺空"选的站位。这一层是给人回答"那我该站哪"的。
+    """
+    g, res, x0, y0 = room(8.0, 6.0)
+    p = np.array([[4.0, 3.0]])
+    traj = np.array([[1.0, 1.0], [7.0, 5.0]])       # 让裁剪窗口覆盖整个房间
+    cand = np.zeros_like(g, dtype=bool)
+    ix, iy = to_cell([(3.0, 2.0), (5.0, 4.0)], res, x0, y0)
+    cand[iy[0]:iy[1] + 1, ix[0]:ix[1] + 1] = True   # 2 m x 2 m 一块
+    # 故意把墙也划进候选掩码：不能因此把墙涂成浅灰
+    cand[g == PGM_OCC] = True
+
+    img = render_check_png(str(tmp_path / 'r.png'), g, traj, p, [0.0],
+                           res, x0, y0, pad=0.5, zoom=1, cand=cand)
+    assert (img == MARK_CAND).sum() > 1000, \
+        f'候选区没铺上（只有 {(img == MARK_CAND).sum()} 格，2m x 2m 该有 1600 出头）'
+    # 负对照：不给 cand 就一格都不许有
+    plain = render_check_png(str(tmp_path / 'p.png'), g, traj, p, [0.0],
+                             res, x0, y0, pad=0.5, zoom=1)
+    assert (plain == MARK_CAND).sum() == 0, '没给 cand 却画了候选区'
+    # 墙还是墙
+    assert (img == PGM_OCC).sum() == (plain == PGM_OCC).sum(), \
+        '候选掩码把墙涂掉了 —— 图上就看不出哪儿不能走了'
+
+
+def test_render_check_png_can_leave_the_legs_out(tmp_path):
+    """legs=False：画被拒的点时不许连线。
+
+    被拒的点之间没有航段可言，连起来会让人以为那是一条规划好的路线。
+    """
+    g, res, x0, y0 = room(8.0, 6.0)
+    p = np.array([[2.0, 3.0], [6.0, 3.0]])
+    with_legs = render_check_png(str(tmp_path / 'a.png'), g, p, p, [0.0, 0.0],
+                                 res, x0, y0, pad=0.5, zoom=1)
+    without = render_check_png(str(tmp_path / 'b.png'), g, p, p, [0.0, 0.0],
+                               res, x0, y0, pad=0.5, zoom=1, legs=False)
+    assert (with_legs == MARK_LEG).sum() > 20, '负对照失效：本来就没画航段'
+    assert (without == MARK_LEG).sum() == 0, 'legs=False 还是画了航段'
+    # 点本身照样要画出来
+    assert (without == MARK_POINT).sum() > 0
