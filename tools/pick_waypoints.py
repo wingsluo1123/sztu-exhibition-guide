@@ -501,17 +501,63 @@ def nudge_to_clear(x, y, yaw, cand, res, x0, y0, max_m):
     return float(wx[j]), float(wy[j]), float(d[j]), math.degrees(abs(rel))
 
 
-def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
-                 min_s, yaw_offset_deg=None, cand_mask=None, nudge_m=0.0):
+def walk_track(run_dir, bag, R, yaw_offset_deg=None):
+    """建图那趟机器人走过的轨迹，返回 (t, xy, yaw, 来源说明)。
+
+    **全工具只有这一个地方取轨迹。** 以前有两个：选候选区用
+    `sensor_origins`（雷达原点），取停留点用 `base_poses`（base_link）。
+    两者差 0.105 m（这趟实测的平均值），于是"离轨迹 ≤ 1 m"那条带子和
+    停留点差着一个雷达杆的偏移 —— 候选区整体错开 0.1 m，而**什么都不会
+    报错**。2026-09-30 实测时的表现是：同一个停留点，手算的最近达标处
+    在 1.14 m 外，工具算出来在 0.05 m 外，差了 20 倍。两个数都"对"，
+    因为它们答的是两个不同的问题。
+
+    口径统一到 base_link：净空判据问的是**机器人的身子**塞不塞得进去，
+    机器人的身子在 base_link 上，不在雷达上。老包没录 /tf 才退回雷达朝向
+    加装配角，那条路会把标准误印出来。
+    """
+    from gridmap import base_poses, sensor_poses
+
+    got = base_poses(bag, R)
+    if got is not None:
+        t, xy, yaw = got
+        return t - t[0], xy, yaw, f'base_link（包里有 /tf），{len(t)} 帧'
+
+    t, xy, syaw = sensor_poses(bag, R)
+    if yaw_offset_deg is not None:
+        off, spread, k = math.radians(yaw_offset_deg), None, None
+        src = '命令行 --yaw-offset'
+    else:
+        off, spread, k = travel_yaw_offset(t, xy, syaw)
+        if k is None or k < 30:
+            raise SystemExit(
+                f'包里没有 /tf，想从走直线的段反推装配角又只找到 {k} 个'
+                '样本，判不了。\n'
+                '要么用 --yaw-offset 显式给，要么重录一趟'
+                '（run_lio_live.sh --map 现在会录 /tf）。')
+        src = f'从 {k} 段直线反推'
+    note = (f'雷达位姿 + 装配角 {math.degrees(off):+.2f}°（{src}）'
+            + ('' if spread is None else
+               f'，圆周散布 {math.degrees(spread):.1f}°，标准误 '
+               f'{math.degrees(spread) / math.sqrt(k):.2f}°'))
+    print('  ! 包里没有 /tf，朝向只能从雷达朝向 + 装配角推。')
+    print(f'    {note}')
+    print('    起步朝向的预算一共 2°，这一项就能吃光。重录一趟带 /tf 的。')
+    print('  ! 位置也还是雷达原点，和 base_link 差一个雷达杆的偏移'
+          '（实测约 0.1 m）—— 净空判的是身子，这条路上它偏了。')
+    return t - t[0], xy, np.asarray(syaw) + off, note
+
+
+def dwell_points(t, xy, yaw, res, x0, y0, clr, need_clear,
+                 min_s, cand_mask=None, nudge_m=0.0):
     """从建图那趟的停留段取点位，返回 (pts, yaws, rejected)。
 
     这条路和几何铺点的区别：位置和朝向都是**人当时真站在那儿**测出来的，
     不是从空地里推的。朝向尤其 —— 几何铺点只能猜"朝最近的墙"，而展品挂在
     哪面墙上、是不是在墙上，图里没有这个信息。
 
-    朝向的约定必须和实走时一致（`lio_odom_bridge` 发的是 base_link），
-    所以优先走 `gridmap.base_poses` 的 TF 路。老包没录 TF 才退回去量装配角，
-    并且会把标准误印出来 —— 那条路量出来是 ±1.85°，起步朝向的预算一共才 2°。
+    `t`/`xy`/`yaw` 由 `walk_track` 给，和候选区用的是同一条轨迹 —— 别再
+    在这里另取一次，理由见 `walk_track` 的注释。
 
     `rejected` 是被净空闸挡掉的段，每项 (序号, x, y, yaw, 净空)。**不在这里
     为"一个都没剩"报错** —— 调用方拿着它还能出一张"你站的地方 vs 站得下的
@@ -522,36 +568,6 @@ def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
     挪到 `nudge_m` 以内最近的达标格（见 `nudge_to_clear`，朝向不动），
     挪得动就收下并打印挪动量，挪不动才进 `rejected`。
     """
-    from gridmap import base_poses, sensor_poses
-
-    got = base_poses(bag, R)
-    if got is not None:
-        t, xy, yaw = got
-        t = t - t[0]           # base_poses 给的是绝对 stamp，这里只要相对
-        print(f'朝向用 base_link（包里有 /tf），{len(t)} 帧 —— '
-              '和实走时 bridge 发的是同一个约定')
-    else:
-        t, xy, syaw = sensor_poses(bag, R)
-        if yaw_offset_deg is not None:
-            off, spread, k = math.radians(yaw_offset_deg), None, None
-            src = '命令行 --yaw-offset'
-        else:
-            off, spread, k = travel_yaw_offset(t, xy, syaw)
-            if k is None or k < 30:
-                raise SystemExit(
-                    f'包里没有 /tf，想从走直线的段反推装配角又只找到 {k} 个'
-                    '样本，判不了。\n'
-                    '要么用 --yaw-offset 显式给，要么重录一趟'
-                    '（run_lio_live.sh --map 现在会录 /tf）。')
-            src = f'从 {k} 段直线反推'
-        yaw = np.asarray(syaw) + off
-        print('  ! 包里没有 /tf，朝向只能从雷达朝向 + 装配角推。')
-        print(f'    装配角 {math.degrees(off):+.2f}°（{src}）'
-              + ('' if spread is None else
-                 f'，圆周散布 {math.degrees(spread):.1f}°，'
-                 f'标准误 {math.degrees(spread) / math.sqrt(k):.2f}°'))
-        print('    起步朝向的预算一共 2°，这一项就能吃光。重录一趟带 /tf 的。')
-
     seg = find_dwells(t, xy, yaw, min_s=min_s)
     print(f'\n轨迹 {len(t)} 帧 / {t[-1]:.1f} s，站满 {min_s:.0f} s 的段 '
           f'{len(seg)} 个：')
@@ -1049,7 +1065,7 @@ def main():
                 '（只想重排已有点位的顺序：加 --reorder-only，那条路不需要包。）')
 
         from check_lever import find_bag, gravity_align_matrix
-        from gridmap import resolve_up, sensor_origins
+        from gridmap import resolve_up
         bag = find_bag(args.bag)
         # 重力方向**以图为准**：图是在某个重力系里摊平的，点位坐标只有在
         # 同一个系里才有意义。图自己把这个数记在 <map>.yaml 的 sztu_up 里
@@ -1071,7 +1087,11 @@ def main():
         print(f'  上 = [{up[0]:+.4f}, {up[1]:+.4f}, {up[2]:+.4f}]'
               + (f'，误差 ≤ {up_bound:.4f}°' if up_bound is not None else ''))
         R = gravity_align_matrix(up)
-        traj = np.array(list(sensor_origins(bag, R).values()))[:, :2]
+        # 轨迹只取这一次，候选区和停留点共用 —— 以前这里取雷达原点、
+        # dwell_points 里另取 base_link，两者差 0.105 m 而不报错。
+        wt, wxy, wyaw, wsrc = walk_track(args.bag, bag, R, args.yaw_offset)
+        traj = np.asarray(wxy, float)[:, :2]
+        print(f'轨迹来源：{wsrc}')
         print(f'轨迹 {len(traj)} 个位姿，走过的范围 '
               f'{traj[:, 0].ptp():.1f} x {traj[:, 1].ptp():.1f} m')
 
@@ -1102,8 +1122,8 @@ def main():
 
         if args.from_dwell:
             pts, fixed_yaws, rejected = dwell_points(
-                args.bag, bag, R, grid, res, x0, y0, clr,
-                args.radius + margin, args.dwell_s, args.yaw_offset,
+                wt, traj, wyaw, res, x0, y0, clr,
+                args.radius + margin, args.dwell_s,
                 cand_mask=reach, nudge_m=args.nudge_m)
             if len(pts) == 0:
                 # 一个都没剩。先把"你站的地方 vs 站得下的地方"画出来再退 ——
