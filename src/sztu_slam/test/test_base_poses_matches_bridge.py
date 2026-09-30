@@ -142,6 +142,14 @@ def test_base_poses_reproduces_what_the_bridge_actually_published():
                     'bridge 不是原样透传 stamp 了？')
     pos_tol = rmax * math.radians(up_bound_deg) + FLOAT_SLACK_M
     yaw_tol = up_bound_deg + FLOAT_SLACK_DEG
+    # 印出来：绿灯本身说明不了差多少，而"差多少"是这条链能不能用的那个数。
+    # pytest -s 能看到。
+    print(f'\n{os.path.basename(os.path.dirname(os.path.dirname(db3)))}：'
+          f'配上 {n} 帧，最远 {rmax:.1f} m\n'
+          f'  位置差 中位 {np.median(dp) * 1000:.3f} mm，最大 '
+          f'{max(dp) * 1000:.3f} mm（上限 {pos_tol * 1000:.2f}）\n'
+          f'  朝向差 中位 {np.median(dy):.5f}°，最大 {max(dy):.5f}°'
+          f'（上限 {yaw_tol:.4f}）')
     assert max(dp) < pos_tol, (
         f'位置差最大 {max(dp) * 1000:.2f} mm（{n} 帧，中位 '
         f'{np.median(dp) * 1000:.2f} mm），要 < {pos_tol * 1000:.2f} mm'
