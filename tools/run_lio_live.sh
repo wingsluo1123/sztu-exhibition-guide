@@ -361,11 +361,19 @@ if [ "$RECORD" -eq 1 ]; then
     # 一段静止的 IMU 数据才能定重力方向；真机上没有源包可指，就指自己录的。
     # IMU 200 Hz 但消息很小，录它的开销可以忽略。
     REC_TOPICS=(/Odometry "$IMU_TOPIC")
-    [ "$MAP" -eq 1 ] && REC_TOPICS+=(/cloud_registered)
+    # --map 时也要 TF。选点位的朝向要的是 **base_link** 在图里的朝向，
+    # 因为实走时 lio_odom_bridge 发的就是 base_link（odom_pose_to_base），
+    # 两边得是同一个约定。而 base_link -> 雷达这个变换是**动态**的（中间隔着
+    # 腰关节），只能每帧查 TF，事后拿不回来。
+    # 20260928 那趟没录 TF，只能从"走直线时朝向≈前进方向"反推装配角，量出
+    # -6.24°、圆周散布 34.4°、标准误 1.85° —— 单这一项就把起步朝向 2° 的
+    # 预算吃光了。录了 TF 就不用推。
+    [ "$MAP" -eq 1 ] && REC_TOPICS+=(/cloud_registered /tf /tf_static)
     # --bridge 时把转接层的输出和 TF 一起录下来。这一趟要验的恰恰是"动态 TF
     # 有没有真正起作用"，而那件事只能事后反解杠杆臂来判（tools/check_lever.py
     # 要 /Odometry + /slam/lidar_odom + /tf 三样齐全）。两个话题都很小。
-    [ "$BRIDGE" -eq 1 ] && REC_TOPICS+=("$NAV_TOPIC" /tf /tf_static)
+    [ "$BRIDGE" -eq 1 ] && REC_TOPICS+=("$NAV_TOPIC")
+    [ "$BRIDGE" -eq 1 ] && [ "$MAP" -eq 0 ] && REC_TOPICS+=(/tf /tf_static)
     ros2 bag record -o "$RUN_DIR/odom" "${REC_TOPICS[@]}" \
         > "$RUN_DIR/record.log" 2>&1 &
     pids+=($!)

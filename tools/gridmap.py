@@ -51,13 +51,15 @@ y-z 面，竖直在 x 上。拿 z 当上，`fit_ground` 会在一个根本不是
 import argparse
 import math
 import os
+import sqlite3
 import struct
 import sys
 import zlib
 
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
 
 # .pgm 里三种格子的灰度，照 Nav2 map_server 的约定
 PGM_OCC = 0        # 占据 = 黑
@@ -312,6 +314,86 @@ def sensor_origins(bag, R):
         out[(m.header.stamp.sec, m.header.stamp.nanosec)] = \
             R @ np.array([p.x, p.y, p.z])
     return out
+
+
+def sensor_poses(bag, R, forward_axis=(0.0, 0.0, -1.0)):
+    """从 /Odometry 取每帧的时刻、原点、以及雷达某根轴在图里的方位。
+
+    返回 (t, xy, sensor_yaw)，三个等长的 ndarray。`t` 是秒（从第一帧起算）。
+
+    `forward_axis` 默认 -z：这颗雷达的 x 轴是竖直的（装配 pitch -87.6°），
+    机器人的"前"落在 -z 上。它和机器人真正的"前"还差一个装配角，那个角
+    **不在这里拍**，由 `pick_waypoints.travel_yaw_offset` 从走直线的段里量。
+    """
+    from check_lever import read_topics
+    sys.path.insert(0, os.path.join(_HERE, '..', 'src', 'sztu_slam'))
+    from sztu_slam.odom_transform import quat_to_matrix
+
+    f = np.asarray(forward_axis, dtype=float)
+    ts, xy, yaw = [], [], []
+    for _, m in read_topics(bag, ['/Odometry'])['/Odometry']:
+        p, q = m.pose.pose.position, m.pose.pose.orientation
+        ts.append(m.header.stamp.sec + m.header.stamp.nanosec * 1e-9)
+        xy.append((R @ np.array([p.x, p.y, p.z]))[:2])
+        v = R @ quat_to_matrix((q.x, q.y, q.z, q.w)) @ f
+        yaw.append(math.atan2(v[1], v[0]))
+    ts = np.asarray(ts, dtype=float)
+    return ts - ts[0], np.asarray(xy, dtype=float), np.asarray(yaw, dtype=float)
+
+
+def base_poses(bag, R, max_gap=0.2):
+    """从 /Odometry + /tf 取每帧 **base_link** 在图里的位置和朝向。
+
+    返回 (t, xy, yaw)，三个等长的 ndarray；包里没有 /tf 就返回 None。
+
+    为什么要有这条路（而不是只用 `sensor_poses` + 量装配角）：实走时
+    `lio_odom_bridge` 发的位姿是 base_link 的（`odom_pose_to_base`），点位的
+    朝向必须是同一个约定，否则机器人会稳稳地停在点位上、朝着偏一个装配角的
+    方向讲解。而 base_link -> 雷达这个变换是**动态**的（中间隔着腰关节），
+    事后拿不回来，只能每帧查 TF —— 所以 `run_lio_live.sh --map` 现在录 /tf。
+    老包（20260928 那趟）没录，只能退回去从"走直线时朝向≈前进方向"反推，
+    那条路的标准误 1.85°，单这一项就把起步朝向 2° 的预算吃光了。
+
+    `max_gap`：某帧的 stamp 落在 /tf 采样区间外这么多秒以上就丢掉这帧，
+    不外推。外推出来的腰关节角是编的。
+    """
+    from check_lever import build_chain, chain_at, pose_of, read_topics
+    sys.path.insert(0, os.path.join(_HERE, '..', 'src', 'sztu_slam'))
+    from sztu_slam.odom_transform import odom_pose_to_base
+
+    # 先问包里有没有 /tf，再去读 —— read_topics 对缺话题是直接 SystemExit 的，
+    # 而"老包没录 TF"是个要优雅退路的情况，不是错误。
+    with sqlite3.connect(bag) as db:
+        have = {n for (n,) in db.execute('select name from topics')}
+    if not {'/tf', '/tf_static'} <= have:
+        return None
+
+    msgs = read_topics(bag, ['/Odometry', '/tf', '/tf_static'])
+    if not msgs['/tf'] or not msgs['/tf_static']:
+        return None
+    chain = build_chain(msgs['/tf'], msgs['/tf_static'])
+
+    ts, xy, yaw, skipped = [], [], [], 0
+    for _, m in msgs['/Odometry']:
+        t = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
+        R_bb, t_bb, gap = chain_at(chain, t)
+        if gap > max_gap:
+            skipped += 1
+            continue
+        Rb, tb = odom_pose_to_base(R, pose_of(m), (R_bb, t_bb))
+        ts.append(t)
+        xy.append(tb[:2])
+        yaw.append(math.atan2(Rb[1, 0], Rb[0, 0]))   # base_link 的 +x 是"前"
+    if len(ts) < 2:
+        raise ValueError(
+            f'/Odometry 有 {len(msgs["/Odometry"])} 帧，但只有 {len(ts)} 帧的 '
+            f'stamp 落在 /tf 的采样区间里（丢了 {skipped}）。'
+            '录包时 /tf 起晚了或者中途断了。')
+    if skipped:
+        print(f'  base_link 朝向：丢掉 {skipped} 帧（stamp 在 /tf 区间外 '
+              f'> {max_gap}s，不外推）')
+    ts = np.asarray(ts, dtype=float)
+    return ts - ts[0], np.asarray(xy, dtype=float), np.asarray(yaw, dtype=float)
 
 
 def resolve_up(run_dir, bag, explicit=None):

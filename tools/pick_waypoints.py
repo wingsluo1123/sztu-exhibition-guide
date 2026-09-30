@@ -80,6 +80,138 @@ DEFAULT_MARGIN = 0.15    # **已废弃，别再用这个数。** 留着只为说
 # 实测之前用保守值，实测之后改这里并重跑本工具。
 DEFAULT_COAST = 0.25
 
+# 从"站住不动的那几段"取点位时用的判据。
+# 录制要求见 maps/README.md：每个想设讲解点的位置静止站满 10 秒，朝向对着展品。
+DEFAULT_DWELL_S = 10.0          # 一段要多久才算"站住"（秒）
+DEFAULT_DWELL_MOVE = 0.10       # 整段里离中心最远不超过多少（米）
+DEFAULT_DWELL_TURN = 15.0       # 整段里朝向的圆周散布不超过多少（度）
+DEFAULT_DWELL_TRIM = 0.1        # 估位置和朝向时，两头各丢掉多少比例（见 find_dwells）
+
+
+def circ_mean(a):
+    """一堆角度的圆周均值（弧度）。不能用算术平均 —— ±180° 附近会算出 0。"""
+    a = np.asarray(a, dtype=float)
+    if not len(a):
+        raise ValueError('circ_mean 拿到空数组')
+    return math.atan2(float(np.sin(a).mean()), float(np.cos(a).mean()))
+
+
+def circ_spread(a):
+    """一堆角度的圆周标准差（弧度）。完全同向是 0，越散越大。
+
+    用 sqrt(-2 ln R̄)：R̄ 是单位向量平均的长度。比"最大减最小"稳，
+    因为后者在 ±180° 附近会给出 360° 这种假的散布。
+    """
+    a = np.asarray(a, dtype=float)
+    if not len(a):
+        raise ValueError('circ_spread 拿到空数组')
+    r = math.hypot(float(np.cos(a).mean()), float(np.sin(a).mean()))
+    r = min(max(r, 1e-12), 1.0)
+    return math.sqrt(-2.0 * math.log(r))
+
+
+def find_dwells(t, xy, yaw, min_s=DEFAULT_DWELL_S,
+                max_move=DEFAULT_DWELL_MOVE,
+                max_turn=math.radians(DEFAULT_DWELL_TURN),
+                trim=DEFAULT_DWELL_TRIM):
+    """找轨迹里"站住不动"的段，返回 [(t0, t1, x, y, yaw), ...]。
+
+    判据是"整段都待在一个小圈里"，**不是**"瞬时速度小"。后者会把慢慢挪动
+    的一段也当成站住 —— 以 5 cm/s 挪 10 秒能走出半米，那个位置当点位是错的。
+    朝向也要求整段稳定：人把机器人摆向展品之后它不该还在转。
+
+    `t0`/`t1` 是整段的两头，而位置和朝向只用**去掉两头各 trim 比例**之后的
+    那部分估。为什么要去头去尾：段的边界天生是模糊的 —— 刚开始走的头
+    `max_move` 那点距离和站着分不开，会被吸进段里，而那几帧机器人已经在
+    转身了。实测 3 cm/帧、站 12 秒的情况下，多吸进来 3 帧就把朝向拉偏 2°，
+    正好是起步朝向的全部预算。
+    """
+    t = np.asarray(t, dtype=float)
+    xy = np.asarray(xy, dtype=float).reshape(-1, 2)
+    yaw = np.asarray(yaw, dtype=float)
+    if not (len(t) == len(xy) == len(yaw)):
+        raise ValueError('t / xy / yaw 长度不一致')
+    if not 0.0 <= trim < 0.5:
+        raise ValueError(f'trim 要在 [0, 0.5) 里，给的是 {trim}')
+
+    out, i, n = [], 0, len(t)
+    while i < n:
+        j = i + 1
+        while j < n:
+            seg = xy[i:j + 1]
+            c = seg.mean(axis=0)
+            if np.hypot(*(seg - c).T).max() > max_move:
+                break
+            if circ_spread(yaw[i:j + 1]) > max_turn:
+                break
+            j += 1
+        # j 现在是第一个"放不进去"的下标，段是 i..j-1。
+        if t[j - 1] - t[i] >= min_s:
+            k = int((j - i) * trim)
+            lo, hi = i + k, j - k
+            if hi - lo < 1:              # 段太短，trim 会掏空它
+                lo, hi = i, j
+            c = xy[lo:hi].mean(axis=0)
+            out.append((float(t[i]), float(t[j - 1]),
+                        float(c[0]), float(c[1]),
+                        circ_mean(yaw[lo:hi])))
+            i = j                    # 一段站住只出一个点
+        else:
+            i += 1
+    return out
+
+
+def travel_yaw_offset(t, xy, sensor_yaw, min_len=0.30, max_dt=2.0,
+                      max_curve=math.radians(20.0)):
+    """量"雷达朝向"和"实际前进方向"之间的固定偏置（弧度）。
+
+    返回 (偏置, 圆周散布, 样本数)。
+
+    为什么要量：`sensor_yaw` 是雷达自己某根轴在图里的方位，它和机器人的
+    "前"差一个装配角。这个角**不能拍**，但可以从走直线的段里量出来 ——
+    机器人往前走的时候，前进方向就是它的朝向。
+
+    只取走得够远（>= min_len，够远才盖得住里程计抖动）、够快
+    （<= max_dt 秒内走完，慢的那种多半在原地扭）、而且够直的段：
+    前后两半的方向差超过 max_curve 就是在拐弯，拐弯时"前进方向 = 朝向"
+    不成立，要扔掉。
+    """
+    t = np.asarray(t, dtype=float)
+    xy = np.asarray(xy, dtype=float).reshape(-1, 2)
+    sensor_yaw = np.asarray(sensor_yaw, dtype=float)
+
+    diffs, n = [], len(t)
+    for i in range(n - 1):
+        # 只往后看 max_dt 秒。j 不能跨 i 单调推进 —— 机器人掉头之后，
+        # 满足位移要求的 j 会**变小**，单调指针会把那些段整段跳掉。
+        j = None
+        for k in range(i + 1, n):
+            if t[k] - t[i] > max_dt:
+                break
+            if np.hypot(*(xy[k] - xy[i])) >= min_len:
+                j = k
+                break
+        if j is None:
+            continue
+        mid = (i + j) // 2
+        if mid in (i, j):
+            continue
+        a = math.atan2(*(xy[mid] - xy[i])[::-1])
+        b = math.atan2(*(xy[j] - xy[mid])[::-1])
+        if abs(math.atan2(math.sin(b - a), math.cos(b - a))) > max_curve:
+            continue                      # 这段在拐弯
+        d = xy[j] - xy[i]
+        travel = math.atan2(d[1], d[0])
+        sensor = circ_mean(sensor_yaw[i:j + 1])
+        diffs.append(math.atan2(math.sin(travel - sensor),
+                                math.cos(travel - sensor)))
+    if not diffs:
+        raise ValueError(
+            f'一段够直够长的都没找到（要求 {min_len} m 内走完且 '
+            f'{max_dt} s 以内、前后两半方向差 < '
+            f'{math.degrees(max_curve):.0f}°），量不出装配角')
+    return circ_mean(diffs), circ_spread(diffs), len(diffs)
+
 
 def required_margin(position_tolerance, coast=DEFAULT_COAST):
     """点位净空至少要比机器人半径多出多少（米）。
@@ -279,6 +411,73 @@ def spread_pick(cand, start, n, spacing):
         d = np.minimum(d, np.hypot(cand[:, 0] - cand[far][0],
                                    cand[:, 1] - cand[far][1]))
     return np.asarray(picked)
+
+
+def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
+                 min_s, yaw_offset_deg=None):
+    """从建图那趟的停留段取点位，返回 (pts, yaws)。
+
+    这条路和几何铺点的区别：位置和朝向都是**人当时真站在那儿**测出来的，
+    不是从空地里推的。朝向尤其 —— 几何铺点只能猜"朝最近的墙"，而展品挂在
+    哪面墙上、是不是在墙上，图里没有这个信息。
+
+    朝向的约定必须和实走时一致（`lio_odom_bridge` 发的是 base_link），
+    所以优先走 `gridmap.base_poses` 的 TF 路。老包没录 TF 才退回去量装配角，
+    并且会把标准误印出来 —— 那条路量出来是 ±1.85°，起步朝向的预算一共才 2°。
+    """
+    from gridmap import base_poses, sensor_poses
+
+    got = base_poses(bag, R)
+    if got is not None:
+        t, xy, yaw = got
+        print(f'朝向用 base_link（包里有 /tf），{len(t)} 帧 —— '
+              '和实走时 bridge 发的是同一个约定')
+    else:
+        t, xy, syaw = sensor_poses(bag, R)
+        if yaw_offset_deg is not None:
+            off, spread, k = math.radians(yaw_offset_deg), None, None
+            src = '命令行 --yaw-offset'
+        else:
+            off, spread, k = travel_yaw_offset(t, xy, syaw)
+            if k is None or k < 30:
+                raise SystemExit(
+                    f'包里没有 /tf，想从走直线的段反推装配角又只找到 {k} 个'
+                    '样本，判不了。\n'
+                    '要么用 --yaw-offset 显式给，要么重录一趟'
+                    '（run_lio_live.sh --map 现在会录 /tf）。')
+            src = f'从 {k} 段直线反推'
+        yaw = np.asarray(syaw) + off
+        print('  ! 包里没有 /tf，朝向只能从雷达朝向 + 装配角推。')
+        print(f'    装配角 {math.degrees(off):+.2f}°（{src}）'
+              + ('' if spread is None else
+                 f'，圆周散布 {math.degrees(spread):.1f}°，'
+                 f'标准误 {math.degrees(spread) / math.sqrt(k):.2f}°'))
+        print('    起步朝向的预算一共 2°，这一项就能吃光。重录一趟带 /tf 的。')
+
+    seg = find_dwells(t, xy, yaw, min_s=min_s)
+    print(f'\n轨迹 {len(t)} 帧 / {t[-1]:.1f} s，站满 {min_s:.0f} s 的段 '
+          f'{len(seg)} 个：')
+
+    pts, yaws, bad = [], [], []
+    for i, (t0, t1, x, y, a) in enumerate(seg, 1):
+        ix, iy = to_cell([(x, y)], res, x0, y0)
+        c = clr[iy[0], ix[0]]
+        flag = '' if c >= need_clear - 1e-9 else f'  <- 净空不够（要 {need_clear:.2f}）'
+        print(f'  {i}. t={t0:6.1f}~{t1:6.1f}s ({x:+7.3f}, {y:+7.3f}) '
+              f'朝向 {math.degrees(a):+7.1f}°  净空 {c:.2f} m{flag}')
+        if flag:
+            bad.append(i)
+            continue
+        pts.append((x, y))
+        yaws.append(a)
+    if bad:
+        print(f'  丢掉第 {bad} 个 —— 站的位置本身离障碍太近，'
+              '机器人停在容差带边缘时会压上去。')
+    if not pts:
+        raise SystemExit(
+            f'没有一个停留段能用。录制那趟站够 {min_s:.0f} 秒了吗？'
+            '（maps/README.md 里的第 4 条）')
+    return np.asarray(pts, dtype=float), yaws
 
 
 def chain_pick(cand, start, n, spacing, is_clear):
@@ -618,6 +817,19 @@ def main():
     ap.add_argument('--reorder-only', action='store_true',
                     help='不重新选点：读 -c 里已有的坐标，只重排巡游顺序并'
                          '重算朝向。不需要 --bag（重排只用地图）。')
+    ap.add_argument('--from-dwell', action='store_true',
+                    help='点位取自建图那趟**站住不动**的段，而不是几何铺点。'
+                         f'默认站满 {DEFAULT_DWELL_S:.0f} s、整段不出 '
+                         f'{DEFAULT_DWELL_MOVE * 100:.0f} cm、朝向散布 '
+                         f'< {DEFAULT_DWELL_TURN:.0f}° 才算。朝向也取自那一段'
+                         '（人当时就是对着展品站的），不再猜最近的墙。'
+                         '选出来的点照样要过净空和直线畅通那几道闸。')
+    ap.add_argument('--dwell-s', type=float, default=DEFAULT_DWELL_S,
+                    help=f'--from-dwell：站多久才算（秒），默认 {DEFAULT_DWELL_S}')
+    ap.add_argument('--yaw-offset', type=float, default=None,
+                    help='--from-dwell 且包里没有 /tf 时，雷达朝向到机器人'
+                         '朝向的偏置（度）。不给就从走直线的段里量，并印出'
+                         '标准误 —— 那条路不可信，只是为了能处理老包。')
     args = ap.parse_args()
 
     grid, res, x0, y0 = read_map(args.map_base)
@@ -673,6 +885,7 @@ def main():
         pts = np.array([[m['x'], m['y']] for m in meta], dtype=float)
         traj = np.zeros((0, 2))
         dtraj = None
+        fixed_yaws = None
         # 坐标是从 yaml 读回来的，只有毫米精度（写出时 %.3f）。朝向会按这个
         # 毫米级的位置重新算，所以和当初选点时的角度可能差个 0.1° 以内 ——
         # 点离墙越近差得越明显。这点差别远在到点判据之下，但别以为是 bug。
@@ -736,11 +949,26 @@ def main():
         cand = np.column_stack([wx, wy])
         start = traj[0]
 
-        pts = chain_pick(cand, start, n, args.spacing, is_clear)
-        if len(pts) < n:
-            print(f'  ! 只铺得下 {len(pts)} 个点（要 {n} 个）。相邻两点必须直线'
-                  f'畅通，\n    走过的这一圈里就只排得开这么多。'
-                  f'把 --spacing 调小些再试。')
+        if args.from_dwell:
+            pts, fixed_yaws = dwell_points(
+                args.bag, bag, R, grid, res, x0, y0, clr,
+                args.radius + margin, args.dwell_s, args.yaw_offset)
+            if len(pts) > n:
+                raise SystemExit(
+                    f'找到 {len(pts)} 个停留点，但 {args.config} 里只有 {n} 个'
+                    f'点位（讲解内容是按 id 查的，多出来的没词可讲）。\n'
+                    '要么在配置里先补上点位和 content_zh_CN.yaml 里的讲解词，'
+                    f'要么用 --dwell-s 收紧（现在 {args.dwell_s:.0f} s）。')
+            if len(pts) < n:
+                print(f'  ! 只找到 {len(pts)} 个停留点（配置里有 {n} 个）。'
+                      f'录制那趟没站够 {args.dwell_s:.0f} 秒的位置不会出现在这里。')
+        else:
+            fixed_yaws = None
+            pts = chain_pick(cand, start, n, args.spacing, is_clear)
+            if len(pts) < n:
+                print(f'  ! 只铺得下 {len(pts)} 个点（要 {n} 个）。相邻两点必须直线'
+                      f'畅通，\n    走过的这一圈里就只排得开这么多。'
+                      f'把 --spacing 调小些再试。')
         # 离轨迹多远要报出来：点位落在机器人没走过的地方，就算几何上连通，
         # 也是这张图上最不可信的部分（地面高低、玻璃门、反光都只在走过的
         # 地方才验证过）。
@@ -757,6 +985,10 @@ def main():
             '没有避障的时候，一条不畅通的边就是一次撞墙。')
     before = _tour_len(pts)
     pts = pts[order]
+    if fixed_yaws is not None:
+        # 朝向是钉在点上的，跟着点一起重排。忘了这一步的话，每个点都会
+        # 朝着**别人**的展品讲解，而坐标全对、日志全绿。
+        fixed_yaws = [fixed_yaws[i] for i in order]
     print(f'\n巡游顺序 {" -> ".join(str(i + 1) for i in order)}'
           f'（原序 {before:.2f} m -> {_tour_len(pts):.2f} m）')
     print('  （编号是重排后的顺序号；坐标的集合没变，变的是谁排第几个）')
@@ -771,7 +1003,11 @@ def main():
             'tour_order 本该保证这件事。没写出配置。')
 
     meta = meta[:len(pts)]
-    yaws = [nearest_wall_yaw(grid, res, x0, y0, p) for p in pts]
+    if fixed_yaws is not None:
+        yaws = list(fixed_yaws)
+        print('朝向取自停留段实测（录制时人对着展品站的），没用"朝最近的墙"')
+    else:
+        yaws = [nearest_wall_yaw(grid, res, x0, y0, p) for p in pts]
 
     print('\n选出的点位：')
     for i, (m, p, yaw) in enumerate(zip(meta, pts, yaws), 1):

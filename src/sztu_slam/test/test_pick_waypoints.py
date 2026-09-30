@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 
 from pick_waypoints import (                                    # noqa: E402
-    DEFAULT_MARGIN, MARK_LEG, MARK_POINT, blit_number, chain_pick, clearance,
+    DEFAULT_MARGIN, MARK_LEG, MARK_POINT, blit_number, chain_pick, circ_mean,
+    circ_spread, clearance, find_dwells, travel_yaw_offset,
     edt, map_up, nearest_wall_yaw, order_tour, path_is_clear, read_map,
     reachable,
     render_check_png, render_yaml, required_margin, spread_pick, to_cell,
@@ -768,3 +769,180 @@ def test_the_committed_map_and_its_waypoints_share_one_frame():
     measured = np.array([+0.998, -0.019, +0.058])      # 真机 IMU 静止段实测
     assert float(np.dot(up, measured)) > 0.9, (
         f'图记的 sztu_up={up} 和实测重力反向 —— 这张图是反着摊平的')
+
+
+# --- 从"站住不动的那几段"取点位 ---------------------------------------------
+#
+# 录制要求是每个讲解点静止站满 10 秒（见 maps/README.md）。位置和朝向从这些
+# 停留段里取，比几何选点准：位置是人挑的，朝向是人对着展品摆的。
+#
+# 判据的陷阱是"瞬时速度小"：以 5 cm/s 挪 10 秒能走出半米，那个位置当点位是
+# 错的。所以判据是"整段都待在一个小圈里"，下面第 3 条负对照钉的就是这件事。
+
+def _straight(n, t0=0.0, x0=0.0, y0=0.0, step=0.03, yaw=0.0, dt=0.1):
+    """匀速直线走 n 帧，返回 (t, xy, sensor_yaw)。"""
+    t = t0 + np.arange(n) * dt
+    d = np.arange(n) * step
+    xy = np.column_stack([x0 + d * math.cos(yaw), y0 + d * math.sin(yaw)])
+    return t, xy, np.full(n, yaw)
+
+
+def _stand(n, t0, x, y, yaw, dt=0.1, jitter=0.004, seed=0):
+    """站着不动 n 帧，带一点里程计抖动。"""
+    rng = np.random.default_rng(seed)
+    t = t0 + np.arange(n) * dt
+    xy = np.column_stack([np.full(n, x), np.full(n, y)])
+    xy = xy + rng.normal(0, jitter, xy.shape)
+    return t, xy, yaw + rng.normal(0, math.radians(1.0), n)
+
+
+def _join(*parts):
+    return (np.concatenate([p[0] for p in parts]),
+            np.vstack([p[1] for p in parts]),
+            np.concatenate([p[2] for p in parts]))
+
+
+# --- 圆周统计 ---------------------------------------------------------------
+
+def test_circ_mean_handles_the_wrap_at_180():
+    """±180° 附近必须给 180°，不是 0 —— 算术平均在这儿正好错满。"""
+    a = np.array([math.radians(179.0), math.radians(-179.0)])
+    assert abs(circ_mean(a)) == pytest.approx(math.pi, abs=1e-6)
+    # 负对照：算术平均在这组数上给 0，差 180°。判据用它就全错。
+    assert abs(float(a.mean())) < math.radians(1.0)
+
+
+def test_circ_spread_is_zero_for_identical_angles():
+    assert circ_spread(np.full(50, 1.234)) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_circ_spread_grows_with_scatter():
+    rng = np.random.default_rng(0)
+    tight = circ_spread(rng.normal(0, math.radians(2), 2000))
+    loose = circ_spread(rng.normal(0, math.radians(20), 2000))
+    assert math.degrees(tight) == pytest.approx(2.0, abs=0.5)
+    assert math.degrees(loose) == pytest.approx(20.0, abs=2.0)
+    assert tight < loose
+
+
+# --- find_dwells ------------------------------------------------------------
+
+def test_find_dwells_finds_a_ten_second_stop():
+    """走 -> 站 12 秒 -> 走：必须只报 1 段，位置和朝向都要准。"""
+    t, xy, yaw = _join(
+        _straight(50, t0=0.0, yaw=0.3),
+        _stand(120, t0=5.0, x=1.47, y=0.45, yaw=math.radians(100.0)),
+        _straight(50, t0=17.0, x0=1.47, y0=0.45, yaw=0.3))
+    got = find_dwells(t, xy, yaw)
+    assert len(got) == 1
+    t0, t1, x, y, a = got[0]
+    # 段的两头天生是模糊的：刚开始走的头 10 cm（= max_move）和站着分不开，
+    # 会被吸进来。3 cm/帧 -> 最多多算 max_move/step ≈ 3 帧 = 0.3 s。
+    # 所以下界是真实的 11.9 s，上界放到 11.9 + 0.4。
+    assert 11.9 - 0.05 <= t1 - t0 <= 11.9 + 0.4, f'段长 {t1 - t0:.2f}s'
+    assert (x, y) == pytest.approx((1.47, 0.45), abs=0.02)
+    assert math.degrees(a) == pytest.approx(100.0, abs=1.0)
+
+
+def test_find_dwells_trims_the_departing_frames_out_of_the_heading():
+    """负对照：不去头去尾的话，刚起步那几帧会把朝向拉偏 2°。
+
+    上一条测的是"朝向准到 1°"。这一条钉住它**为什么**准 —— 段的尾巴上
+    那 3 帧机器人已经在往 0.3 rad（17.2°）转了，123 帧里混进 3 帧异号的
+    就能把圆周均值拖走 ~2°，正好是起步朝向的全部预算。所以这不是测试的
+    容差问题，是 find_dwells 必须自己扛住。
+    """
+    t, xy, yaw = _join(
+        _straight(50, t0=0.0, yaw=0.3),
+        _stand(120, t0=5.0, x=1.47, y=0.45, yaw=math.radians(100.0)),
+        _straight(50, t0=17.0, x0=1.47, y0=0.45, yaw=0.3))
+    raw = find_dwells(t, xy, yaw, trim=0.0)
+    assert len(raw) == 1
+    bad = math.degrees(raw[0][4])
+    assert abs(bad - 100.0) > 1.5, f'不 trim 也只差 {abs(bad - 100.0):.2f}°，负对照失效'
+    good = math.degrees(find_dwells(t, xy, yaw)[0][4])
+    assert abs(good - 100.0) < abs(bad - 100.0) / 2
+
+
+def test_find_dwells_ignores_a_stop_that_is_too_short():
+    """站 4 秒不算 —— 停一下让路和"我要在这儿讲解"是两件事。"""
+    t, xy, yaw = _join(
+        _straight(30, t0=0.0),
+        _stand(40, t0=3.0, x=0.87, y=0.0, yaw=0.0),
+        _straight(30, t0=7.0, x0=0.87))
+    assert find_dwells(t, xy, yaw) == []
+
+
+def test_find_dwells_rejects_a_slow_creep():
+    """负对照，也是这个判据的全部意义：5 cm/s 挪 12 秒不是"站住"。
+
+    "瞬时速度小"那种写法会把这一段算成停留，而它 12 秒走出了 0.6 m ——
+    拿中点当点位，实际位置能差 0.3 m，比到点容差还大。
+    """
+    t, xy, yaw = _straight(120, t0=0.0, step=0.005, yaw=0.0)   # 0.05 m/s
+    assert np.hypot(*(xy[-1] - xy[0])) > 0.5, '这组数据没在挪，负对照失效'
+    assert find_dwells(t, xy, yaw) == []
+
+
+def test_find_dwells_rejects_standing_still_but_turning():
+    """站着原地转 12 秒也不算 —— 朝向定不下来，取出来的角是假的。"""
+    n = 120
+    t = np.arange(n) * 0.1
+    xy = np.zeros((n, 2))
+    yaw = np.linspace(0, math.radians(90), n)
+    assert find_dwells(t, xy, yaw) == []
+
+
+def test_find_dwells_reports_each_stop_once():
+    """两个停留段要报两个点，不能把中间走的那段也并进来。"""
+    t, xy, yaw = _join(
+        _stand(120, t0=0.0, x=0.0, y=0.0, yaw=0.0, seed=1),
+        _straight(40, t0=12.0, yaw=0.0),
+        _stand(120, t0=16.0, x=1.17, y=0.0, yaw=math.radians(-90), seed=2))
+    got = find_dwells(t, xy, yaw)
+    assert len(got) == 2
+    assert got[0][2] == pytest.approx(0.0, abs=0.01)
+    assert got[1][2] == pytest.approx(1.17, abs=0.05)
+
+
+# --- travel_yaw_offset ------------------------------------------------------
+
+def test_travel_yaw_offset_recovers_a_known_mounting_angle():
+    """造一段直线，雷达朝向比前进方向差一个已知角，必须量回来。"""
+    known = math.radians(-6.0)
+    t, xy, _ = _straight(200, step=0.03, yaw=math.radians(40.0))
+    sensor = np.full(len(t), math.radians(40.0) - known)
+    off, spread, n = travel_yaw_offset(t, xy, sensor)
+    assert math.degrees(off) == pytest.approx(-6.0, abs=0.5)
+    assert math.degrees(spread) < 1.0
+    assert n > 100
+
+
+def test_travel_yaw_offset_refuses_when_nothing_goes_straight():
+    """负对照：原地转一圈，没有一段是"走直线"，必须报错而不是给个数。"""
+    n = 300
+    t = np.arange(n) * 0.1
+    xy = np.zeros((n, 2))
+    with pytest.raises(ValueError, match='够直够长'):
+        travel_yaw_offset(t, xy, np.linspace(0, 2 * math.pi, n))
+
+
+def test_travel_yaw_offset_throws_out_the_turning_parts():
+    """拐弯的段必须被滤掉：直线段给的偏置不能被弯道污染。
+
+    造"直线 + 一段急弯"，量出来的偏置必须还是直线段那个值。
+    """
+    known = math.radians(12.0)
+    t1, xy1, _ = _straight(150, step=0.03, yaw=0.0)
+    n2 = 150
+    th = np.linspace(0, math.pi, n2)
+    xy2 = np.column_stack([xy1[-1, 0] + 0.5 * np.sin(th),
+                           xy1[-1, 1] + 0.5 * (1 - np.cos(th))])
+    t2 = t1[-1] + 0.1 + np.arange(n2) * 0.1
+    t = np.concatenate([t1, t2])
+    xy = np.vstack([xy1, xy2])
+    # 雷达朝向：全程都比"当下的切线方向"差同一个 known
+    tangent = np.concatenate([np.zeros(len(t1)), th])
+    off, spread, n = travel_yaw_offset(t, xy, tangent - known)
+    assert math.degrees(off) == pytest.approx(12.0, abs=2.0), (
+        '弯道没被滤掉，偏置被拉歪了')
