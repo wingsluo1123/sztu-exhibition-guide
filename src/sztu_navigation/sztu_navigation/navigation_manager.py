@@ -5,6 +5,7 @@
 负责点位导航、路径规划、避障、到达检测
 """
 
+import math
 import time
 
 import rclpy
@@ -13,7 +14,13 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 
-from .control import compute_velocity, odom_stale_timeout
+from .control import (
+    DEFAULT_STALL_ANGLE_EPS,
+    DEFAULT_STALL_POSITION_EPS,
+    StallMonitor,
+    compute_velocity,
+    odom_stale_timeout,
+)
 from .locomotion import LocomotionController
 from .waypoints import (
     DEFAULT_NAVIGATION_PARAMS,
@@ -81,7 +88,16 @@ class NavigationManager(Node):
         self.angle_tolerance = self.get_parameter('angle_tolerance').value
         self.max_linear_speed = self.get_parameter('max_linear_speed').value
         self.max_angular_speed = self.get_parameter('max_angular_speed').value
+        self.min_turn_speed = self.get_parameter('min_turn_speed').value
         self.navigation_timeout = self.get_parameter('navigation_timeout').value
+        self.stall_timeout = self.get_parameter('stall_timeout').value
+        self.declare_parameter('stall_position_eps', DEFAULT_STALL_POSITION_EPS)
+        self.declare_parameter('stall_angle_eps', DEFAULT_STALL_ANGLE_EPS)
+        self._stall = StallMonitor(
+            timeout=self.stall_timeout,
+            position_eps=self.get_parameter('stall_position_eps').value,
+            angle_eps=self.get_parameter('stall_angle_eps').value,
+        )
         self.obstacle_distance = self.get_parameter('obstacle_distance').value
 
         # 位姿过期上限。默认 0 表示按容差和速度推（见 control.odom_stale_timeout），
@@ -155,7 +171,8 @@ class NavigationManager(Node):
         self.target_pose = None
         self.is_navigating = False
         self.obstacle_detected = False
-        self.last_result = None  # 'arrived' | 'timeout' | 'canceled' | 'odom_stale' | None
+        # 'arrived' | 'timeout' | 'stalled' | 'canceled' | 'odom_stale' | None
+        self.last_result = None
         self._goal_start_time = None
         self._last_odom_time = None
 
@@ -240,6 +257,8 @@ class NavigationManager(Node):
         self.is_navigating = True
         self.last_result = None
         self._goal_start_time = time.monotonic()
+        # 换目标就重新开始计卡死，否则上一个点位走完时的静止会算到这个点头上。
+        self._stall.reset()
         return True
 
     def wait_for_pose(self, timeout: float = None) -> bool:
@@ -353,6 +372,7 @@ class NavigationManager(Node):
             angle_tolerance=self.angle_tolerance,
             max_linear_speed=self.max_linear_speed,
             max_angular_speed=self.max_angular_speed,
+            min_turn_speed=self.min_turn_speed,
             obstacle_detected=self.obstacle_detected,
         )
 
@@ -363,10 +383,53 @@ class NavigationManager(Node):
             self.last_result = 'arrived'
             return
 
+        # 每周期一行（限流），否则出了问题只能靠猜。2026-09-29 那次实走，
+        # 机器人卡了 110 秒而日志里一个字都没有 —— 只能事后回放 rosbag 才
+        # 看出来指令角速度掉到了转不动的档位。
+        self.get_logger().info(
+            f'[{cmd_out.phase}] 距离 {self._distance_to_target():.2f} m '
+            f'朝向差 {math.degrees(self._yaw_error_to_target()):+.1f}° '
+            f'-> linear={cmd_out.linear:+.3f} angular={cmd_out.angular:+.3f}',
+            throttle_duration_sec=1.0)
+
+        # 卡死就放弃，别再烧满 navigation_timeout。
+        stalled = self._stall.update(
+            time.monotonic(),
+            self.current_pose.position.x,
+            self.current_pose.position.y,
+            quaternion_msg_to_yaw(self.current_pose.orientation))
+        if stalled:
+            self.get_logger().error(
+                f'位姿 {self.stall_timeout:.0f} 秒没有明显变化，但还在发速度指令'
+                f'（{cmd_out.phase} 相位，angular={cmd_out.angular:+.3f}）—— 放弃这个点位。'
+                f'\n  最常见的原因是指令角速度低于机器人的最小有效转速'
+                f'（当前 min_turn_speed={self.min_turn_speed:.2f} rad/s）。'
+                f'\n  用 tools/turn_probe.py --odom {self.odom_topic} 量一下真实下限，'
+                f'再改 config/waypoints.yaml 的 min_turn_speed。')
+            self.stop()
+            self.is_navigating = False
+            self.last_result = 'stalled'
+            return
+
         if self.obstacle_detected and cmd_out.phase == 'advance':
             self.get_logger().warn('Obstacle detected, reducing speed')
 
         self._publish(cmd_out.linear, cmd_out.angular)
+
+    def _distance_to_target(self) -> float:
+        return math.hypot(
+            self.target_pose['x'] - self.current_pose.position.x,
+            self.target_pose['y'] - self.current_pose.position.y)
+
+    def _yaw_error_to_target(self) -> float:
+        """到目标朝向的误差。目标不约束朝向时退而报到目标点的航向差。"""
+        current_yaw = quaternion_msg_to_yaw(self.current_pose.orientation)
+        target_yaw = self.target_pose.get('yaw')
+        if target_yaw is None:
+            target_yaw = math.atan2(
+                self.target_pose['y'] - self.current_pose.position.y,
+                self.target_pose['x'] - self.current_pose.position.x)
+        return normalize_angle(target_yaw - current_yaw)
 
     def rotate_to_angle(self, target_yaw: float):
         """旋转到指定角度（单拍，由调用方循环驱动）"""

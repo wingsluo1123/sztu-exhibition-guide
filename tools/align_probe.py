@@ -14,11 +14,30 @@
 
 改完之后再跑一次同一个脚本，就是回归测试：同样的目标必须收敛。
 
+`--min-turn-speed` 就是这两种跑法的开关，同一个脚本两种用途::
+
+    tools/align_probe.py --odom /aima/hal/odom/state --min-turn-speed 0   # 负对照，应卡死
+    tools/align_probe.py --odom /aima/hal/odom/state                      # 回归，应收敛
+
 判据（别用代理量）
 ------------------
 不看"指令发出去了没有"，也不看相位是不是 align。只看**里程计的 yaw 误差**：
 
-* 收敛：|yaw 误差| 降到 `angle_tolerance` 以内，且 `compute_velocity` 报 arrived。
+* 收敛：|yaw 误差| 降到 `angle_tolerance` 以内、`compute_velocity` 报 arrived，
+  **并且停车后 `--settle` 秒内没有跑出去**。最后这一条不能省：步态有滞后，
+  指令归零之后机器人还会滑一段，只判"碰到过容差带"会把一个停不住的系统
+  报成收敛。
+
+  停不住有两种完全不同的毛病，**不能混成一句"震荡"**（我第一版就是这么
+  写的，而实测出来的是另一种）：
+
+  - **震荡**：误差换过号两次以上，也就是真的越过目标又折回来。
+    判据就是数符号变化，不靠猜。这一种要加超前补偿。
+  - **精度不够**：误差一次也没换号，只是停在容差带外侧一点。
+    到位判定是"进带子就锁"，所以停住的位置天生在带子边缘再加一个滑行量。
+    这一种降 min_turn_speed 只会换回卡死，要么放宽容差，要么接受。
+
+  滑行量当场量：停车瞬间的 yaw 和 `--settle` 秒后的 yaw 之差，不用估。
 * 卡死：连续 `--stall-window` 秒里 |yaw 误差| 的变化不到 `--stall-eps`，
   而误差本身还在容差之外 —— 也就是"还没到，但已经不动了"。
   这时候把冻住的那一档指令角速度打出来，正好和 `turn_probe.py` 量的最小
@@ -51,6 +70,12 @@
 
     tools/run_lio_live.sh --bridge
     tools/align_probe.py --odom /slam/lidar_odom --turn 2.0
+
+退出码
+------
+0 收敛并停住 / 1 通道或倾斜等前提不成立（结论无效）/ 2 复现卡死 /
+3 超时但没冻住（在慢慢挪）/ 4 震荡（误差换号 >=2 次）/
+5 不震荡但停在容差外（精度不够）
 """
 
 import argparse
@@ -66,6 +91,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 
 sys.path.insert(0, '/'.join(__file__.split('/')[:-2]) + '/src/sztu_navigation')
 
+from sztu_navigation.control import DEFAULT_MIN_TURN_SPEED   # noqa: E402
 from sztu_navigation.control import compute_velocity   # noqa: E402
 from sztu_navigation.control import normalize_angle   # noqa: E402
 from sztu_navigation.locomotion import LOCOMOTION_QOS   # noqa: E402
@@ -77,6 +103,11 @@ DEFAULT_TIMEOUT = 60.0     # s
 DEFAULT_STALL_WINDOW = 8.0  # s
 DEFAULT_STALL_EPS = 0.05   # rad，这个窗口里误差变化不到这么多就算卡死
 DEFAULT_MAX_TILT = 0.45    # rad
+# 报 arrived 之后还要盯这么久。仿真里步态稳定约 2 秒，给一倍余量。
+DEFAULT_SETTLE = 4.0       # s
+# yaw 的量测噪声余量。和 --stall-eps 同一个数：那边拿它当"没动"的门槛，
+# 这边拿它当"这点误差说明不了问题"的门槛，本来就该是同一个量。
+YAW_NOISE_EPS = 0.05       # rad，约 2.9°
 VELOCITY_TOPIC = '/aima/mc/locomotion/velocity'
 WIRE_OK_FRACTION = 0.9
 
@@ -159,6 +190,13 @@ def main():
                     help='"几乎不变"的阈值（rad）')
     ap.add_argument('--angle-tolerance', type=float, default=0.26,
                     help='到位容差，和 waypoints.yaml 保持一致')
+    ap.add_argument('--min-turn-speed', type=float,
+                    default=DEFAULT_MIN_TURN_SPEED,
+                    help='align 的角速度下限（rad/s）。'
+                         '填 0 就退回修复之前的纯比例律 —— 那是负对照，'
+                         '应该复现卡死（退出码 2）')
+    ap.add_argument('--settle', type=float, default=DEFAULT_SETTLE,
+                    help='报 arrived 之后再看这么多秒，量停车滑行量（s）')
     ap.add_argument('--max-tilt', type=float, default=DEFAULT_MAX_TILT)
     ap.add_argument('--source', default='sdk_sztu_align')
     ap.add_argument('--priority', type=int, default=45,
@@ -182,7 +220,9 @@ def main():
               f'目标 yaw={math.degrees(target_yaw):.1f}°'
               f'（要转 {math.degrees(args.turn):.1f}°）')
         print(f'容差 {math.degrees(args.angle_tolerance):.1f}°，'
-              f'超时 {args.timeout:.0f} s\n')
+              f'超时 {args.timeout:.0f} s，'
+              f'角速度下限 {args.min_turn_speed:.2f} rad/s'
+              f'{"（负对照：无下限）" if args.min_turn_speed <= 0 else ""}\n')
         print(f'{"时间":>6} {"yaw 误差":>9} {"指令角速度":>11}  相位')
         print('-' * 42)
 
@@ -192,6 +232,13 @@ def main():
         last_print = 0.0
         result = None
         frozen = None
+        converged_at = None
+        converged_err = None
+        settled_err = None
+        coast = None
+        # 误差换号次数。真震荡才会 >=2，"停在带子外侧"是 0。
+        crossings = 0
+        last_sign = None
 
         while rclpy.ok():
             now = time.monotonic() - start
@@ -205,11 +252,20 @@ def main():
             x, y, yaw = node.pose
             cmd = compute_velocity(
                 x, y, yaw, x0, y0, target_yaw,
-                angle_tolerance=args.angle_tolerance)
+                angle_tolerance=args.angle_tolerance,
+                min_turn_speed=args.min_turn_speed)
             node.send(cmd.linear, cmd.angular)
 
-            err = abs(normalize_angle(target_yaw - yaw))
+            signed = normalize_angle(target_yaw - yaw)
+            err = abs(signed)
             history.append((now, err))
+
+            # 只有明显越过目标才算换号，否则边界上的噪声会被数成震荡。
+            if err > YAW_NOISE_EPS:
+                sign = 1 if signed > 0 else -1
+                if last_sign is not None and sign != last_sign:
+                    crossings += 1
+                last_sign = sign
 
             if now - last_print >= 1.0:
                 last_print = now
@@ -218,6 +274,8 @@ def main():
 
             if cmd.arrived:
                 result = 'converged'
+                converged_at = now
+                converged_err = err
                 break
 
             # 卡死判据：窗口内误差几乎不变，而误差还在容差外
@@ -234,6 +292,30 @@ def main():
         node.loco.stop()
         rclpy.spin_once(node, timeout_sec=0.1)
 
+        # 停车后的滑行量。这才是 align 的实际精度：指令归零不等于立刻停住。
+        if result == 'converged':
+            print()
+            print(f'停车，盯 {args.settle:.0f} 秒看滑到哪：')
+            settle_start = time.monotonic()
+            _, _, yaw_at_stop = node.pose
+            yaw_now = yaw_at_stop
+            while rclpy.ok() and time.monotonic() - settle_start < args.settle:
+                node.loco.tick()
+                rclpy.spin_once(node, timeout_sec=period)
+                _, _, yaw_now = node.pose
+                signed = normalize_angle(target_yaw - yaw_now)
+                if abs(signed) > YAW_NOISE_EPS:
+                    sign = 1 if signed > 0 else -1
+                    if last_sign is not None and sign != last_sign:
+                        crossings += 1
+                    last_sign = sign
+            settled_err = abs(normalize_angle(target_yaw - yaw_now))
+            coast = abs(normalize_angle(yaw_now - yaw_at_stop))
+            print(f'  报到位时 {math.degrees(converged_err):.1f}°，'
+                  f'{args.settle:.0f} 秒后 {math.degrees(settled_err):.1f}°，'
+                  f'停车后又转了 {math.degrees(coast):.1f}°，'
+                  f'误差换号 {crossings} 次')
+
         wire = (node.wire_match / node.wire_total if node.wire_total else 0.0)
         print()
         if node.wire_total and wire < WIRE_OK_FRACTION:
@@ -242,7 +324,38 @@ def main():
             return 1
 
         if result == 'converged':
-            print(f'✓ 收敛了：{history[-1][0]:.1f} 秒内转到容差以内。')
+            # 目标本来就落在容差 + 噪声以内的话，这一趟什么都没验到，先说清楚。
+            if abs(args.turn) <= args.angle_tolerance + YAW_NOISE_EPS:
+                print(f'⚠ --turn {math.degrees(args.turn):.1f}° 落在容差'
+                      f'（{math.degrees(args.angle_tolerance):.1f}°）'
+                      f'加噪声余量（{math.degrees(YAW_NOISE_EPS):.1f}°）以内，'
+                      f'机器人几乎不用动就"到位"了 —— 这一趟没检验 align 律。'
+                      f'换个更大的 --turn。')
+            if crossings >= 2:
+                print(f'✗ **震荡**：误差换号 {crossings} 次，'
+                      f'最终停在 {math.degrees(settled_err):.1f}°'
+                      f'（容差 {math.degrees(args.angle_tolerance):.1f}°）。'
+                      f'它越过目标又折回来了。')
+                print('  该加超前补偿（按预测的停车时误差提前松指令），'
+                      '**不是**去降 min_turn_speed —— 降到机器人转不动就又是卡死。')
+                return 4
+            budget = args.angle_tolerance + coast + YAW_NOISE_EPS
+            if settled_err > budget:
+                print(f'✗ 停在容差外：最终 {math.degrees(settled_err):.1f}°，'
+                      f'超过"容差 + 滑行 + 噪声" = '
+                      f'{math.degrees(budget):.1f}°。')
+                print(f'  但误差一次没换号（{crossings} 次），所以**不是震荡**，'
+                      f'是精度不够：到位判定一进容差带就锁，'
+                      f'停住的位置天生在带子边缘再加滑行量。')
+                print('  降 min_turn_speed 只会换回卡死。要么放宽 '
+                      'angle_tolerance，要么接受这个精度。')
+                return 5
+            print(f'✓ 收敛了：{converged_at:.1f} 秒内转到容差以内，'
+                  f'停车后停在 {math.degrees(settled_err):.1f}°'
+                  f'（容差 {math.degrees(args.angle_tolerance):.1f}° + '
+                  f'滑行 {math.degrees(coast):.1f}° + '
+                  f'噪声 {math.degrees(YAW_NOISE_EPS):.1f}° = '
+                  f'{math.degrees(budget):.1f}°），误差没换号。')
             print('  如果这是改完 align 律之后跑的，那就是回归通过。')
             return 0
         if result == 'stalled':

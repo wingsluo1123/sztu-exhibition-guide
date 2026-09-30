@@ -16,6 +16,24 @@ from .waypoints import normalize_angle
 # 航向误差超过这个值就原地转，不要一边大角度转一边往前冲
 HEADING_ROTATE_THRESHOLD = 0.5  # 弧度，约 29°
 
+# align 阶段的角速度下限：低于这个值机器人原地根本不转，指令等于没发。
+#
+# **这个数必须实测，不能从 max_angular_speed 推。** 原来写的是
+# `max_angular_speed * 0.15` = 0.12 rad/s，那是照厂商文档 5.1.2 的"角速度起步
+# 阈值 0.03 rad/s"推的 —— 那个阈值说的是"这条指令会不会被当成零"，
+# 根本不描述站立原地转。差了将近 6 倍。
+#
+# 2026-09-29 用 tools/turn_probe.py 实测：
+#   * x86 仿真：0.70 rad/s。0.65 及以下退化成"一个方向转得动、另一个不动"，
+#     而且哪个方向弱在两次运行之间还会翻 —— 是悬崖，不是站姿偏置。
+#   * 真机：**还没量**，只知道落在 (0.45, 0.8]：实走时 0.8 转得动，
+#     比例律衰减到 0.45 就卡死了 110 秒。
+#
+# 默认取仿真值。厂商 README 明说仿真步态参数和真机不是一套，所以真机上量完
+# （同一个 turn_probe.py，--odom /slam/lidar_odom）要去覆盖
+# config/waypoints.yaml 的 min_turn_speed，别以为这个默认值对真机也成立。
+DEFAULT_MIN_TURN_SPEED = 0.7  # 弧度/秒
+
 # 位姿最少要允许迟到这么久。位姿源标称 10 Hz（fastlio 配置里 scan_rate: 10），
 # 一帧 0.1 秒，给 3 帧的抖动余量。比这更短就成了惊弓之鸟，网络抖一下就中止导航。
 MIN_ODOM_STALE_TIMEOUT = 0.3  # 秒
@@ -71,6 +89,7 @@ def compute_velocity(
     angle_tolerance: float = 0.26,
     max_linear_speed: float = 0.5,
     max_angular_speed: float = 0.8,
+    min_turn_speed: float = DEFAULT_MIN_TURN_SPEED,
     obstacle_detected: bool = False,
     obstacle_slowdown: float = 0.3,
 ) -> VelocityCommand:
@@ -80,6 +99,8 @@ def compute_velocity(
     target_yaw 为 None 表示不约束终点朝向，位置到了就算到。
     obstacle_detected 只降速不停车 —— 真正的停车由上层 cancel_navigation 决定，
     控制律这一层不该自作主张终止任务。
+
+    min_turn_speed 是 align 阶段的角速度下限，见 DEFAULT_MIN_TURN_SPEED。
     """
     dx = target_x - current_x
     dy = target_y - current_y
@@ -95,7 +116,8 @@ def compute_velocity(
             angular = _clamp(
                 max_angular_speed * 0.5 * yaw_error,
                 -max_angular_speed, max_angular_speed)
-            angular = _ensure_min_turn(angular, yaw_error, max_angular_speed)
+            angular = _ensure_min_turn(
+                angular, yaw_error, min_turn_speed, max_angular_speed)
             return VelocityCommand(0.0, angular, arrived=False, phase='align')
 
         return VelocityCommand(0.0, 0.0, arrived=True, phase='arrived')
@@ -121,14 +143,81 @@ def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
 
-def _ensure_min_turn(angular: float, yaw_error: float, max_angular_speed: float) -> float:
+# 判"没动"的门槛。位姿本身有噪声，取得比噪声大、比一次有效动作小。
+DEFAULT_STALL_POSITION_EPS = 0.05  # 米
+DEFAULT_STALL_ANGLE_EPS = 0.05     # 弧度，约 2.9°
+
+
+class StallMonitor:
+    """
+    位姿不动就报卡死。
+
+    为什么需要它：卡死的样子是"指令一直在发、相位一直是 align、
+    机器人一动不动"，而 navigation_timeout 要等满 120 秒才肯放弃。
+    2026-09-29 真机实走就这么烧掉了 110 秒，日志里一个字都没有。
+
+    判据用的是**里程计里的实际位姿变化**，不是"指令发了没有"，也不是相位 ——
+    后两者在卡死时恰恰都是正常的。这就是 [[dont-verify-with-proxy-metrics]]
+    那条教训：别拿代理量当判据。
+
+    位姿一旦挪动超过门槛就重置计时，所以"挪得很慢"不会被判成卡死
+    —— 那是另一种毛病，该由 navigation_timeout 兜。
+
+    刻意不 import rclpy 也不读时钟：时间由调用方传进来，用例能直接喂时间轴。
+    """
+
+    def __init__(self, timeout: float,
+                 position_eps: float = DEFAULT_STALL_POSITION_EPS,
+                 angle_eps: float = DEFAULT_STALL_ANGLE_EPS):
+        self.timeout = timeout
+        self.position_eps = position_eps
+        self.angle_eps = angle_eps
+        self._ref = None  # (t, x, y, yaw)
+
+    def reset(self) -> None:
+        """换目标时调。否则上一个点位走完时的静止会算到下一个点头上。"""
+        self._ref = None
+
+    def update(self, now: float, x: float, y: float, yaw: float) -> bool:
+        """喂一帧位姿，返回"现在是否已经判定卡死"。"""
+        if self._ref is None:
+            self._ref = (now, x, y, yaw)
+            return False
+
+        t0, x0, y0, yaw0 = self._ref
+        moved = math.hypot(x - x0, y - y0) > self.position_eps
+        turned = abs(normalize_angle(yaw - yaw0)) > self.angle_eps
+        if moved or turned:
+            self._ref = (now, x, y, yaw)
+            return False
+
+        return now - t0 > self.timeout
+
+    def idle_for(self, now: float) -> float:
+        """位姿已经多久没有明显变化。只用于日志。"""
+        if self._ref is None:
+            return 0.0
+        return now - self._ref[0]
+
+
+def _ensure_min_turn(angular: float, yaw_error: float,
+                     min_turn_speed: float, max_angular_speed: float) -> float:
     """
     给 align 阶段的角速度兜一个下限，保证它能转过去。
 
-    比例项在误差很小时会算出近乎为零的角速度，真机上电机根本转不动，
-    于是卡在 align 阶段直到超时。
+    比例项在误差不大时就会算出机器人转不动的角速度，于是卡在 align 阶段
+    直到导航超时 —— 2026-09-29 真机上就是这么烧掉 110 秒的。
+
+    注意一个后果：实测下限 0.70 已经是 max_angular_speed(0.8) 的 87%，
+    所以**比例段实际上只在 yaw_error > 1.75 rad 的时候才起作用**，
+    再小就一律走下限。也就是说 align 现在基本等同于 bang-bang。
+    这不是偷懒，是机器人的物理限制：它转不了更慢。
+    真正的精度上限由"下限转速 x 停车滞后"决定，不由比例增益决定。
+
+    下限被 max_angular_speed 夹住：配置里把 min_turn_speed 填得比
+    max_angular_speed 还大时，不应该越过速度上限去发指令。
     """
-    floor = max_angular_speed * 0.15
+    floor = min(abs(min_turn_speed), abs(max_angular_speed))
     if abs(angular) < floor:
         return floor * (1.0 if yaw_error > 0 else -1.0)
     return angular

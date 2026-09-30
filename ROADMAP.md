@@ -1797,3 +1797,65 @@ TtsController / EmotionController / GestureController 全套
 的是走动的人** —— 这正是展厅实走前必须先补避障的原因（你自己定的那条
 前置条件）。
 
+
+### ✅ align 卡死已修（2026-09-30，仿真验证）
+
+2026-09-29 那趟实走的 1 号点是个纯原地转身，机器人**停在离目标 64.5° 的地方
+站死了 110 秒**，直到 `navigation_timeout` 才收走。根因在 `control.py` 的
+align 段：那一段是比例律 `max_angular_speed x 0.5 x yaw_error`，误差降下来之后
+指令角速度掉到机器人的**最小有效转速**以下，机器人就不转了，而误差不再变，
+比例律于是永远给同一个转不动的指令。64.5° x 0.8 x 0.5 = 0.45 rad/s，
+和现场看到的数一致。
+
+原来的兜底是 `max_angular_speed * 0.15` = 0.12 rad/s。那个 0.15 是照厂商文档
+5.1.2 的"角速度起步阈值 0.03 rad/s"推的 —— **那个阈值说的是"这条指令会不会
+被当成零"，根本不描述站立原地转**，差了将近 6 倍。教训：这种量只能实测。
+
+**改了三处：**
+
+1. `control.py`：最小转速变成可配置参数 `min_turn_speed`（不再从
+   `max_angular_speed` 推），默认 `DEFAULT_MIN_TURN_SPEED = 0.7`；
+   并且被 `max_angular_speed` 夹住，配置填过大也不会越限发指令。
+2. `navigation_manager.py`：加卡死检测（`control.StallMonitor`）——
+   位姿连着 `stall_timeout`（默认 12 s）没有明显变化就放弃当前点位，
+   `last_result='stalled'`，并在错误信息里直接给出"去量 min_turn_speed"的
+   下一步。判据用的是**里程计里的实际位姿**，不是"指令发了没有"、也不是相位：
+   后两者在卡死时恰恰都是正常的。
+3. `navigation_manager.py`：控制循环加限流日志（每秒一行，距离/朝向差/指令）。
+   上一趟卡了 110 秒而日志里一个字都没有，只能事后回放 rosbag。
+
+**仿真验证（`tools/align_probe.py`，用真的 `compute_velocity` 驱动真的厂商运控）：**
+
+| min_turn_speed | 结果 |
+|---|---|
+| 0（纯比例律） | 卡死，误差冻在 36.8~41.4°，指令 0.257~0.289 rad/s |
+| 0.12（修复前的值） | **一样卡死**，冻在 27.6°，指令 0.193 rad/s |
+| 0.7（修复后） | 六个角度（±0.6 / ±2.0 / ±3.0 rad）全部收敛，0.7~2.9 s |
+
+节点层面（`navigation_manager` 直接跑，目标只改朝向）：
+
+* `min_turn_speed=0.12` → **21.1 s** 报 `stalled`（不是 120 s），
+  错误信息指向 `turn_probe.py`
+* `min_turn_speed=0.7` → **2.2 s** 报 `arrived`
+
+**⚠️ 0.7 是仿真值，不是真机值。** 真机只知道下限落在 `(0.45, 0.8]`：
+实走时 0.8 转得动，比例律衰减到 0.45 就卡死了。厂商 README 明说仿真步态参数
+和真机不是一套，所以**上真机前要量一次**，把结果填进 `config/waypoints.yaml`：
+
+```
+tools/turn_probe.py --odom /slam/lidar_odom          # 量下限
+tools/align_probe.py --odom /slam/lidar_odom --turn 2.0   # 量完再验一遍收敛
+```
+
+`align_probe.py --min-turn-speed 0` 是配套的负对照：它**必须**复现卡死
+（退出码 2）。如果负对照也"通过"了，说明这个工具当时没在检验任何东西。
+
+**顺带量到的 align 精度（仿真）：最终朝向落在 9.0~18.9°，容差是 14.9°。**
+原因不是震荡 —— 六趟的误差换号次数全是 0，它没有越过目标再折回来。
+是"到位判定一进容差带就锁"：停住的位置天生在带子边缘，再加 0.8~5.8° 的停车
+滑行量。所以**这不该用降 `min_turn_speed` 来治**（降到转不动就又是卡死）。
+要更准只有两条路：收紧 `angle_tolerance`，或者加超前补偿。
+收紧是有余量的 —— 按下限转一拍（10 Hz，指令实际比最坏 1.8）只走 0.126 rad，
+所以 `angle_tolerance` 降到 ~0.13 rad（7.4°）之前都不会跳过容差带
+（`test_one_step_at_the_floor_stays_inside_the_tolerance_band` 钉着这个关系）。
+真机的滑行量和这里不一定一样，所以**别现在照着仿真数去调**。

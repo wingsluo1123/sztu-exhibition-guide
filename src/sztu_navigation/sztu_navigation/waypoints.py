@@ -30,7 +30,9 @@ DEFAULT_NAVIGATION_PARAMS: Dict[str, float] = {
     'angle_tolerance': 0.26,      # 角度到达容忍度（弧度，约 15°）
     'max_linear_speed': 0.5,      # 最大线速度（米/秒）
     'max_angular_speed': 0.8,     # 最大角速度（弧度/秒）
+    'min_turn_speed': 0.7,        # 原地转的最小有效角速度（弧度/秒），见 control.py
     'navigation_timeout': 120.0,  # 单次导航超时（秒）
+    'stall_timeout': 12.0,        # 位姿不动超过这么久就放弃（秒）
 }
 
 

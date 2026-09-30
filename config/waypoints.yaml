@@ -118,7 +118,18 @@ navigation:
   angle_tolerance: 0.26
   max_linear_speed: 0.5
   max_angular_speed: 0.8
+  # 原地转的最小有效角速度。低于这个值机器人站着不转，指令等于没发。
+  # **0.7 是 x86 仿真量出来的（tools/turn_probe.py），不是真机值。**
+  # 真机只知道落在 (0.45, 0.8]：实走时 0.8 转得动，比例律衰减到 0.45
+  # 就卡死了 110 秒。厂商 README 明说仿真步态参数和真机不是一套，
+  # 所以上真机前要用同一个工具量一次：
+  #   tools/turn_probe.py --odom /slam/lidar_odom
+  # 量完把结果填到这里。见 control.py 的 DEFAULT_MIN_TURN_SPEED。
+  min_turn_speed: 0.7
   navigation_timeout: 120
+  # 位姿连着这么久没有明显变化就放弃当前点位，别再烧满 navigation_timeout。
+  # 取 12 秒：比一次起步+步态稳定（约 2 秒）长得多，又远短于 120 秒。
+  stall_timeout: 12.0
 
 # 地图配置。
 # **下面的 origin_x / origin_y / resolution 目前没有任何代码在读**
