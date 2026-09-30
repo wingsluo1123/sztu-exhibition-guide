@@ -832,6 +832,11 @@ def main():
                          '标准误 —— 那条路不可信，只是为了能处理老包。')
     args = ap.parse_args()
 
+    if args.reorder_only and args.from_dwell:
+        raise SystemExit(
+            '--reorder-only 和 --from-dwell 是两条互斥的路：一条照搬 -c 里'
+            '已有的坐标，\n另一条从包里重新取坐标。同时给了不知道该听谁的。')
+
     grid, res, x0, y0 = read_map(args.map_base)
     print(f'图 {grid.shape[1]} x {grid.shape[0]} 格 @ {res} m，'
           f'原点 ({x0:.2f}, {y0:.2f})')
