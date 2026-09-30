@@ -42,21 +42,35 @@ FLOAT_SLACK_DEG = 1e-3
 RUN_GLOB = os.environ.get(
     'SZTU_LIO_RUNS', os.path.expanduser('~/sztu_lio_runs')) + '/*'
 
+# 别去动**正在写**的那个包。机器人上那台 --bridge 一跑就是几小时，它的包
+# 一直在长；挑到它的话这条测试会读几个 GB 的 /tf 然后把门禁拖到十几分钟，
+# 而且读的还是个写了一半的 sqlite。所以挑**最小的**够用的包，并且设上限。
+MAX_BAG_MB = 400
+
 
 def _bag_with_tf():
-    """找一个同时有 /tf 和 /slam/lidar_odom 的包，没有就返回 None。"""
-    for run in sorted(glob.glob(RUN_GLOB), reverse=True):
+    """找一个同时有 /tf 和 /slam/lidar_odom 的包，没有就返回 None。
+
+    挑最小的那个：够判就行，而最大的那个多半是还在写的。
+    """
+    ok = []
+    for run in sorted(glob.glob(RUN_GLOB)):
         for db3 in sorted(glob.glob(os.path.join(run, 'odom', '*.db3'))):
             try:
+                size = os.path.getsize(db3)
+                if size > MAX_BAG_MB * 1024 * 1024:
+                    continue
                 db = sqlite3.connect(f'file:{db3}?mode=ro', uri=True)
                 have = {n for (n,) in db.execute('select name from topics')}
                 db.close()
-            except sqlite3.Error:
+            except (OSError, sqlite3.Error):
                 continue
-            if {'/tf', '/tf_static', '/Odometry',
-                    '/slam/lidar_odom'} <= have:
-                return run, db3
-    return None
+            if {'/tf', '/tf_static', '/Odometry', '/slam/lidar_odom'} <= have:
+                ok.append((size, run, db3))
+    if not ok:
+        return None
+    _, run, db3 = min(ok)
+    return run, db3
 
 
 def _have_ros():
