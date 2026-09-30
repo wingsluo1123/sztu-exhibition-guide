@@ -51,7 +51,13 @@ from gridmap import PGM_FREE, PGM_OCC, draw_path, write_png  # noqa: E402
 MARK_POINT = 40      # 点位圆心
 MARK_ARROW = 70      # 朝向箭头
 MARK_LEG = 100       # 相邻点之间的直线航段
-MARK_CAND = 170      # 站得下的区域（净空够 + 离轨迹近 + 连通）
+MARK_CAND = 150      # 站得下的区域（净空够 + 离轨迹近 + 连通）。
+#                      **画成隔格点阵，不是平涂。** 第一版平涂 170，结果
+#                      和未知区的 205 两种灰肉眼分不开 —— 区域确实画出来了
+#                      （数出来 12.4 m²，和终端报的 12.8 m² 对得上），但图
+#                      达不到"让人看出该站哪"的目的。灰度值改深到 150 也
+#                      不够：真正好认的是**纹理**，一片点阵和任何一片平涂都
+#                      不会混，哪怕平均亮度差不多。
 
 DEFAULT_RADIUS = 0.40    # 机器人半径（米）。仓库里没有 footprint 规格，
 #                          取的保守值，用 --radius 可改。
@@ -414,8 +420,44 @@ def spread_pick(cand, start, n, spacing):
     return np.asarray(picked)
 
 
+def nudge_to_clear(x, y, yaw, cand, res, x0, y0, max_m):
+    """把一个净空不够的站位，挪到最近的达标格上去。**朝向一个弧度都不动。**
+
+    返回 `(nx, ny, 挪了多远, 相对正前方多少度)`，max_m 以内没有达标格就返回
+    None。角度 0° = 正前方，180° = 正后方。
+
+    为什么这件事是合法的：这一趟里**唯一没法从地图上推出来的信息是朝向**
+    —— 展品挂在哪面墙上、是不是在墙上，图里没有；而人站那 10 秒钟的朝向
+    就是答案。位置反倒是图上算得出来的（净空 + 连通性）。所以"保朝向、
+    挪位置"保住的是信息量大的那一半。
+
+    为什么必须显式开（`--nudge-m`，默认关）：它改的是人实测出来的数。
+    2026-09-30 实测房间三个停留点全被 0.95 m 的净空闸拒掉，最近的达标格
+    分别在 0.23 / 1.14 / 0.25 m 外 —— 挪一下就全过，但这是**我替人改了
+    站位**，得让人看见才算数。所以调用方要把挪动量和方向逐条打出来。
+
+    相对正前方的角度是给人复核用的：接近 0° 或 180° 是沿着视线前后挪，
+    正对着的东西不变；接近 90° 是横向让步，**正对着的东西会换**，
+    那种情况要人自己看图确认讲解词还对不对得上。
+    """
+    cand = np.asarray(cand, dtype=bool)
+    cy, cx = np.nonzero(cand)
+    if len(cy) == 0:
+        return None
+    wx, wy = to_world(cx, cy, res, x0, y0)
+    dx, dy = wx - x, wy - y
+    d = np.hypot(dx, dy)
+    k = d <= max_m
+    if not k.any():
+        return None
+    j = int(np.flatnonzero(k)[np.argmin(d[k])])
+    rel = math.atan2(math.sin(math.atan2(dy[j], dx[j]) - yaw),
+                     math.cos(math.atan2(dy[j], dx[j]) - yaw))
+    return float(wx[j]), float(wy[j]), float(d[j]), math.degrees(abs(rel))
+
+
 def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
-                 min_s, yaw_offset_deg=None):
+                 min_s, yaw_offset_deg=None, cand_mask=None, nudge_m=0.0):
     """从建图那趟的停留段取点位，返回 (pts, yaws, rejected)。
 
     这条路和几何铺点的区别：位置和朝向都是**人当时真站在那儿**测出来的，
@@ -430,6 +472,10 @@ def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
     为"一个都没剩"报错** —— 调用方拿着它还能出一张"你站的地方 vs 站得下的
     地方"的图，那比一句错误有用得多。2026-09-30 那趟三个停留点全被拒，
     净空 0.72/0.88/0.74 差在 0.95 上，光看错误信息不知道该往哪边挪。
+
+    给了 `cand_mask` 和 `nudge_m > 0` 的话，净空不够的段不直接丢：先试着
+    挪到 `nudge_m` 以内最近的达标格（见 `nudge_to_clear`，朝向不动），
+    挪得动就收下并打印挪动量，挪不动才进 `rejected`。
     """
     from gridmap import base_poses, sensor_poses
 
@@ -465,7 +511,7 @@ def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
     print(f'\n轨迹 {len(t)} 帧 / {t[-1]:.1f} s，站满 {min_s:.0f} s 的段 '
           f'{len(seg)} 个：')
 
-    pts, yaws, bad = [], [], []
+    pts, yaws, bad, moved = [], [], [], []
     for i, (t0, t1, x, y, a) in enumerate(seg, 1):
         ix, iy = to_cell([(x, y)], res, x0, y0)
         c = clr[iy[0], ix[0]]
@@ -473,10 +519,32 @@ def dwell_points(run_dir, bag, R, grid, res, x0, y0, clr, need_clear,
         print(f'  {i}. t={t0:6.1f}~{t1:6.1f}s ({x:+7.3f}, {y:+7.3f}) '
               f'朝向 {math.degrees(a):+7.1f}°  净空 {c:.2f} m{flag}')
         if flag:
-            bad.append((i, x, y, a, float(c)))
-            continue
+            got = (nudge_to_clear(x, y, a, cand_mask, res, x0, y0, nudge_m)
+                   if (cand_mask is not None and nudge_m > 0) else None)
+            if got is None:
+                bad.append((i, x, y, a, float(c)))
+                continue
+            nx, ny, dist, rel = got
+            jx, jy = to_cell([(nx, ny)], res, x0, y0)
+            moved.append((i, x, y, nx, ny, dist, rel, float(c),
+                          float(clr[jy[0], jx[0]])))
+            x, y = nx, ny
         pts.append((x, y))
         yaws.append(a)
+    if moved:
+        print(f'\n挪动了 {len(moved)} 个站位（**朝向原样保留**，'
+              f'上限 --nudge-m {nudge_m:.2f} m）：')
+        for i, ox, oy, nx, ny, dist, rel, oc, nc in moved:
+            way = ('沿视线往前' if rel <= 30 else
+                   '沿视线往后' if rel >= 150 else
+                   '斜后方' if rel > 90 else '斜前方')
+            print(f'  第 {i} 个 ({ox:+.3f},{oy:+.3f}) -> ({nx:+.3f},{ny:+.3f})：'
+                  f'{way}挪 {dist:.2f} m（相对正前方 {rel:.0f}°），'
+                  f'净空 {oc:.2f} -> {nc:.2f} m')
+        side = [m[0] for m in moved if 60 < m[6] < 120]
+        if side:
+            print(f'  ! 第 {side} 个是**横向**让步，正对着的东西可能换了。'
+                  '看 .png 确认这个点的讲解词还对得上。')
     if bad:
         print(f'  丢掉第 {[b[0] for b in bad]} 个 —— 站的位置本身离障碍太近，'
               '机器人停在容差带边缘时会压上去。')
@@ -690,9 +758,10 @@ def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
     `traj` 允许是空的（`--reorder-only` 没有建图那趟的轨迹可画）：那时候
     只画点位和航段，裁剪范围也只按点位算。
 
-    `cand` 是"站得下的区域"掩码（和 grid 同形状的布尔数组），给了就铺一层
-    浅灰在最底下。这一层是给人回答"那我该站哪"用的 —— 实测房间里空闲区
-    147 m² 而站得下的只有 12.8 m²，光看空闲区会以为到处都能停。
+    `cand` 是"站得下的区域"掩码（和 grid 同形状的布尔数组），给了就在最底下
+    铺一层**隔格点阵**。这一层是给人回答"那我该站哪"用的 —— 实测房间里空闲区
+    147 m² 而站得下的只有 12.8 m²，光看空闲区会以为到处都能停。点阵而不是
+    平涂的理由见 MARK_CAND。
 
     `legs=False` 时不画点之间的连线。全被拒时画的是**被拒的点**，它们之间
     没有航段可言，连起来只会误导。
@@ -713,8 +782,13 @@ def render_check_png(path, grid, traj, pts, yaws, res, x0, y0, pad=1.5,
     if cand is not None:
         # 只铺在空闲格上：候选区本来就是空闲区的子集，但掩码是按格算的，
         # 万一以后口径变了也别把墙涂成浅灰。
+        #
+        # 隔格铺（棋盘），不平涂 —— 见 MARK_CAND 的注释。留下来的那一半格
+        # 保持 PGM_FREE，所以这片区域读起来是"白底上的点阵"，和未知区那片
+        # 平坦的 205 一眼就分得开。
         m = np.flipud(np.asarray(cand, bool)[j0:j1, i0:i1])
-        sub[m & (sub == PGM_FREE)] = MARK_CAND
+        yy, xx = np.mgrid[0:m.shape[0], 0:m.shape[1]]
+        sub[m & (sub == PGM_FREE) & ((yy + xx) % 2 == 0)] = MARK_CAND
     sx0, sy0 = x0 + i0 * res, y0 + j0 * res
     if len(traj) >= 2:
         draw_path(sub, traj, sx0, sy0, res)
@@ -842,6 +916,12 @@ def main():
                          '选出来的点照样要过净空和直线畅通那几道闸。')
     ap.add_argument('--dwell-s', type=float, default=DEFAULT_DWELL_S,
                     help=f'--from-dwell：站多久才算（秒），默认 {DEFAULT_DWELL_S}')
+    ap.add_argument('--nudge-m', type=float, default=0.0,
+                    help='--from-dwell：站位净空不够时，允许把它挪到多远以内'
+                         '最近的达标处（米），**朝向保持实测值不动**。默认 0 '
+                         '= 不挪，净空不够就丢。这个开关改的是人实测出来的'
+                         '站位，所以要显式给，并且每个点挪了多远、朝哪个方向'
+                         '挪都会打出来。')
     ap.add_argument('--yaw-offset', type=float, default=None,
                     help='--from-dwell 且包里没有 /tf 时，雷达朝向到机器人'
                          '朝向的偏置（度）。不给就从走直线的段里量，并印出'
@@ -906,6 +986,7 @@ def main():
         pts = np.array([[m['x'], m['y']] for m in meta], dtype=float)
         traj = np.zeros((0, 2))
         dtraj = None
+        reach = None
         fixed_yaws = None
         # 坐标是从 yaml 读回来的，只有毫米精度（写出时 %.3f）。朝向会按这个
         # 毫米级的位置重新算，所以和当初选点时的角度可能差个 0.1° 以内 ——
@@ -973,7 +1054,8 @@ def main():
         if args.from_dwell:
             pts, fixed_yaws, rejected = dwell_points(
                 args.bag, bag, R, grid, res, x0, y0, clr,
-                args.radius + margin, args.dwell_s, args.yaw_offset)
+                args.radius + margin, args.dwell_s, args.yaw_offset,
+                cand_mask=reach, nudge_m=args.nudge_m)
             if len(pts) == 0:
                 # 一个都没剩。先把"你站的地方 vs 站得下的地方"画出来再退 ——
                 # 下一趟要改的是站位，光给一句错误信息不知道该往哪边挪。
@@ -984,21 +1066,34 @@ def main():
                         [b[3] for b in rejected], res, x0, y0,
                         cand=reach, legs=False)
                     print(f'\n出了一张诊断图 {args.render}：'
-                          '浅灰是站得下的区域（净空够 + 离轨迹近 + 连通），'
+                          '点阵那片是站得下的区域（净空够 + 离轨迹近 + 连通），'
                           '带编号的圈是你这趟站的位置。')
                 need = args.radius + margin
-                print('\n每个停留点还差多少净空：')
-                for i, _x, _y, _a, c in rejected:
-                    print(f'  第 {i} 个 {c:.2f} m，要 {need:.2f} m '
-                          f'—— 往空处再退 {need - c:.2f} m')
+                print('\n每个停留点还差多少净空，以及最近的达标处在哪：')
+                far = 5.0
+                for i, bx, by, ba, c in rejected:
+                    got = nudge_to_clear(bx, by, ba, reach, res, x0, y0, far)
+                    if got is None:
+                        where = f'{far:.0f} m 以内没有达标处'
+                    else:
+                        nx, ny, dist, rel = got
+                        where = (f'最近的达标处在 {dist:.2f} m 外 '
+                                 f'({nx:+.3f},{ny:+.3f})，相对正前方 {rel:.0f}°')
+                    print(f'  第 {i} 个 净空 {c:.2f} m，要 {need:.2f} m '
+                          f'—— {where}')
                 raise SystemExit(
                     f'没有一个停留段能用。站的位置离障碍 {min(b[4] for b in rejected):.2f}'
                     f'~{max(b[4] for b in rejected):.2f} m，都不到 {need:.2f} m。\n'
                     '这道闸没有余量可放：'
                     f'{need:.2f} = 半径 {args.radius:.2f} + 容差+滑行 {margin:.2f}，'
                     '机器人停在容差带边缘时车身正好贴上障碍。\n'
-                    '下一趟按诊断图里的浅灰区站 —— 朝向照样对着展品，'
-                    '只是人往后退半步到一步。')
+                    '两条路：\n'
+                    '  1) 重录一趟，按诊断图里的点阵区站 —— 朝向照样对着展品，'
+                    '只是人往后退半步到一步；\n'
+                    '  2) 保留这趟实测的朝向，加 --nudge-m（比如上面列出的'
+                    '最远那个距离）把站位挪到最近的达标处。\n'
+                    '     朝向是这趟唯一没法从地图推出来的信息，第 2 条保住它，'
+                    '代价是位置由我改而不是你站出来的。')
             if len(pts) > n:
                 raise SystemExit(
                     f'找到 {len(pts)} 个停留点，但 {args.config} 里只有 {n} 个'
@@ -1117,8 +1212,14 @@ def main():
     print(f'\n写出 {out_path}')
 
     if args.render:
-        render_check_png(args.render, grid, traj, pts, yaws, res, x0, y0)
+        # 成功的图也铺上候选区：核对的时候能一眼看出点位是不是贴着可停区的
+        # 边缘 —— 贴边的点将来 position_tolerance 或滑行一变就会掉出去。
+        render_check_png(args.render, grid, traj, pts, yaws, res, x0, y0,
+                         cand=reach)
         print(f'写出 {args.render} —— **先看这张图确认点位落在该在的地方**')
+        if reach is not None:
+            print('  点阵那片是站得下的区域；点位应该落在点阵里，'
+                  '而不是压在它的边上。')
     return 0
 
 

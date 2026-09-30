@@ -20,6 +20,7 @@ from pick_waypoints import (                                    # noqa: E402
     circ_mean,
     circ_spread, clearance, find_dwells, travel_yaw_offset,
     edt, map_up, nearest_wall_yaw, order_tour, path_is_clear, read_map,
+    nudge_to_clear,
     reachable,
     render_check_png, render_yaml, required_margin, spread_pick, to_cell,
     tour_order, yaw_to_quat,
@@ -967,8 +968,11 @@ def test_render_check_png_shades_the_candidate_area(tmp_path):
 
     img = render_check_png(str(tmp_path / 'r.png'), g, traj, p, [0.0],
                            res, x0, y0, pad=0.5, zoom=1, cand=cand)
-    assert (img == MARK_CAND).sum() > 1000, \
-        f'候选区没铺上（只有 {(img == MARK_CAND).sum()} 格，2m x 2m 该有 1600 出头）'
+    n_cand = int((img == MARK_CAND).sum())
+    cells = int(cand[iy[0]:iy[1] + 1, ix[0]:ix[1] + 1].size)
+    # 隔格铺，所以是那块的**一半**左右（点位圆心和箭头会再盖掉几格）
+    assert cells * 0.4 < n_cand < cells * 0.6, \
+        f'候选区没按隔格铺上：{n_cand} 格，{cells} 格的一半该是 {cells // 2}'
     # 负对照：不给 cand 就一格都不许有
     plain = render_check_png(str(tmp_path / 'p.png'), g, traj, p, [0.0],
                              res, x0, y0, pad=0.5, zoom=1)
@@ -976,6 +980,81 @@ def test_render_check_png_shades_the_candidate_area(tmp_path):
     # 墙还是墙
     assert (img == PGM_OCC).sum() == (plain == PGM_OCC).sum(), \
         '候选掩码把墙涂掉了 —— 图上就看不出哪儿不能走了'
+
+
+def test_the_candidate_area_reads_as_texture_not_a_flat_gray(tmp_path):
+    """候选区必须画成**点阵**，不能平涂。
+
+    这一条是为一个真实缺陷补的：第一版平涂 170 灰度，区域确实画出来了
+    （数出来 12.4 m²，和终端报的 12.8 m² 对得上），但 170 和未知区的 205
+    两种灰**肉眼分不开** —— 图达到了"数据正确"，没达到"人能看出该站哪"。
+    光断言"有 MARK_CAND 像素"抓不到这个缺陷，所以这里断言的是纹理本身：
+    候选区内部必须同时存在 MARK_CAND 和 PGM_FREE，而且横着扫一行要来回
+    交替很多次。平涂版本会在第二条上挂掉。
+    """
+    g, res, x0, y0 = room(8.0, 6.0)
+    traj = np.array([[1.0, 1.0], [7.0, 5.0]])
+    cand = np.zeros_like(g, dtype=bool)
+    ix, iy = to_cell([(3.0, 2.0), (5.0, 4.0)], res, x0, y0)
+    cand[iy[0]:iy[1] + 1, ix[0]:ix[1] + 1] = True
+
+    # 点位放到候选区外面去，免得圆心和箭头把纹理搅了
+    img = render_check_png(str(tmp_path / 'r.png'), g, traj, [[1.0, 5.0]],
+                           [0.0], res, x0, y0, pad=0.5, zoom=1, cand=cand)
+    band = img[img.shape[0] // 2]
+    inside = band[(band == MARK_CAND) | (band == PGM_FREE)]
+    assert (inside == MARK_CAND).any() and (inside == PGM_FREE).any(), \
+        '候选区是平涂的 —— 和未知区那片平坦的灰分不开'
+    flips = int((np.diff(band.astype(int)) != 0).sum())
+    assert flips > 30, (
+        f'横扫一行只变了 {flips} 次，看不出点阵纹理')
+
+
+def test_nudge_moves_to_the_nearest_qualifying_cell_and_keeps_the_heading():
+    """挪站位：挪到最近的达标格，朝向一个弧度都不许动。
+
+    实测房间那三个停留点的最近达标处分别在 0.23 / 1.14 / 0.25 m 外，
+    所以这个函数的返回距离必须是准的 —— 它直接决定 --nudge-m 要给多大。
+    """
+    g, res, x0, y0 = room(8.0, 6.0)
+    cand = np.zeros_like(g, dtype=bool)
+    # 只有 x >= 5 m 的那半边达标
+    ix, _ = to_cell([(5.0, 0.0)], res, x0, y0)
+    cand[:, ix[0]:] = True
+    cand[g != PGM_FREE] = False
+
+    yaw = math.radians(30.0)
+    got = nudge_to_clear(4.5, 3.0, yaw, cand, res, x0, y0, max_m=1.0)
+    assert got is not None
+    nx, ny, dist, rel = got
+    assert nx >= 5.0 - res, f'挪到了不达标的格里：x={nx}'
+    assert dist == pytest.approx(0.5, abs=1.5 * res), dist
+    # 从 (4.5,3.0) 往 +x 挪，相对 30° 的朝向就是 30°
+    assert rel == pytest.approx(30.0, abs=10.0), rel
+    # 挪出来的点必须真的在掩码里 —— 不然这个函数等于没做事
+    jx, jy = to_cell([(nx, ny)], res, x0, y0)
+    assert cand[jy[0], jx[0]]
+
+
+def test_nudge_gives_up_instead_of_moving_too_far():
+    """负对照：上限之内没有达标格就返回 None，绝不"尽力挪到最近的"。
+
+    这一条是安全闸：悄悄把点位挪 6 米，讲解词就对着别的展品了。
+    """
+    g, res, x0, y0 = room(8.0, 6.0)
+    cand = np.zeros_like(g, dtype=bool)
+    ix, iy = to_cell([(7.0, 5.0)], res, x0, y0)
+    cand[iy[0], ix[0]] = True
+    assert nudge_to_clear(1.0, 1.0, 0.0, cand, res, x0, y0, max_m=1.0) is None
+    # 上限放够就该挪得动，否则上面那个 None 可能是别的原因造成的
+    assert nudge_to_clear(1.0, 1.0, 0.0, cand, res, x0, y0, max_m=12.0)
+
+
+def test_nudge_on_an_empty_mask_is_none_not_a_crash():
+    """一个达标格都没有的时候返回 None，而不是 argmin 空数组炸掉。"""
+    g, res, x0, y0 = room(8.0, 6.0)
+    empty = np.zeros_like(g, dtype=bool)
+    assert nudge_to_clear(1.0, 1.0, 0.0, empty, res, x0, y0, max_m=5.0) is None
 
 
 def test_render_check_png_can_leave_the_legs_out(tmp_path):
