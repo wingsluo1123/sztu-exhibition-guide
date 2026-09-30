@@ -399,13 +399,22 @@ class NavigationManager(Node):
             self.current_pose.position.y,
             quaternion_msg_to_yaw(self.current_pose.orientation))
         if stalled:
-            self.get_logger().error(
-                f'位姿 {self.stall_timeout:.0f} 秒没有明显变化，但还在发速度指令'
-                f'（{cmd_out.phase} 相位，angular={cmd_out.angular:+.3f}）—— 放弃这个点位。'
-                f'\n  最常见的原因是指令角速度低于机器人的最小有效转速'
-                f'（当前 min_turn_speed={self.min_turn_speed:.2f} rad/s）。'
-                f'\n  用 tools/turn_probe.py --odom {self.odom_topic} 量一下真实下限，'
-                f'再改 config/waypoints.yaml 的 min_turn_speed。')
+            if self.dry_run:
+                # dry_run 下速度根本没下发，机器人当然不动 —— 这不是卡死。
+                # 不特判的话这里会打出"去量 min_turn_speed"，而那是个错的诊断。
+                self.get_logger().warn(
+                    f'[dry_run] 位姿 {self.stall_timeout:.0f} 秒没变，'
+                    f'跳过这个点位。dry_run 不下发速度，所以这**不是**卡死，'
+                    f'只是空跑走不动。空跑时这就是正常的推进方式。')
+            else:
+                self.get_logger().error(
+                    f'位姿 {self.stall_timeout:.0f} 秒没有明显变化，但还在发速度指令'
+                    f'（{cmd_out.phase} 相位，angular={cmd_out.angular:+.3f}）'
+                    f'—— 放弃这个点位。'
+                    f'\n  最常见的原因是指令角速度低于机器人的最小有效转速'
+                    f'（当前 min_turn_speed={self.min_turn_speed:.2f} rad/s）。'
+                    f'\n  用 tools/turn_probe.py --odom {self.odom_topic} 量一下真实下限，'
+                    f'再改 config/waypoints.yaml 的 min_turn_speed。')
             self.stop()
             self.is_navigating = False
             self.last_result = 'stalled'

@@ -1504,9 +1504,10 @@ tools/tour_precheck.py /tmp/map36b
 source ~/sztu/setup.sh
 systemctl --user stop sztu-bridge
 pgrep -af 'navigation_[m]anager'      # 应当没有输出
-# 空跑要把单点超时压短：dry_run 下机器人不动、位姿不变，每个点位都会走满
-# navigation_timeout（默认 120 秒）才报超时。见「空跑该怎么看」。
-ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true -p navigation_timeout:=8.0
+# 空跑不用再压 navigation_timeout 了：2026-09-30 加的卡死检测会在
+# stall_timeout（12 秒）就推进到下一个点，并且明说"这是 dry_run 不下发、
+# 不是卡死"。见「✅ align 卡死已修」。
+ros2 run sztu_guide guide_manager --ros-args -p dry_run:=true
 ros2 run sztu_guide guide_manager
 # 走完
 systemctl --user start sztu-bridge
