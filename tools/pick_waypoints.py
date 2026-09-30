@@ -931,10 +931,12 @@ def render_yaml(meta, pts, yaws, nav, mapcfg):
         out.append(f'  {k}: {v}')
     out += ['',
             '# 地图配置。',
-            '# **下面的 origin_x / origin_y / resolution 目前没有任何代码在读**',
-            '# （只有 map.name 被用到）。写的是这张图的真实值，不是 0 ——',
-            '# 上面那些点位坐标和 /slam/lidar_odom 发的位姿在**同一个坐标系**里，',
-            '# 谁都不要再拿这个原点去给点位加偏移，加了就整体偏掉。',
+            '# origin_x / origin_y / resolution 写的是**选点用的那张图**的真实',
+            '# 值。运行时没有代码读它们（只有 map.name 被用到），但',
+            '# test_map_matches_waypoints.py 拿它们和 maps/<source>.yaml 对：',
+            '# 对不上就是图和点位不同源 —— 那是两个坐标系，实走会整体偏。',
+            '# 别拿这个原点去给点位加偏移：上面的坐标和 /slam/lidar_odom 发的',
+            '# 位姿本来就在**同一个坐标系**里，加了反而偏。',
             'map:']
     for k, v in mapcfg.items():
         val = f'"{v}"' if isinstance(v, str) else v
