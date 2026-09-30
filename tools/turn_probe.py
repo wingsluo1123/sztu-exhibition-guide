@@ -321,8 +321,9 @@ def main():
 
         # 先说清"我在哪个图上"。这一段是 2026-09-30 补的，见坑 5/6：
         # 同一个 domain 里有真机的时候，回读和下发都会串台，而且看不见。
-        for line in graph_banner(os.environ.get('ROS_DOMAIN_ID'),
-                                 node.count_subscribers(VELOCITY_TOPIC)):
+        subs = [e.node_name for e in
+                node.get_subscriptions_info_by_topic(VELOCITY_TOPIC)]
+        for line in graph_banner(os.environ.get('ROS_DOMAIN_ID'), subs):
             print(line)
         print()
 

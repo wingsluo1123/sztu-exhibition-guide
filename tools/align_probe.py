@@ -234,8 +234,9 @@ def main():
     try:
         # 先说清"我在哪个图上"：同一个 ROS domain 里有真机的时候，下发和回读
         # 都会串台，而且在任何输出里都看不见。见 tools/sim_up.sh 坑 6。
-        for line in graph_banner(os.environ.get('ROS_DOMAIN_ID'),
-                                 node.count_subscribers(VELOCITY_TOPIC)):
+        subs = [e.node_name for e in
+                node.get_subscriptions_info_by_topic(VELOCITY_TOPIC)]
+        for line in graph_banner(os.environ.get('ROS_DOMAIN_ID'), subs):
             print(line)
         print()
         if not node.ready:

@@ -41,7 +41,6 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from sztu_navigation.wire_audit import (  # noqa: E402
-    EXPECTED_VELOCITY_SUBS,
     WIRE_CONTESTED,
     WIRE_MISMATCH,
     WIRE_NO_OWN,
@@ -308,39 +307,67 @@ def test_probe_speeds_all_pass_through_untouched():
 
 # --------------------------------------------------------------------------
 # graph_banner：这次是"看不见的共享 ROS 图"把人坑了，所以它必须印出来
+#
+# 判据是"图里有几个运控"，不是"订阅者有几个"。第一版拿总数和常数 2 比，
+# 那个 2 在 x86 仿真上标定，真机一跑就每次都报"多了 3 个"（真机是多 SoC，
+# 厂商自己就挂 4 个订阅者）。一个每次都响的警告等于没有警告。
 # --------------------------------------------------------------------------
 
+# 2026-09-30 从两台机器上实抄的订阅者名单。
+SIM_SUBS = ['mc_ros2_node256067']
+ROBOT_SUBS = ['mc_ros2_node3373', 'soc0_drp_ros2_node2269',
+              'soc2_drp_ros2_node2953', 'soc1_drp_ros2_node3095']
+
+
 def test_unset_domain_is_called_out_as_the_shared_graph():
-    """ROS_DOMAIN_ID 没设就是 domain 0，那里面有真机 —— 必须明说。"""
-    text = '\n'.join(graph_banner(None, EXPECTED_VELOCITY_SUBS))
+    """ROS_DOMAIN_ID 没设就是 domain 0 —— 必须明说同网段的机器会并进来。"""
+    text = '\n'.join(graph_banner(None, ROBOT_SUBS))
     assert 'ROS_DOMAIN_ID=0' in text
     assert '没设' in text
-    assert '真机' in text
+    assert '同网段' in text
 
 
 def test_empty_domain_string_is_treated_as_unset():
     """`export ROS_DOMAIN_ID=` 是空串，和没设是一回事，别漏判。"""
-    assert graph_banner('', EXPECTED_VELOCITY_SUBS) == graph_banner(
-        None, EXPECTED_VELOCITY_SUBS)
+    assert graph_banner('', ROBOT_SUBS) == graph_banner(None, ROBOT_SUBS)
 
 
-def test_isolated_domain_does_not_warn():
-    """跑在独立 domain 上、订阅者数量正常：不该有任何警告。"""
-    text = '\n'.join(graph_banner('42', EXPECTED_VELOCITY_SUBS))
+def test_the_real_robots_own_four_subscribers_do_not_warn():
+    """现场回归：真机自带 4 个订阅者，这是**正常**的，不许报警。
+
+    这就是第一版那条假警告 —— 它在真机上每次都响。
+    """
+    text = '\n'.join(graph_banner('0', ROBOT_SUBS))
+    assert '⚠' not in text, '真机的厂商节点不是异常，不能报警'
+    for n in ROBOT_SUBS:
+        assert n in text, '节点名要原样列出来，让人自己看'
+
+
+def test_the_sims_single_subscriber_does_not_warn_either():
+    """仿真只有 1 个订阅者，也同样正常 —— 判据必须跨平台成立。"""
+    text = '\n'.join(graph_banner('42', SIM_SUBS))
     assert 'ROS_DOMAIN_ID=42' in text
     assert '⚠' not in text
 
 
-def test_extra_subscriber_warns_about_driving_two_robots():
-    """速度话题上多出订阅者：最坏的情况是同时驱动两台机器人。"""
-    text = '\n'.join(graph_banner('42', EXPECTED_VELOCITY_SUBS + 1))
+def test_two_motion_controllers_warn_about_driving_both():
+    """图里有两套运控：这才是真风险，而且能被直接观测到。"""
+    text = '\n'.join(graph_banner('0', ROBOT_SUBS + SIM_SUBS))
     assert '⚠' in text
-    assert '两台' in text
+    assert '2 个运控' in text
+    assert 'mc_ros2_node3373' in text and 'mc_ros2_node256067' in text
 
 
-def test_missing_subscriber_warns_that_nobody_executes():
-    """一个订阅者都不够：运控没在跑，"不转"这个结论没有意义。"""
-    text = '\n'.join(graph_banner('42', 0))
+def test_no_motion_controller_warns_that_nobody_executes():
+    """没有运控：速度指令没人执行，"不转"这个结论没有意义。"""
+    text = '\n'.join(graph_banner('42', ['soc0_drp_ros2_node2269']))
+    assert '⚠' in text
+    assert '没有意义' in text
+
+
+def test_an_empty_graph_warns_too():
+    """一个订阅者都没有，同样是没人执行 —— 别因为列表是空的就静默通过。"""
+    text = '\n'.join(graph_banner('42', []))
     assert '⚠' in text
     assert '没有意义' in text
 

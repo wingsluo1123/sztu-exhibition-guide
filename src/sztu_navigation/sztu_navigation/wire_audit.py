@@ -323,15 +323,14 @@ class WireAudit:
         return [f'✗ 未知结论 {v}']
 
 
-# 一台机器上跑这个脚本时，速度话题上应该有几个订阅者：
-# 运控 1 个 + 脚本自己的回读 1 个。多出来的就得解释。
-EXPECTED_VELOCITY_SUBS = 2
+# 运控节点的名字前缀。仿真和真机都是 `mc_ros2_node` 再跟一个 PID：
+# 仿真 `mc_ros2_node256067`，真机 `mc_ros2_node3373`（2026-09-30 两边都查过）。
+MC_NODE_PREFIX = 'mc_ros2_node'
 
 
-def graph_banner(domain_env, velocity_subs,
-                 expected_subs: int = EXPECTED_VELOCITY_SUBS):
+def graph_banner(domain_env, subscriber_names, mc_prefix: str = MC_NODE_PREFIX):
     """
-    开跑前印清楚"我在哪个 ROS 图上、这条命令话题上还有谁"。
+    开跑前印清楚"我在哪个 ROS 图上、这条命令话题上挂着谁"。
 
     为什么值得占几行输出：2026-09-30 才发现开发机和机器人一直在**同一个
     ROS domain**（两边都没设 ROS_DOMAIN_ID，ROS_LOCALHOST_ONLY=0，同一个
@@ -339,26 +338,44 @@ def graph_banner(domain_env, velocity_subs,
     这件事在任何输出里都看不见，于是它先伪造了一个"符合率 51%"的假故障，
     而真正的风险是反方向：**开发机上的速度指令会进到真机的图里。**
 
+    为什么判据不是"订阅者有几个"（这一版改掉的东西）
+    ------------------------------------------------
+    第一版拿订阅者总数和一个常数 2 比，那个 2 是在 x86 仿真上标定的。
+    真机一跑就报"多了 3 个" —— 而真机的 4 个订阅者是**厂商自己的**：
+    `mc_ros2_node` 加三个 `soc{0,1,2}_drp_ros2_node`（X2 是多 SoC 的，
+    每颗 SoC 一个转发节点，仿真只有一颗，所以只有 1 个）。
+    也就是说那条警告在真机上**每次都会响**，而一个每次都响的警告等于没有
+    警告 —— 见 [[dont-verify-with-proxy-metrics]]：判据不能拿一个平台的
+    经验常数去卡另一个平台。
+
+    现在判的是**有几个运控**，这个跨平台成立：
+    * 0 个 —— 没人执行速度指令，量出来的"不转"没有意义。
+    * >=2 个 —— 图里有两套运控，多半是另一台机器（或仿真）也在这个 domain
+      里。这才是"同时驱动两台机器人"那个真风险，而且**能被直接观测到**。
+    其余节点原样列出来，让人自己看，不替人下结论。
+
     `domain_env` 直接传 `os.environ.get('ROS_DOMAIN_ID')`（没设就是 None）。
+    `subscriber_names` 传速度话题上所有订阅者的节点名。
     """
     dom = 0 if domain_env in (None, '') else domain_env
+    names = list(subscriber_names)
+    mc = [n for n in names if n.startswith(mc_prefix)]
+
     lines = [f'ROS_DOMAIN_ID={dom}'
              + ('（没设，默认 0）' if domain_env in (None, '') else '')]
+    lines.append(f'速度话题上的订阅者 {len(names)} 个：'
+                 + ('、'.join(names) if names else '（一个都没有）'))
+
+    if not mc:
+        lines.append(f'  ⚠ 没有看到运控节点（名字以 {mc_prefix} 开头）。'
+                     '速度指令没人执行 —— 下面量出来的"不转"没有意义。')
+    elif len(mc) > 1:
+        lines.append(f'  ⚠ 图里有 {len(mc)} 个运控：{"、".join(mc)}。'
+                     '你下发的速度会**同时驱动它们全部**。')
+        lines.append('  多半是另一台机器（或开发机的仿真）也在这个 domain 里。'
+                     '仿真请用 tools/sim_up.sh，它跑在独立 domain 上。')
+
     if str(dom) == '0':
-        lines.append(
-            '  ⚠ domain 0 是默认图，开发机和真机都在里面 —— 话题名撞车，'
-            '发出去的速度指令两边都收得到。')
-        lines.append(
-            '  仿真请用 tools/sim_up.sh（它跑在独立 domain 上），'
-            '并在这个终端 export 同一个 ROS_DOMAIN_ID。')
-    lines.append(f'速度话题上的订阅者：{velocity_subs} 个'
-                 f'（本机预期 {expected_subs}：运控 + 本脚本的回读）')
-    if velocity_subs > expected_subs:
-        lines.append(
-            f'  ⚠ 多了 {velocity_subs - expected_subs} 个。如果多出来的是'
-            '**另一台机器上的运控**，你下发的速度会同时驱动两台机器人。')
-    elif velocity_subs < expected_subs:
-        lines.append(
-            '  ⚠ 少了。运控可能没在跑 —— 那么速度指令没人执行，'
-            '下面量出来的"不转"没有意义。')
+        lines.append('  注：domain 0 是默认图。同网段上任何没设 ROS_DOMAIN_ID 的'
+                     '机器都会并进来 —— 它的节点就会出现在上面这张表里。')
     return lines
