@@ -50,6 +50,8 @@ from sztu_navigation.wire_audit import (  # noqa: E402
     WireAudit,
     apply_start_threshold,
     graph_banner,
+    match_exact,
+    match_same_direction,
 )
 
 OWN = 'sdk_sztu_probe'
@@ -341,3 +343,194 @@ def test_missing_subscriber_warns_that_nobody_executes():
     text = '\n'.join(graph_banner('42', 0))
     assert '⚠' in text
     assert '没有意义' in text
+
+
+# --------------------------------------------------------------------------
+# 指令持续变化的调用方（align_probe）：宽松判据 + aim + saw_intent
+#
+# align 每 100 ms 重算一次角速度，线上是 50 Hz，所以精确比对会把正常运行
+# 判成 MISMATCH。这一组就是钉住那条路径。
+# --------------------------------------------------------------------------
+
+def test_exact_match_rejects_what_the_loose_one_accepts():
+    """两个判据必须真的不一样，否则宽松那个白加了。"""
+    assert match_exact(0.45, 0.45)
+    assert not match_exact(0.30, 0.45), '精确判据不许放过幅度差'
+    assert match_same_direction(0.30, 0.45), '同号且过半，宽松判据该放过'
+
+
+def test_loose_match_still_rejects_wrong_sign_and_collapse():
+    """宽松不等于什么都放过 —— 反号和"幅度塌到一半以下"必须还是不符合。"""
+    assert not match_same_direction(-0.45, 0.45), '反号必须拒'
+    assert not match_same_direction(0.20, 0.45), '幅度不到一半必须拒'
+    assert not match_same_direction(0.0, 0.45), '零就是漏喂狗，必须拒'
+    assert match_same_direction(0.0, 0.0), '意图是零时线上也该是零'
+
+
+def test_varying_command_passes_with_the_loose_matcher():
+    """比例律一路收敛：每帧指令都在变，线上值滞后一档，必须算通过。"""
+    a = WireAudit(own_source=OWN, angular_threshold=ANGULAR_THRESHOLD,
+                  deadband=DEADBAND, match=match_same_direction)
+    a.reset(0.8, window=DWELL)
+    omega = 0.8
+    for _ in range(NOMINAL_FRAMES):
+        # 线上看到的是**上一档**的指令：真实时序就是这样错开的。
+        prev = omega
+        omega *= 0.99
+        a.aim(omega)
+        a.feed(OWN, prev)
+    assert a.verdict() == WIRE_OK
+    assert a.own_fraction == 1.0
+
+
+def test_the_same_varying_command_would_fail_exact_matching():
+    """负对照：同一串帧用默认的精确判据会假报 MISMATCH。
+
+    这就是 align_probe 必须传 match_same_direction 的理由，
+    不是"宽一点比较保险"。
+    """
+    a = _audit(want=0.8)
+    omega = 0.8
+    for _ in range(NOMINAL_FRAMES):
+        prev = omega
+        omega *= 0.99
+        a.aim(omega)
+        a.feed(OWN, prev)
+    assert a.verdict() == WIRE_MISMATCH
+
+
+def test_aim_changes_the_expectation_without_clearing_counts():
+    """aim 只改意图，攒下来的统计不许被清掉（reset 才清）。"""
+    a = _audit(want=0.45)
+    _feed_own(a, 10)
+    a.aim(-0.45)
+    assert a.own_total == 10, 'aim 不是 reset'
+    assert a.expected() == pytest.approx(-0.45)
+    _feed_own(a, 10)
+    assert a.own_total == 20
+    assert a.own_fraction == 1.0
+
+
+def test_intent_back_to_zero_still_gets_the_full_verdict():
+    """align 结束时指令归零，但窗口里验过非零意图 —— 不许退化成"只看别人"。
+
+    没有 saw_intent 的话，最后那一下 aim(0.0) 会让 verdict 走零意图短路，
+    把整趟攒下来的 MISMATCH 全丢掉，然后报 OK。
+    """
+    a = WireAudit(own_source=OWN, angular_threshold=ANGULAR_THRESHOLD,
+                  deadband=DEADBAND, match=match_same_direction)
+    a.reset(0.8, window=DWELL)
+    # 转的时候线上全是零 —— 典型的漏喂狗。
+    _feed_own(a, NOMINAL_FRAMES, angular=0.0)
+    a.aim(0.0)   # 停车
+    assert a.saw_intent is True
+    assert a.verdict() == WIRE_MISMATCH
+
+
+def test_zero_intent_from_start_to_finish_keeps_the_short_circuit():
+    """全程没动过：零意图短路要保留，不然"站着不动"会被判 MISMATCH。"""
+    a = _audit(want=0.0)
+    _feed_own(a, NOMINAL_FRAMES, angular=0.0)
+    assert a.saw_intent is False
+    assert a.verdict() == WIRE_OK
+
+
+def test_reset_forgets_that_we_ever_had_an_intent():
+    """reset 必须把 saw_intent 一起清掉，否则下一档会继承上一档的状态。"""
+    a = _audit(want=0.45)
+    _feed_own(a, 10)
+    assert a.saw_intent is True
+    a.reset(0.0, window=DWELL)
+    assert a.saw_intent is False
+
+
+def test_set_window_enables_the_frame_floor_afterwards():
+    """跑多久开跑时不知道，事后补窗口长度也要能算出帧数下限。"""
+    a = WireAudit(own_source=OWN, angular_threshold=ANGULAR_THRESHOLD,
+                  deadband=DEADBAND, match=match_same_direction)
+    a.reset(0.8)              # 不给 window
+    _feed_own(a, 30)
+    assert a.min_own_frames == 0, '窗口未知时不设门槛'
+    assert a.verdict() == WIRE_OK
+    a.set_window(10.0)        # 10 s x 10 Hz = 100 帧下限
+    assert a.min_own_frames == 100
+    assert a.verdict() == WIRE_STARVED, '30 帧撑不起 10 秒'
+
+
+# --------------------------------------------------------------------------
+# 分母不许互相稀释
+#
+# 现场回归（仿真跑 align_probe 时发现的）：收敛后要盯 4 秒，那几秒的零帧
+# 数量能盖过转身那几秒。两个桶混一个分母的话，转身全错也能算出通过。
+# 这就是 [[dont-verify-with-proxy-metrics]] 第 8 条的第二个实例。
+# --------------------------------------------------------------------------
+
+def _align_audit(want):
+    a = WireAudit(own_source=OWN, angular_threshold=ANGULAR_THRESHOLD,
+                  deadband=DEADBAND, match=match_same_direction)
+    a.reset(want)
+    return a
+
+
+def test_settle_zeros_do_not_dilute_the_turn_phase():
+    """转身那 300 帧全错、停车那 7000 帧全对 —— 必须还是 MISMATCH。"""
+    a = _align_audit(0.8)
+    _feed_own(a, 300, angular=0.0)      # 有意图，线上是零：漏喂狗
+    a.aim(0.0)
+    _feed_own(a, 7000, angular=0.0)     # 停车，线上是零：正常
+
+    mixed = 7000 / 7300
+    assert mixed > 0.9, '这个用例的意义在于混算能算出通过，比例不对说明造错了'
+
+    assert a.verdict() == WIRE_MISMATCH
+    assert a.own_total == 300, '停车帧不许进有意图那个分母'
+    assert a.own_fraction == 0.0
+    assert a.idle_total == 7000
+    assert a.idle_fraction == 1.0
+
+
+def test_a_good_turn_is_not_dragged_down_by_settle_frames():
+    """反过来也要对：转身对、停车也对，不许因为分桶就假报。"""
+    a = _align_audit(0.8)
+    _feed_own(a, 300)
+    a.aim(0.0)
+    _feed_own(a, 7000, angular=0.0)
+    assert a.verdict() == WIRE_OK
+
+
+def test_not_stopping_is_reported_as_its_own_failure():
+    """停车指令没上线是**另一种**毛病，诊断不许说成"转不动"。"""
+    a = _align_audit(0.8)
+    _feed_own(a, 300)
+    a.aim(0.0)
+    _feed_own(a, 300, angular=0.5)      # 停了，线上还在转
+
+    assert a.verdict() == WIRE_MISMATCH
+    assert a.own_fraction == 1.0, '转身那段本来是好的'
+    assert a.idle_fraction == 0.0
+    text = '\n'.join(a.advice())
+    assert '停' in text and '停不下来' in text
+    assert '喂狗' not in text, '这一档的病因不是漏喂狗，别印错的诊断'
+
+
+def test_frame_floor_counts_only_the_intent_phase():
+    """帧数下限的分子只有有意图的帧，所以窗口也只能给那段的时长。"""
+    a = _align_audit(0.8)
+    _feed_own(a, 30)                    # 有意图，30 帧
+    a.aim(0.0)
+    _feed_own(a, 7000, angular=0.0)     # 停车刷了一堆
+    a.set_window(10.0)                  # 有意图那段跑了 10 s -> 下限 100 帧
+    assert a.min_own_frames == 100
+    assert a.verdict() == WIRE_STARVED, '7000 帧停车帧不许把下限糊过去'
+
+
+def test_a_dead_channel_during_align_is_not_reported_as_ok():
+    """通道全程哑掉，而结束时意图已经归零 —— 不许短路成 OK。
+
+    saw_intent 由 aim 置位而不是由 feed 置位，正是为了这一种：
+    一帧都收不到的时候，只有下发侧知道我们确实要求过动作。
+    """
+    a = _align_audit(0.8)
+    a.aim(0.0)                          # 停车，中间一帧都没收到
+    assert a.own_total == 0
+    assert a.verdict() == WIRE_NO_OWN

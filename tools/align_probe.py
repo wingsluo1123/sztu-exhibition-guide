@@ -53,17 +53,27 @@
    （这个坑让 `turn_probe.py` 出过一次假结论，见那个文件的坑 4。）
 2. 所以这里还回读 `/aima/mc/locomotion/velocity`，确认上线的速度和意图一致。
    不一致就直接中止并说明"是下发通道的问题"，不许把它报成"控制律卡死"。
-3. **yaw 只有在姿态直立时才有意义**，pitch 接近 +-90° 是万向节锁。
+   **回读必须按 `msg.source` 过滤。** 那条话题是多输入源共用的，不过滤就等于
+   替别人的帧背锅：2026-09-30 真机上 `turn_probe.py` 正是这样假报了
+   "符合率 51%"（另一个发布者速率和我们差不多，把分母翻了一倍）。
+   判据现在统一在 `sztu_navigation.wire_audit.WireAudit` 里，它把
+   "通道哑了 / 漏喂狗 / 帧太少 / 别人在抢" 分成四个独立结论。
+   这里传 `match_same_direction`：align 每个控制周期都在重算角速度，
+   跨指令变更的那几帧对不上精确值是正常的，不能用默认的精确比对。
+3. **开发机和真机默认在同一个 ROS domain（0）里。** 所以开跑前会把 domain 号
+   和速度话题的订阅者数印出来，见 `tools/sim_up.sh` 坑 6。仿真固定跑在 42。
+4. **yaw 只有在姿态直立时才有意义**，pitch 接近 +-90° 是万向节锁。
    每帧都算 roll/pitch，倾斜超过 `--max-tilt` 立刻停车中止。
-4. 仿真的步态参数和真机不是一套（厂商 README 明说要重新适配）。所以这里
+5. 仿真的步态参数和真机不是一套（厂商 README 明说要重新适配）。所以这里
    复现出来的**数值**（卡在多少度、指令多大）不能直接搬到真机，
    能搬的是"比例律会掉到最小有效转速以下"这个**机制**。
 
 用法
 ----
-仿真::
+仿真（`sim_up.sh` 跑在 `ROS_DOMAIN_ID=42`，这个终端也要 export 同一个）::
 
     tools/sim_up.sh --stand
+    export ROS_DOMAIN_ID=42
     tools/align_probe.py --odom /aima/hal/odom/state --turn 2.0
 
 真机（**需要人在现场、手持急停**，周围 1.5 m 内清空）::
@@ -80,6 +90,7 @@
 
 import argparse
 import math
+import os
 import sys
 import time
 
@@ -95,7 +106,11 @@ from sztu_navigation.control import DEFAULT_MIN_TURN_SPEED   # noqa: E402
 from sztu_navigation.control import compute_velocity   # noqa: E402
 from sztu_navigation.control import normalize_angle   # noqa: E402
 from sztu_navigation.locomotion import LOCOMOTION_QOS   # noqa: E402
+from sztu_navigation.locomotion import VELOCITY_DEADBAND   # noqa: E402
 from sztu_navigation.locomotion import LocomotionController   # noqa: E402
+from sztu_navigation.wire_audit import WIRE_OK, WireAudit   # noqa: E402
+from sztu_navigation.wire_audit import graph_banner   # noqa: E402
+from sztu_navigation.wire_audit import match_same_direction   # noqa: E402
 
 CONTROL_HZ = 10.0          # 和 navigation_manager 的 control_loop 一致
 DEFAULT_TURN = 2.0         # rad，要转的角度
@@ -109,7 +124,6 @@ DEFAULT_SETTLE = 4.0       # s
 # 这边拿它当"这点误差说明不了问题"的门槛，本来就该是同一个量。
 YAW_NOISE_EPS = 0.05       # rad，约 2.9°
 VELOCITY_TOPIC = '/aima/mc/locomotion/velocity'
-WIRE_OK_FRACTION = 0.9
 
 
 def quat_rpy(x, y, z, w):
@@ -130,18 +144,30 @@ class AlignProbe(Node):
         self.max_tilt_seen = 0.0
         self.tilt_tripped = False
         self.cmd = (0.0, 0.0, 0.0)  # forward, lateral, angular
-        self.wire_match = 0
-        self.wire_total = 0
 
         qos = QoSProfile(depth=10, reliability=QoSReliabilityPolicy.BEST_EFFORT)
         self.create_subscription(Odometry, odom_topic, self._odom, qos)
-        self.create_subscription(
-            McLocomotionVelocity, VELOCITY_TOPIC, self._wire, LOCOMOTION_QOS)
 
         self.loco = LocomotionController(
             source=source, priority=priority, release_after=None,
             node_name='align_probe_locomotion')
         self.ready = self.loco.register_input_source()
+        # 回读审计：按 source 分开统计。不按 source 过滤的话，话题上任何一个
+        # 别的发布者都会把我们的符合率腰斩 —— 真机 2026-09-30 就这么假报过
+        # "符合率 51%"。见 wire_audit 模块头部。
+        # 这里用 match_same_direction 而不是默认的精确比对：align 每个控制周期
+        # 都在重算角速度，跨指令变更的那几帧对不上精确值是正常的。
+        self.audit = WireAudit(
+            own_source=source,
+            angular_threshold=self.loco.angular_threshold,
+            deadband=VELOCITY_DEADBAND,
+            match=match_same_direction)
+        # 回读真正上线的那一帧。QoS 必须和发布端一致，否则收不到。
+        # 建在 audit 之后：register_input_source 里的服务调用会 spin，
+        # 回调可能在那时就进来。
+        self.create_subscription(
+            McLocomotionVelocity, VELOCITY_TOPIC, self._wire, LOCOMOTION_QOS)
+
         self.create_timer(0.02, self.loco.tick)
 
     def _odom(self, msg):
@@ -155,18 +181,18 @@ class AlignProbe(Node):
         self.pose = (p.x, p.y, yaw)
 
     def _wire(self, msg):
-        """回读真正上线的角速度，确认下发通道没哑（坑 1 / 坑 2）。"""
-        want = self.cmd[2]
-        if abs(want) < 1e-9:
-            return
-        self.wire_total += 1
-        got = msg.angular_velocity
-        if abs(got) >= abs(want) * 0.5 and (got > 0) == (want > 0):
-            self.wire_match += 1
+        """回读线上的速度指令，交给 WireAudit 按 source 分开记账。
+
+        **别在这里做判断** —— 判据在 `sztu_navigation.wire_audit` 里，
+        那样它才能用合成帧测（含负对照）。这个回调只搬数据。
+        """
+        self.audit.feed(msg.source, msg.angular_velocity)
 
     def send(self, forward, angular):
         """每个控制周期都要调 —— set_velocity 是登记，不是发布（坑 1）。"""
         self.cmd = (forward, 0.0, angular)
+        # 审计按"这一刻的意图"比对线上值，所以意图变了要同步告诉它。
+        self.audit.aim(angular)
         self.loco.set_velocity(forward, 0.0, angular)
 
     def wait_pose(self, timeout=10.0):
@@ -206,6 +232,12 @@ def main():
     rclpy.init()
     node = AlignProbe(args.odom, args.source, args.priority, args.max_tilt)
     try:
+        # 先说清"我在哪个图上"：同一个 ROS domain 里有真机的时候，下发和回读
+        # 都会串台，而且在任何输出里都看不见。见 tools/sim_up.sh 坑 6。
+        for line in graph_banner(os.environ.get('ROS_DOMAIN_ID'),
+                                 node.count_subscribers(VELOCITY_TOPIC)):
+            print(line)
+        print()
         if not node.ready:
             print('✗ 走跑输入源注册失败，速度指令不会被执行。先查 MC 在不在。')
             return 1
@@ -290,6 +322,10 @@ def main():
             rclpy.spin_once(node, timeout_sec=period)
 
         node.loco.stop()
+        # 告诉审计意图已经归零。不同步的话 settle 那几秒的零帧会被拿去和
+        # 最后一条非零指令比，凭空多出一堆"值不对"。窗口里出现过非零意图这件事
+        # 审计自己记着（saw_intent），所以判据照样走完整路径。
+        node.audit.aim(0.0)
         rclpy.spin_once(node, timeout_sec=0.1)
 
         # 停车后的滑行量。这才是 align 的实际精度：指令归零不等于立刻停住。
@@ -300,7 +336,11 @@ def main():
             _, _, yaw_at_stop = node.pose
             yaw_now = yaw_at_stop
             while rclpy.ok() and time.monotonic() - settle_start < args.settle:
-                node.loco.tick()
+                # 这里**不要**手动调 loco.tick()。50 Hz 的定时器已经在发了，
+                # 手动再调一次会形成正反馈：tick 发一帧 -> 回读回调就绪 ->
+                # spin_once 立刻返回 -> 循环再转一圈 -> 又 tick。实测这样能把
+                # 停车那 4 秒刷到几千赫兹（一趟攒出 3 万多帧回读），
+                # 既在真机的指令话题上刷洪水，又把审计的分母冲烂。
                 rclpy.spin_once(node, timeout_sec=period)
                 _, _, yaw_now = node.pose
                 signed = normalize_angle(target_yaw - yaw_now)
@@ -316,11 +356,18 @@ def main():
                   f'停车后又转了 {math.degrees(coast):.1f}°，'
                   f'误差换号 {crossings} 次')
 
-        wire = (node.wire_match / node.wire_total if node.wire_total else 0.0)
+        # 帧数下限要按**下发非零指令那段**的时长算，不是整趟时长：审计的分子
+        # 只统计有意图时的帧，分母得跟着分子走。停车后盯的那几秒不算在内。
+        node.audit.set_window(history[-1][0] if history else 0.0)
+        wire_verdict = node.audit.verdict()
         print()
-        if node.wire_total and wire < WIRE_OK_FRACTION:
-            print(f'✗ 下发通道有问题（上线符合率 {wire * 100:.0f}%），本次结论无效。')
-            print('  见模块头部坑 1 / 坑 2 —— 这**不是**控制律的问题。')
+        print(f'回读：{node.audit.summary()}')
+        if wire_verdict != WIRE_OK:
+            print()
+            print('✗ 回读审计没通过，本次结论无效 —— '
+                  '这**不是**控制律的问题。')
+            for line in node.audit.advice():
+                print(line)
             return 1
 
         if result == 'converged':

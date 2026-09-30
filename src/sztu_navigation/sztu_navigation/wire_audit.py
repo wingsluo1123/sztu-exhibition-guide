@@ -75,6 +75,31 @@ def apply_start_threshold(value: float, threshold: float,
     return value
 
 
+def match_exact(angular: float, expected: float) -> bool:
+    """默认的"这一帧算不算符合"：线上值必须**精确等于**推导出来的预期。
+
+    指令在整个窗口里恒定时就该用这个。`apply_start_threshold` 是个确定的变换，
+    线上值没有任何理由和预期差一点点 —— 留余量只会把真正的偏差放过去。
+    """
+    return angular == expected
+
+
+def match_same_direction(angular: float, expected: float) -> bool:
+    """宽松判据：同号，且幅度不低于预期的一半。
+
+    给**指令在窗口内持续变化**的场合用：`tools/align_probe.py` 每 100 ms
+    重算一次角速度，而线上是 50 Hz，跨指令变更的那几帧本来就对不上精确值，
+    用 `match_exact` 会把正常运行判成 MISMATCH。
+
+    不能拿它当默认 —— 它放过的偏差里包括"幅度被莫名压到 60%"这种真问题。
+    指令恒定时能精确预测就要精确判。
+    """
+    if expected == 0.0:
+        return angular == 0.0
+    return ((angular > 0) == (expected > 0)
+            and abs(angular) >= abs(expected) * 0.5)
+
+
 class WireAudit:
     """
     统计一个稳态窗口里 `/aima/mc/locomotion/velocity` 上的帧，按 source 分开。
@@ -87,12 +112,16 @@ class WireAudit:
                  deadband: float,
                  ok_fraction: float = DEFAULT_OK_FRACTION,
                  min_own_hz: float = DEFAULT_MIN_OWN_HZ,
-                 foreign_active_threshold: float = None):
+                 foreign_active_threshold: float = None,
+                 match=None):
         self.own_source = own_source
         self.angular_threshold = angular_threshold
         self.deadband = deadband
         self.ok_fraction = ok_fraction
         self.min_own_hz = min_own_hz
+        # 一帧算不算符合。默认精确比对；指令持续变化的调用方传
+        # match_same_direction，理由见那个函数的 docstring。
+        self.match = match_exact if match is None else match
         # 别人发的指令要多大才算"真的在指挥机器人"。默认取厂商的起步阈值：
         # 比它更小的角速度指令在站立态下本来就不会让机器人转，算不上竞争。
         # 这是从文档推的门槛，不是随手挑的小数。
@@ -101,25 +130,60 @@ class WireAudit:
             else foreign_active_threshold)
         self.want = 0.0
         self.window = 0.0
+        # 有意图（|want| >= 死区）时收到的本源帧。符合率只看这个桶 ——
+        # 把"停车之后的零帧"混进来就是又一次分母污染：align 收敛后要盯 4 秒，
+        # 那几秒的零帧数量能盖过转身那几秒，于是转身全错也能算出 99% 通过。
         self.own_total = 0
         self.own_match = 0
+        # 意图是零时收到的本源帧。单独一个分母，单独判。
+        self.idle_total = 0
+        self.idle_match = 0
+        # 这个窗口里有没有**下达过**非零意图。由 reset/aim 置位，不由 feed ——
+        # 通道彻底哑了的时候一帧都收不到，只有下发侧知道我们确实要求过动作。
+        self.saw_intent = False
         # source -> [帧数, 最大 |angular|]
         self.foreign = {}
 
     def reset(self, want: float, window: float = 0.0) -> None:
         """开一个新窗口。want 是这一档的意图角速度，window 是窗口时长（秒）。"""
-        self.want = want
         self.window = window
         self.own_total = 0
         self.own_match = 0
+        self.idle_total = 0
+        self.idle_match = 0
+        self.saw_intent = False
         self.foreign = {}
+        self.aim(want)
+
+    def aim(self, want: float) -> None:
+        """只改意图，不清计数。
+
+        给指令在一个窗口里持续变化的调用方用（align_probe 每个控制周期调一次）：
+        之后喂进来的帧按**新**的预期比对，之前攒的统计照旧。
+        """
+        self.want = want
+        if abs(want) >= self.deadband:
+            self.saw_intent = True
+
+    def set_window(self, seconds: float) -> None:
+        """事后补上"有意图"那段的时长，让帧数下限能算。
+
+        align_probe 那种"跑到收敛为止"的场合开跑时不知道会跑多久。注意要传
+        **下发非零指令的那段**时长，不是整趟时长 —— 帧数下限的分子只统计
+        有意图时的帧（见 own_total），分母跟着分子走才对得上。
+        """
+        self.window = seconds
 
     def feed(self, source: str, angular: float) -> None:
         """喂一帧。调用方负责只在稳态窗口里喂。"""
         if source == self.own_source:
-            self.own_total += 1
-            if angular == self.expected():
-                self.own_match += 1
+            ok = self.match(angular, self.expected())
+            if abs(self.want) >= self.deadband:
+                self.own_total += 1
+                self.own_match += ok
+            else:
+                self.idle_total += 1
+                self.idle_match += ok
             return
         slot = self.foreign.setdefault(source, [0, 0.0])
         slot[0] += 1
@@ -132,14 +196,21 @@ class WireAudit:
 
     @property
     def own_fraction(self) -> float:
-        """本源帧里值对得上的比例。一帧都没有时是 0。"""
+        """有意图时的本源帧里值对得上的比例。一帧都没有时是 0。"""
         if not self.own_total:
             return 0.0
         return self.own_match / self.own_total
 
     @property
+    def idle_fraction(self) -> float:
+        """意图为零时的本源帧里线上确实是零的比例。一帧都没有时是 1（无话可说）。"""
+        if not self.idle_total:
+            return 1.0
+        return self.idle_match / self.idle_total
+
+    @property
     def min_own_frames(self) -> int:
-        """本源帧至少该有多少。窗口时长未知（0）时不设这个门槛。"""
+        """有意图时的本源帧至少该有多少。窗口时长未知（0）时不设这个门槛。"""
         if self.window <= 0.0:
             return 0
         return int(self.min_own_hz * self.window)
@@ -160,26 +231,34 @@ class WireAudit:
 
     def verdict(self) -> str:
         """给出结论。含义见模块头部。"""
-        # 先看别人：即使我们的帧完全正常，有人在发非零指令，这次测量也不可信。
-        # 放在最后判会让"我们的帧都对"盖住它。
-        if abs(self.want) < self.deadband:
-            # 意图是停，没有"上线值"可验；只剩"有没有人在乱发"这一问。
+        if not self.saw_intent:
+            # 这个窗口里从没下达过非零意图，没有"上线值"可验；
+            # 只剩"有没有人在乱发"这一问。
             return WIRE_CONTESTED if self.active_foreign() else WIRE_OK
         if not self.own_total:
             return WIRE_NO_OWN
         if self.own_fraction < self.ok_fraction:
             return WIRE_MISMATCH
+        # 停车之后线上还不是零，说明我们的零指令没上线，同样是通道问题。
+        # 单独一个分母判，不和上面那个混 —— 混了就互相稀释。
+        if self.idle_fraction < self.ok_fraction:
+            return WIRE_MISMATCH
         if self.own_total < self.min_own_frames:
             return WIRE_STARVED
+        # 我们的帧完全正常也不够：有人在发非零指令，这次测量就不可信。
         if self.active_foreign():
             return WIRE_CONTESTED
         return WIRE_OK
 
     def summary(self) -> str:
         """一行话说清这个窗口在线上看到了什么。成功失败都值得印。"""
-        parts = [f'本源 {self.own_source} {self.own_total} 帧 '
+        parts = [f'本源 {self.own_source} 有意图时 {self.own_total} 帧 '
                  f'{self.own_fraction * 100:.0f}% 符合'
-                 f'（意图 {self.want:+.2f} -> 预期上线 {self.expected():+.2f}）']
+                 f'（最后一档意图 {self.want:+.2f} -> 预期上线 '
+                 f'{self.expected():+.2f}）']
+        if self.idle_total:
+            parts.append(f'停车时 {self.idle_total} 帧 '
+                         f'{self.idle_fraction * 100:.0f}% 是零')
         if self.foreign:
             others = '，'.join(
                 f'{s} {c} 帧 最大|ω| {m:.3f}'
@@ -205,18 +284,24 @@ class WireAudit:
                 'BEST_EFFORT + VOLATILE，不一致就收不到）。',
             ]
         if v == WIRE_MISMATCH:
+            if self.own_fraction < self.ok_fraction:
+                return [
+                    f'✗ 我们的帧上线了（有意图时 {self.own_total} 帧），但只有 '
+                    f'{self.own_fraction * 100:.0f}% 的值等于预期 —— 测量无效。',
+                    '  最常见的原因是漏喂狗：set_velocity 只登记目标值，'
+                    'tick() 里 0.25 s 没人刷新就会发零。',
+                    '  见 tools/turn_probe.py 模块头部坑 4。',
+                ]
             return [
-                f'✗ 我们的帧上线了（{self.own_total} 帧），但只有 '
-                f'{self.own_fraction * 100:.0f}% 的值等于预期的 '
-                f'{self.expected():+.3f} —— 测量无效。',
-                '  最常见的原因是漏喂狗：set_velocity 只登记目标值，'
-                'tick() 里 0.25 s 没人刷新就会发零。',
-                '  见 tools/turn_probe.py 模块头部坑 4。',
+                f'✗ 我们下的**停车**指令没上线：停车后 {self.idle_total} 帧里'
+                f'只有 {self.idle_fraction * 100:.0f}% 是零 —— 测量无效。',
+                '  这一档和"转不动"无关，是停不下来。查 stop() 之后还有谁在'
+                '调 set_velocity，以及输入源有没有被别人接过去。',
             ]
         if v == WIRE_STARVED:
             return [
-                f'✗ 我们的帧值都对，但只有 {self.own_total} 帧，'
-                f'不到窗口 {self.window:.1f} 秒 × {self.min_own_hz:.0f} Hz = '
+                f'✗ 我们的帧值都对，但有意图的那段只有 {self.own_total} 帧，'
+                f'不到 {self.window:.1f} 秒 × {self.min_own_hz:.0f} Hz = '
                 f'{self.min_own_frames} 帧的下限 —— 不像在连续发，测量无效。',
                 '  查：spin 是不是被什么阻塞了；'
                 'tick() 的定时器有没有被别的线程抢着 spin。',
