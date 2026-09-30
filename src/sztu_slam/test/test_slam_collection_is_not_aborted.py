@@ -6,10 +6,10 @@
 `pytest.skip(..., allow_module_level=True)`），整个目录的收集就被掐断 ——
 兄弟文件一个都不收，退出码 0，结论是"N skipped"。也就是说**门禁空转还报成功**。
 
-2026-09-30 实测到的现场：只 source ROS 和本仓库、不 source aimdk_ws 时，
-本包 `pytest` 得到 `1 skipped`，而本该是 `122 passed, 5 skipped`。
-**缺 SDK 的环境正是最需要那 122 条跑起来的环境**，门禁却恰好在那里空转。
-sztu_slam 里是同一个毛病（`collected 0 items / 1 skipped`，本该 207 passed）。
+2026-09-30 实测到的现场：本包 `pytest test` 得到
+`collected 0 items / 1 skipped`，而 `pytest test --ignore=<那一个文件>`
+得到 `207 passed`。207 条用例在开发机上一直没跑，而人看到的是绿的。
+sztu_navigation 里是同一个毛病（缺 aimdk_ws 时 126 passed 变成 1 skipped）。
 
 改法是把模块级跳过换成 `pytestmark = pytest.mark.skipif(...)` —— 它在
 **收集之后**才判，不碰收集，跳过的用例还照样以 SKIPPED 露面（露面这点很重要，
@@ -21,6 +21,10 @@ sztu_slam 里是同一个毛病（`collected 0 items / 1 skipped`，本该 207 p
   2. 负对照：现造一个含模块级跳过的临时目录，**必须**看到兄弟文件被吞掉。
      它钉的是 pytest 这个行为本身 —— 哪天升级到修好这个 bug 的版本，
      这条会红，那时候才知道可以放宽上面那条规矩，而不是一直蒙着。
+
+文件名为什么带包名前缀：见
+`src/sztu_navigation/test/test_navigation_collection_is_not_aborted.py` 的
+同名小节 —— 两份原来同名，害得 `tools/run_tests.sh` 整轮收集挂掉。
 """
 
 import os
