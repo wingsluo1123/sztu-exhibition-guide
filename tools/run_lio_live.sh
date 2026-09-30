@@ -234,8 +234,24 @@ head2 "2. 起节点"
 pids=()
 cleanup_done=0
 
+# finish() 发 SIGINT 的那一刻。report() 要拿它和"包里最后一条消息"比，
+# 所以不能在 report() 里现取 —— 那时候已经等过最多 30 秒的宽限了。
+stop_ts=0
+
 report() {
     head2 "本趟结果"
+    # 第一件事：这趟到底录全了没有。2026-09-30 那趟 ros2 bag record 在第 137
+    # 分钟整个哑掉，而下面每一项统计都照常全绿 —— 因为它们只看已经进包的那
+    # 部分。判据和它的由来在 tools/bag_covers_run.py 的头注释里。
+    if [ "$RECORD" -eq 1 ] && [ -d "$RUN_DIR/odom" ] && [ "$stop_ts" -gt 0 ]; then
+        if cov="$(python3 "$WS/tools/bag_covers_run.py" "$RUN_DIR/odom" \
+                      --stop-ts "$stop_ts" 2>&1)"; then
+            ok "$cov"
+        else
+            bad "$cov"
+        fi
+        say ""
+    fi
     if grep -q '转换 [0-9]* 帧' "$RUN_DIR/adapter.log" 2>/dev/null; then
         say "  $(grep -o '转换 [0-9]* 帧，失败 [0-9]* 帧' "$RUN_DIR/adapter.log" | tail -1)"
     fi
@@ -296,6 +312,7 @@ report() {
 finish() {
     [ "$cleanup_done" -eq 1 ] && return
     cleanup_done=1
+    stop_ts="$(date +%s)"
     say ""
     say "${BOLD}收尾（SIGINT，不是 kill -9）${NC}"
     # 顺序：先停录制（把已发的消息落盘），再停 FAST-LIO，最后停转换节点。
@@ -447,6 +464,7 @@ say "  ${BOLD}10 Hz 左右是正常${NC}（和雷达帧率一致）；明显偏�
 say ""
 
 t_start="$(date +%s)"
+last_mb=0
 while true; do
     sleep 10
     now="$(date +%s)"
@@ -456,6 +474,18 @@ while true; do
     if ! kill -0 "${pids[0]}" 2>/dev/null; then
         bad "fastlio_mapping 退了 —— 看 $RUN_DIR/fastlio.log"
         exit 1
+    fi
+
+    # 包长了多少。2026-09-30 那趟 ros2 bag record 在第 137 分钟静默停摆
+    # （见 tools/bag_covers_run.py 的头注释），表现就是这个数连着几次是 +0
+    # 而频率一切正常。印出来，走着的时候就能发现，不用等收尾的报告。
+    bag_note=""
+    if [ "$RECORD" -eq 1 ]; then
+        cur="$(du -sm "$RUN_DIR/odom" 2>/dev/null | cut -f1)"
+        if [ -n "${cur:-}" ]; then
+            bag_note="   包 ${cur} MB (+$((cur - last_mb)))"
+            last_mb="$cur"
+        fi
     fi
 
     # 录制包还没落盘，数不了条数；直接量话题频率更实在。
@@ -473,12 +503,12 @@ while true; do
     if [ -n "${hz:-}" ]; then
         # 低于 8 Hz 就明说，别让人事后看报告才发现
         if awk "BEGIN{exit !($hz < 8)}"; then
-            hmm "${elapsed}s  /Odometry ${hz} Hz —— 偏低，点云可能在丢"
+            hmm "${elapsed}s  /Odometry ${hz} Hz —— 偏低，点云可能在丢${bag_note}"
         else
-            ok "${elapsed}s  /Odometry ${hz} Hz"
+            ok "${elapsed}s  /Odometry ${hz} Hz${bag_note}"
         fi
     else
-        hmm "${elapsed}s  两次都量不到 /Odometry 的频率"
+        hmm "${elapsed}s  两次都量不到 /Odometry 的频率${bag_note}"
         say "     （量不到 ≠ 没输出。收尾时的报告才是准的，以它为准。）"
     fi
 
