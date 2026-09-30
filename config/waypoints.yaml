@@ -115,16 +115,20 @@ exhibition_points:
 # 导航参数
 navigation:
   position_tolerance: 0.3
+  # 到位的朝向容差 14.9°。2026-09-30 真机 align 回归实测：报到位 13.7°、
+  # 停车后滑行 1.0°、沉降到 12.6°、误差换号 0 次 —— 余量够，不用放宽。
+  # （仿真的滑行是 5.3-5.5°，真机好 5 倍，所以别拿仿真的滑行量来算这个。）
   angle_tolerance: 0.26
   max_linear_speed: 0.5
   max_angular_speed: 0.8
   # 原地转的最小有效角速度。低于这个值机器人站着不转，指令等于没发。
-  # **0.7 是 x86 仿真量出来的（tools/turn_probe.py），不是真机值。**
-  # 真机只知道落在 (0.45, 0.8]：实走时 0.8 转得动，比例律衰减到 0.45
-  # 就卡死了 110 秒。厂商 README 明说仿真步态参数和真机不是一套，
-  # 所以上真机前要用同一个工具量一次：
-  #   tools/turn_probe.py --odom /slam/lidar_odom
-  # 量完把结果填到这里。见 control.py 的 DEFAULT_MIN_TURN_SPEED。
+  # **2026-09-30 真机实测过，这个 0.7 有数撑着。**（tools/turn_probe.py
+  # --odom /slam/lidar_odom）真机能转的最小档是 0.65，悬崖在 0.50
+  # （正向 +0.343、反向 −0.002）。不取 0.65 的原因：方向不对称随指令降低
+  # 变大 —— 0.75 正反差 1.28 倍、0.70 差 1.45 倍、0.65 差 1.67 倍 ——
+  # 0.65 离悬崖太近，留一档余量。
+  # 改之前先读 control.py 的 DEFAULT_MIN_TURN_SPEED：那里记了"起步门槛"和
+  # "维持门槛"是两个数，别拿 align 里"0.45 还在转"来下调这个值。
   min_turn_speed: 0.7
   navigation_timeout: 120
   # 位姿连着这么久没有明显变化就放弃当前点位，别再烧满 navigation_timeout。
