@@ -16,10 +16,10 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 
 from pick_waypoints import (                                    # noqa: E402
-    MARK_LEG, MARK_POINT, blit_number, chain_pick, clearance, edt,
-    nearest_wall_yaw, order_tour, path_is_clear, read_map, reachable,
-    render_check_png, render_yaml, spread_pick, to_cell, tour_order,
-    yaw_to_quat,
+    DEFAULT_MARGIN, MARK_LEG, MARK_POINT, blit_number, chain_pick, clearance,
+    edt, nearest_wall_yaw, order_tour, path_is_clear, read_map, reachable,
+    render_check_png, render_yaml, required_margin, spread_pick, to_cell,
+    tour_order, yaw_to_quat,
 )
 from gridmap import (                                           # noqa: E402
     PGM_FREE, PGM_OCC, PGM_PATH, PGM_UNK, write_pgm,
@@ -651,3 +651,62 @@ def test_precheck_refuses_when_clearance_is_too_tight():
     ok, lines = describe(g, c, res, x0, y0, 0.10, 2.0, 0.4)
     assert not ok
     assert any('净空不够' in ln for ln in lines)
+
+
+# --- 净空余量：从到点判据推，不是拍脑袋 --------------------------------------
+#
+# 这一组钉的是 2026-09-30 发现的那个错：原来的 DEFAULT_MARGIN = 0.15 只考虑了
+# "别选在刀尖上"，漏了机器人**根本不会停在点位上** —— 到点判据是进了
+# position_tolerance（0.3 m）就算到，再加停车滑行。算出来机器人边缘到障碍是
+# 负的，而 lidar_callback 还是个 pass，没有避障能兜住。
+
+def test_required_margin_is_tolerance_plus_coast_exactly():
+    """不是"差不多"，是等号。判据里的每一项都必须能指着说出理由。"""
+    assert required_margin(0.3, 0.25) == pytest.approx(0.55)
+    assert required_margin(0.1, 0.0) == pytest.approx(0.1)
+
+
+def test_required_margin_does_not_depend_on_robot_radius():
+    """余量是"点位净空比半径多留多少"，半径已经在另一项里，不能再进来一次。
+
+    签名里压根没有 radius 这个参数，所以这条测的是这个设计本身：
+    净空 >= 半径 + 余量，余量 = 容差 + 滑行。哪天有人想把半径掺进来，
+    这条用例连改都改不动 —— 那正是要的效果。
+    """
+    import inspect
+    params = inspect.signature(required_margin).parameters
+    assert 'radius' not in params
+    assert list(params) == ['position_tolerance', 'coast']
+
+
+def test_the_old_constant_really_did_leave_the_robot_inside_obstacles():
+    """负对照：把废弃的那个常数代回去，机器人边缘到障碍必须是负的。
+
+    这条是整件事的证据。它绿着，说明 0.15 确实不够用 —— 而不是我算错了。
+    哪天 position_tolerance 收紧到让 0.15 也够用，这条会红，那时候该重新
+    审视这套推导，而不是把用例删掉。
+    """
+    radius, tol = 0.40, 0.3
+    for coast in (0.0, 0.25):
+        gap = radius + DEFAULT_MARGIN - tol - coast - radius
+        assert gap < 0, (
+            f'滑行取 {coast} m 时旧余量居然够用（余 {gap:+.2f} m）—— '
+            '前提变了，重新看这套推导')
+    # 而按推出来的余量，余量正好抵掉容差和滑行，机器人边缘刚好贴到障碍线上。
+    margin = required_margin(tol, 0.25)
+    assert margin - tol - 0.25 == pytest.approx(0.0)
+
+
+def test_derived_margin_shrinks_the_candidate_area_it_does_not_grow_it():
+    """推出来的余量必须比旧常数更严 —— 候选区只会变小。
+
+    方向搞反了就是把门禁放宽。用真的 clearance 在合成房间上验，
+    不是只比两个数的大小。
+    """
+    g, res, x0, y0 = room(6.0, 4.0)
+    clr = clearance(g, res)
+    radius = 0.40
+    loose = int((clr >= radius + DEFAULT_MARGIN).sum())
+    strict = int((clr >= radius + required_margin(0.3, 0.25)).sum())
+    assert 0 < strict < loose, (
+        f'旧余量 {loose} 格、新余量 {strict} 格 —— 新的没更严，或者严到一格不剩')

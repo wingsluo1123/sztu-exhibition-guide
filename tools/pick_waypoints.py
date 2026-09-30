@@ -59,11 +59,40 @@ DEFAULT_NEAR_TRAJ = 1.0  # 离轨迹最远多少米还算可达（米）。1 m �
 #                          这是室内，2 m 开外基本就是"门的另一边"了 ——
 #                          实测房间用 2.0 时候选区被撑到 11.8 x 9.7 m，
 #                          而机器人只走过 8.6 x 5.9 m。
-DEFAULT_MARGIN = 0.15    # 点位净空要比机器人半径再宽这么多（米）。
-#                          没有这条余量，选点会挑在净空恰好等于半径的
-#                          刀尖上 —— 实测房间里选出来的点净空 0.403 m，
-#                          机器人半径 0.40 m，只剩 3 mm。往任何方向挪
-#                          0.1 m 就撞，经过这个点的每条边也都判不通过。
+DEFAULT_MARGIN = 0.15    # **已废弃，别再用这个数。** 留着只为说明它错在哪。
+#                          原来的理由是"别选在净空恰好等于半径的刀尖上"，
+#                          这没错，但它只考虑了**点位本身**，漏了机器人
+#                          根本不会停在点位上：`position_tolerance` 是 0.3 m，
+#                          再加停车滑行。算一遍机器人边缘到障碍的距离：
+#                            (0.40 + 0.15) - 0.30 - 滑行 - 0.40 = -0.15 - 滑行
+#                          **是负的** —— 也就是说按这个余量选出来的点，机器人
+#                          在容差带边缘停下时已经压进障碍里了，而现在没有避障
+#                          兜底（lidar_callback 还是个 pass）。
+#                          现在余量按 required_margin() 从配置里推，不再是常数。
+
+# 停车滑行距离（米）。**这个数还没实测**，取的是保守假设：
+# 双足停车要把当前这一步迈完，一步约 0.3 m，取半步 0.25 m。
+#
+# 为什么不敢按转身的滑行量折算：2026-09-30 真机测到 align 停车后还转 1.0°，
+# 按 0.7 rad/s 折合约 25 ms，同样 25 ms 在 0.5 m/s 下只有 1.3 cm。但那是
+# **跨模态的代理量**（转 vs 走），走路停车受"必须迈完这一步"支配，机理不同，
+# 25 ms 这个数没有理由迁移过来。见 [[dont-verify-with-proxy-metrics]] 第 1 条。
+# 实测之前用保守值，实测之后改这里并重跑本工具。
+DEFAULT_COAST = 0.25
+
+
+def required_margin(position_tolerance, coast=DEFAULT_COAST):
+    """点位净空至少要比机器人半径多出多少（米）。
+
+    机器人不会停在点位上。到点判据是"进了 `position_tolerance` 就算到"，
+    所以它的**中心**可能落在离点位 `position_tolerance` 的地方，再加上
+    停车滑行。要求机器人边缘不碰障碍，就是：
+
+        净空 >= 半径 + position_tolerance + 滑行
+
+    所以余量 = position_tolerance + 滑行，和机器人半径无关。
+    """
+    return float(position_tolerance) + float(coast)
 
 
 def read_map(base):
@@ -557,9 +586,15 @@ def main():
                     help=f'点位最小间距（米），默认 {DEFAULT_SPACING}')
     ap.add_argument('--near-traj', type=float, default=DEFAULT_NEAR_TRAJ,
                     help=f'离轨迹多远还算可达（米），默认 {DEFAULT_NEAR_TRAJ}')
-    ap.add_argument('--margin', type=float, default=DEFAULT_MARGIN,
-                    help=f'点位净空比半径多留的余量（米），'
-                         f'默认 {DEFAULT_MARGIN}')
+    ap.add_argument('--coast', type=float, default=DEFAULT_COAST,
+                    help=f'停车滑行距离（米），默认 {DEFAULT_COAST}。'
+                         f'**这个数还没实测**，是保守假设（半步）。'
+                         f'实测出来了就改 DEFAULT_COAST 并重跑。')
+    ap.add_argument('--margin', type=float, default=None,
+                    help='点位净空比半径多留的余量（米）。不给就按 '
+                         'position_tolerance + --coast 从配置里推 —— 机器人'
+                         '不会停在点位上，容差带边缘加滑行才是它真能到的最远处。'
+                         '给的值小于推出来的会被拒（现在没有避障兜底）。')
     ap.add_argument('--reorder-only', action='store_true',
                     help='不重新选点：读 -c 里已有的坐标，只重排巡游顺序并'
                          '重算朝向。不需要 --bag（重排只用地图）。')
@@ -573,6 +608,34 @@ def main():
     n = len(meta)
     print(f'现有配置 {n} 个点位：{", ".join(m["name"] for m in meta)}')
     print('  （只换坐标，id 和名字原样保留 —— 讲解内容是按 id 查的）')
+
+    # 余量不是个可以拍脑袋的常数，从到点判据推出来。
+    tol = nav.get('position_tolerance')
+    if tol is None:
+        raise SystemExit(
+            f'{args.config} 的 navigation 块里没有 position_tolerance。\n'
+            '净空余量是从它推的（点位净空要 >= 半径 + 容差 + 滑行），'
+            '没有它就只能拍脑袋，而拍出来的上一个值是负的。')
+    need = required_margin(tol, args.coast)
+    if args.margin is None:
+        margin = need
+    else:
+        margin = args.margin
+        if margin < need - 1e-9:
+            raise SystemExit(
+                f'--margin {margin:.2f} 小于按到点判据推出来的 {need:.2f} m，拒绝。\n'
+                f'  机器人边缘到障碍 = 半径 {args.radius:.2f} + 余量 {margin:.2f}'
+                f' − 容差 {tol:.2f} − 滑行 {args.coast:.2f} − 半径 '
+                f'{args.radius:.2f}\n'
+                f'                   = {margin - tol - args.coast:+.2f} m\n'
+                '  负数的意思是：机器人在容差带边缘停下时已经压进障碍里了。\n'
+                '  现在 lidar_callback 还是个 pass，没有避障兜底，所以这里不放行。\n'
+                f'  真要压这个数，先把 position_tolerance（现在 {tol}）收紧，'
+                '或者实测滑行距离后调 --coast。')
+    print(f'净空余量 {margin:.2f} m = 到点容差 {tol} + 滑行 {args.coast}'
+          f'{"" if args.margin is None else "（命令行给的）"}')
+    print(f'  => 点位净空要 ≥ {args.radius + margin:.2f} m，'
+          f'机器人停稳后边缘离障碍还剩 ≥ {margin - tol - args.coast:.2f} m')
 
     clr = clearance(grid, res)
 
@@ -601,11 +664,19 @@ def main():
                 '哪里，否则会把雷达透过门窗碾出去的室外空闲区当成可达。\n'
                 '（只想重排已有点位的顺序：加 --reorder-only，那条路不需要包。）')
 
-        from check_lever import find_bag, gravity_from_log, gravity_align_matrix
-        from gridmap import sensor_origins
+        from check_lever import find_bag, gravity_align_matrix
+        from gridmap import resolve_up, sensor_origins
         bag = find_bag(args.bag)
-        # gravity_from_log 返回 (up, 诊断信息)，第二项这里不用。
-        up, _ = gravity_from_log(args.bag)
+        # 和 gridmap.py 走同一条路：bridge.log -> 包里的 IMU -> 轨迹平面。
+        # 不能直接调 gravity_from_log —— 没有 bridge.log 时它返回 None，
+        # 解包会炸；而现在一个 run_dir 都没有 bridge.log。
+        # 更要紧的是：**用哪一路必须印出来**。重力方向错了，图和点位会整体
+        # 歪掉而且什么都不报错（实测拿 z 当上，图幅从 30x23 m 缩成 7.5x15.6 m，
+        # 地面拟合还报"很平、可信"）。
+        up, up_bound, up_src = resolve_up(args.bag, bag)
+        print(f'重力方向来自：{up_src}')
+        print(f'  上 = [{up[0]:+.4f}, {up[1]:+.4f}, {up[2]:+.4f}]'
+              + (f'，误差 ≤ {up_bound:.4f}°' if up_bound is not None else ''))
         R = gravity_align_matrix(up)
         traj = np.array(list(sensor_origins(bag, R).values()))[:, :2]
         print(f'轨迹 {len(traj)} 个位姿，走过的范围 '
@@ -620,11 +691,11 @@ def main():
         near = edt(tmask, res) <= args.near_traj
         # 站点要留余量（radius + margin），但**通行**只要求 radius ——
         # 窄处照样能过去，只是不在窄处停下来讲解。
-        ok = (clr >= args.radius + args.margin) & near
+        ok = (clr >= args.radius + margin) & near
         reach = reachable(ok, list(zip(tiy[k], tix[k])))
         print(f'候选区 {int(reach.sum())} 格 = '
               f'{reach.sum() * res * res:.1f} m²'
-              f'（净空 ≥ {args.radius + args.margin:.2f} m、'
+              f'（净空 ≥ {args.radius + margin:.2f} m、'
               f'离轨迹 ≤ {args.near_traj} m、和轨迹连通）')
         if not reach.any():
             raise SystemExit(
@@ -701,6 +772,26 @@ def main():
               f'{"直线畅通（这一圈能闭环）" if shut else "直线不畅通（回程要人扶）"}')
     else:
         print('只有一个点')
+
+    # 净空这道闸对**所有**路径都要过一遍，包括 --reorder-only。
+    # 重排模式的坐标是从 yaml 读回来的，可能是上一版工具用错余量选出来的
+    # （旧的 DEFAULT_MARGIN=0.15 推不动机器人半径，算出来是负净空），
+    # 只重排顺序不会让那样的点变安全。
+    tight = []
+    for i, p in enumerate(pts, 1):
+        ix, iy = to_cell([p], res, x0, y0)
+        c = clr[iy[0], ix[0]]
+        if c < args.radius + margin - 1e-9:
+            tight.append((i, c))
+    if tight:
+        raise SystemExit(
+            '这些点位的净空不够，没写出配置：\n'
+            + '\n'.join(f'  第 {i} 个：净空 {c:.2f} m，要 '
+                        f'{args.radius + margin:.2f} m，'
+                        f'机器人停稳后边缘离障碍 {c - args.radius - tol - args.coast:+.2f} m'
+                        for i, c in tight)
+            + '\n没有避障兜底的时候，负数就是撞。重新选点（去掉 --reorder-only），'
+            '\n或者收紧 position_tolerance 之后再来。')
 
     out_path = args.out or args.config
     # 把 map 块里的原点和分辨率换成这张图的真实值。原来一直是手编的 0.0，

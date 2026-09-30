@@ -470,7 +470,7 @@ def main():
     ap.add_argument('--topic', default='/cloud_registered')
     ap.add_argument('--up', default=None,
                     help='重力方向 "x,y,z"，覆盖自动探测。'
-                         '不给就按 bridge.log -> 包里的 IMU -> FAST-LIO 的 z '
+                         '不给就按 bridge.log -> 包里的 IMU -> 轨迹自己的平面 '
                          '依次退，用了哪一路会印出来')
     args = ap.parse_args()
 
