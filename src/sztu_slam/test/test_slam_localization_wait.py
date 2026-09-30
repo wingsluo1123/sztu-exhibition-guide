@@ -26,63 +26,77 @@ SlamManager 定位就绪判据的测试（**需要真的 rclpy 和 aimdk_msgs，
   6. 把 rclpy 那个行为本身钉住（remove_node 之后 executor 仍然非空）
 """
 
+import importlib.util
 import threading
 import time
 
 import pytest
 
-rclpy = pytest.importorskip('rclpy', reason='需要 ROS 2 环境（source setup.sh）')
-pytest.importorskip('aimdk_msgs', reason='需要厂商 SDK 的 aimdk_msgs')
+# **不要**在这儿写 `pytest.importorskip(...)` 或者
+# `pytest.skip(..., allow_module_level=True)`。pytest 6.2.5（Humble 带的这版）
+# 上，目录里只要有一个文件在**模块级**跳过，整个目录的收集就被掐断 ——
+# 兄弟文件一个都不收，而且结论是"1 skipped"，**报成功**。
+# 实测：本包 `pytest test` 得到 `collected 0 items / 1 skipped`，
+# 而 `pytest test --ignore=本文件` 得到 `207 passed`。也就是说缺 SDK 的环境里
+# （开发机、干净 CI）这个门禁是空转的，还一路绿灯。
+# `pytest.mark.skipif` 是在**收集之后**才判的，不碰收集，所以没这个毛病。
+_HAVE = (importlib.util.find_spec('rclpy') is not None
+         and importlib.util.find_spec('aimdk_msgs') is not None)
 
-from nav_msgs.msg import Odometry                                   # noqa: E402
-from rclpy.executors import SingleThreadedExecutor                  # noqa: E402
-from rclpy.node import Node                                         # noqa: E402
-from rclpy.qos import (                                             # noqa: E402
-    QoSDurabilityPolicy,
-    QoSHistoryPolicy,
-    QoSProfile,
-    QoSReliabilityPolicy,
-)
+pytestmark = pytest.mark.skipif(
+    not _HAVE, reason='需要 ROS 2 环境和厂商 SDK 的 aimdk_msgs（source setup.sh）')
 
-from sztu_slam.slam_manager import SlamManager                      # noqa: E402
+# 模块体照样会被执行（skipif 只挡用例不挡导入），所以下面这些必须包起来，
+# 否则缺 SDK 时就从"跳过"变成"收集报错"。
+if _HAVE:
+    import rclpy                                                     # noqa: E402
+    from nav_msgs.msg import Odometry                                # noqa: E402
+    from rclpy.executors import SingleThreadedExecutor               # noqa: E402
+    from rclpy.node import Node                                      # noqa: E402
+    from rclpy.qos import (                                          # noqa: E402
+        QoSDurabilityPolicy,
+        QoSHistoryPolicy,
+        QoSProfile,
+        QoSReliabilityPolicy,
+    )
 
+    from sztu_slam.slam_manager import SlamManager                   # noqa: E402
 
-# 和 lio_odom_bridge.py:151-155 的输出端一致。照抄是故意的：这组用例同时也在
-# 验 QoS 兼容（发布端 BEST_EFFORT 遇上订阅端 BEST_EFFORT）。真机上如果哪天把
-# 发布端改成 TRANSIENT_LOCAL 之类，这里应当跟着改并重新验一遍。
-BRIDGE_QOS = QoSProfile(
-    history=QoSHistoryPolicy.KEEP_LAST,
-    depth=5,
-    reliability=QoSReliabilityPolicy.BEST_EFFORT,
-    durability=QoSDurabilityPolicy.VOLATILE,
-)
+    # 和 lio_odom_bridge.py:151-155 的输出端一致。照抄是故意的：这组用例同时
+    # 也在验 QoS 兼容（发布端 BEST_EFFORT 遇上订阅端 BEST_EFFORT）。真机上
+    # 如果哪天把发布端改成 TRANSIENT_LOCAL 之类，这里应当跟着改并重新验一遍。
+    BRIDGE_QOS = QoSProfile(
+        history=QoSHistoryPolicy.KEEP_LAST,
+        depth=5,
+        reliability=QoSReliabilityPolicy.BEST_EFFORT,
+        durability=QoSDurabilityPolicy.VOLATILE,
+    )
 
+    class OdomSource(Node):
+        """在后台以 10 Hz 发 /slam/lidar_odom，模拟 lio_odom_bridge。"""
 
-class OdomSource(Node):
-    """在后台以 10 Hz 发 /slam/lidar_odom，模拟 lio_odom_bridge。"""
+        def __init__(self, topic):
+            super().__init__('test_odom_source')
+            self.pub = self.create_publisher(Odometry, topic, BRIDGE_QOS)
+            self._stop = threading.Event()
+            self._thread = threading.Thread(target=self._loop, daemon=True)
 
-    def __init__(self, topic):
-        super().__init__('test_odom_source')
-        self.pub = self.create_publisher(Odometry, topic, BRIDGE_QOS)
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._loop, daemon=True)
+        def start(self):
+            self._thread.start()
 
-    def start(self):
-        self._thread.start()
+        def _loop(self):
+            while not self._stop.is_set():
+                msg = Odometry()
+                msg.header.frame_id = 'map'
+                msg.child_frame_id = 'base_link'
+                msg.pose.pose.position.x = 1.25
+                msg.pose.pose.orientation.w = 1.0
+                self.pub.publish(msg)
+                self._stop.wait(0.1)
 
-    def _loop(self):
-        while not self._stop.is_set():
-            msg = Odometry()
-            msg.header.frame_id = 'map'
-            msg.child_frame_id = 'base_link'
-            msg.pose.pose.position.x = 1.25
-            msg.pose.pose.orientation.w = 1.0
-            self.pub.publish(msg)
-            self._stop.wait(0.1)
-
-    def stop(self):
-        self._stop.set()
-        self._thread.join(timeout=2.0)
+        def stop(self):
+            self._stop.set()
+            self._thread.join(timeout=2.0)
 
 
 @pytest.fixture

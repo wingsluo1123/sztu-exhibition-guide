@@ -28,6 +28,24 @@ B3），正好也是 0.05 m/格，而 Nav2 `map_server` 的惯例分辨率同样
 用法:
     tools/run_lio_live.sh --bridge -t 180 --map      # 先录（要 --map）
     tools/gridmap.py <run_dir> -o map                # 出 map.pgm/.yaml/.png
+
+重力方向（`R_grav`）从哪来，按这个顺序，**每次都会印出来用的是哪一路**：
+  1. `bridge.log` 里转接层实测的那个值 —— 最好，和 `/slam/lidar_odom` 用
+     的是同一个数，图和里程计严格同系。只有 `--bridge` 那种跑法才有这个
+     文件。
+  2. 包里的 `/imu` 开头静止段。
+  3. 都没有就拿**轨迹自己的平面**：机器人走在地上，一趟铺开了面积的轨迹，
+     其最小方差方向就是"上"。走直线或者上下过台阶会被判据拒掉。
+
+**不要**退到 `(0,0,1)`。上面第二段写了 `/cloud_registered` 的 z 不是重力
+方向，36 m 那族包实测正是如此 —— 轨迹范围 0.4 x 4.5 x 8.3 m，铺开的是
+y-z 面，竖直在 x 上。拿 z 当上，`fit_ground` 会在一个根本不是地面的带子里
+凑出个平面（实测报"和重力差 7.62°"、厚度 10 mm，看着还很可信），图幅从
+30 x 23 m 缩成 7.5 x 15.6 m，**全错且不报错**。
+
+第 3 路用轨迹而不是用点云，是为了让后面地面 RANSAC 印的倾角还能当**独立
+校验**：一个来自里程计，一个来自雷达回波，对得上才说明这个系是对的。
+从点云估 up 再用点云验 up 是循环论证。
 """
 
 import argparse
@@ -275,6 +293,137 @@ def sensor_origins(bag, R):
     return out
 
 
+def resolve_up(run_dir, bag, explicit=None):
+    """定重力方向，三路依次退，**返回时带上用的是哪一路**。
+
+    返回 (up, 误差上界（度）, 说明文字)。文件头记了三路各自的来源和代价；
+    这里只管选，不管印 —— 印在 main 里，因为第 3 路要和地面 RANSAC 的
+    实测倾角一起看才有意义。
+
+    为什么要有退路：`gravity_from_log` 只在 `--bridge` 那种跑法下有东西可读
+    （bridge.log 是转接层写的），而这个工具的用法写的是 `--map`。
+    原来没退路，run_dir 里没有 bridge.log 就直接
+    `TypeError: cannot unpack non-iterable NoneType` —— 展厅那趟建图
+    （ROADMAP B3「把要用的区域走一遍」）会原地撞上这个。
+    """
+    from check_lever import IMU_TOPIC, gravity_from_imu, gravity_from_log
+
+    if explicit is not None:
+        up = np.array(explicit, dtype=float)
+        norm = np.linalg.norm(up)
+        if norm < 1e-9:
+            raise SystemExit('--up 给的是零向量')
+        return up / norm, 0.0, '命令行 --up'
+
+    got = gravity_from_log(run_dir)
+    if got is not None:
+        up, bound = got
+        return up, bound, 'bridge.log（转接层实测，和 /slam/lidar_odom 同一个值）'
+
+    imu = _read_imu_if_present(bag, IMU_TOPIC)
+    if imu:
+        got = gravity_from_imu(imu)
+        if got is not None:
+            up, bound = got
+            return up, bound, f'包里的 {IMU_TOPIC} 开头静止段'
+
+    # 第 3 路：拿**轨迹自己的平面**当地面。机器人是走在地上的，所以一趟
+    # 铺开了面积的轨迹，它的最小方差方向就是"上"。
+    #
+    # 这里**不能**退到 (0,0,1)。文件头第一段就写了 `/cloud_registered` 的 z
+    # 不是重力方向，而 36 m 那族包实测正是如此：轨迹范围 0.4 x 4.5 x 8.3 m，
+    # 铺开的是 y-z 面，竖直方向在 x 上。拿 z 当上，`fit_ground` 会在一个
+    # 根本不是地面的带子里凑出个平面（实测报"和重力差 7.62°"），图幅缩成
+    # 7.5 x 15.6 m，全错，而且**不报错**。
+    #
+    # 用轨迹而不是用点云，是为了让后面地面 RANSAC 的倾角还能当**独立**的
+    # 校验：一个来自里程计，一个来自雷达回波，对得上才说明这个系是对的。
+    # 从点云估 up 再用点云验 up 就是循环论证。
+    up, resid, nfit = _up_from_trajectory(bag)
+    if up is None:
+        raise SystemExit(
+            '定不出重力方向：没有 bridge.log、包里没有 IMU、轨迹也不够铺开\n'
+            '（轨迹退路要求走出一个面，走直线定不出平面的法向）。\n'
+            '用 --up x,y,z 手给，或者用 --bridge 重录一趟。')
+    return up, None, (f'轨迹平面（{nfit} 个位姿，离平面的残差 '
+                      f'{resid*1000:.0f} mm）')
+
+
+def _up_from_trajectory(bag, min_span=1.0, max_resid=0.25):
+    """从 /Odometry 的轨迹拟合出"上"。
+
+    返回 (up, 残差 m, 位姿数)；铺不开或者不够平就返回 (None, ..., ...)。
+
+    判据是显式的，不是"看着差不多"：
+      * 第二大的奇异值对应的展布要 >= min_span 米 —— 走直线的话它接近 0，
+        平面的法向就没定义，必须拒掉而不是随便给个方向。
+      * 残差（第三个奇异值对应的展布）要 < max_resid 米 —— 机器人走的是
+        一层平地，超了说明这趟上下过台阶／楼层，"一个平面"这个前提不成立。
+    符号：法向指向**远离点云重心**的一侧。雷达装在胸口，看到的东西
+    （地面、家具、墙脚）整体在脚底板下方那一侧，所以背着它就是上。
+    """
+    from check_lever import read_topics
+    P = []
+    for _, m in read_topics(bag, ['/Odometry'])['/Odometry']:
+        p = m.pose.pose.position
+        P.append([p.x, p.y, p.z])
+    P = np.asarray(P, dtype=float)
+    if len(P) < 10:
+        return None, 0.0, len(P)
+    c = P.mean(axis=0)
+    s, V = np.linalg.svd(P - c, full_matrices=False)[1:]
+    span = s / math.sqrt(len(P))      # 奇异值换算成米（各方向的 RMS 展布）
+    if span[1] < min_span or span[2] >= max_resid:
+        return None, float(span[2]), len(P)
+    n = V[-1]
+
+    # 定符号：拿一小撮点云的重心当参照，法向要背着它。
+    from assemble_map import iter_clouds, xyz_offsets
+    acc, got = np.zeros(3), 0
+    for i, msg in enumerate(iter_clouds(bag, '/cloud_registered')):
+        if i % 37:
+            continue
+        ox, oy, oz = xyz_offsets(msg)
+        buf = np.frombuffer(bytes(msg.data), dtype=np.uint8)
+        buf = buf.reshape(-1, msg.point_step)[:msg.width * msg.height]
+        xyz = np.column_stack([buf[:, o:o + 4].copy().view(np.float32).ravel()
+                               for o in (ox, oy, oz)]).astype(np.float64)
+        xyz = xyz[np.isfinite(xyz).all(axis=1)]
+        if len(xyz):
+            acc += xyz.mean(axis=0)
+            got += 1
+        if got >= 24:
+            break
+    if got and (acc / got - c) @ n > 0:
+        n = -n
+    return n, float(span[2]), len(P)
+
+
+def _read_imu_if_present(bag, topic):
+    """包里有 IMU 就读出来，没有就返回 []（**不报错**）。
+
+    不用 check_lever.read_topics：那个函数缺话题就 SystemExit，
+    而这里"没有 IMU"是个正常情况，要能往下退。
+    """
+    import sqlite3
+
+    from rclpy.serialization import deserialize_message
+    from sensor_msgs.msg import Imu
+
+    db = sqlite3.connect(bag)
+    try:
+        row = db.execute('select id from topics where name=?',
+                         (topic,)).fetchone()
+        if row is None:
+            return []
+        return [(ts, deserialize_message(bytes(blob), Imu))
+                for ts, blob in db.execute(
+                    'select timestamp,data from messages where topic_id=? '
+                    'order by timestamp', (row[0],))]
+    finally:
+        db.close()
+
+
 def stream_frames(bag, topic, odo, R, stride=1):
     """一帧一帧地吐 (原点, 重力系下的点)，**不在内存里留住任何一帧**。
 
@@ -319,13 +468,26 @@ def main():
     ap.add_argument('--min-free', type=int, default=2,
                     help='被穿过几次才算空闲')
     ap.add_argument('--topic', default='/cloud_registered')
+    ap.add_argument('--up', default=None,
+                    help='重力方向 "x,y,z"，覆盖自动探测。'
+                         '不给就按 bridge.log -> 包里的 IMU -> FAST-LIO 的 z '
+                         '依次退，用了哪一路会印出来')
     args = ap.parse_args()
 
-    from check_lever import find_bag, gravity_from_log, gravity_align_matrix
+    from check_lever import find_bag, gravity_align_matrix
 
-    up, _ = gravity_from_log(args.run_dir)
-    R = gravity_align_matrix(up)
     bag = find_bag(args.run_dir)
+    explicit = None
+    if args.up:
+        explicit = [float(s) for s in args.up.split(',')]
+        if len(explicit) != 3:
+            raise SystemExit('--up 要三个数，逗号分隔')
+    up, up_bound, up_src = resolve_up(args.run_dir, bag, explicit)
+    R = gravity_align_matrix(up)
+    print(f'重力方向来自：{up_src}')
+    print(f'  上 = [{up[0]:+.4f}, {up[1]:+.4f}, {up[2]:+.4f}]'
+          + (f'，误差 <= {up_bound:.4f}°' if up_bound is not None else ''))
+    fallback_up = up_bound is None
     odo = sensor_origins(bag, R)
     lo, hi = args.slab
 
@@ -373,6 +535,14 @@ def main():
         print(f'      差 {tilt:.2f}° 不小 —— 按 z 常数切会在 '
               f'{0.5/math.tan(math.radians(tilt)):.0f} m 外切穿地面。'
               '这里按平面算，没这个问题。')
+    if fallback_up:
+        # 退到轨迹平面时，这个倾角是**独立**的校验：up 来自里程计，
+        # 这个平面来自雷达回波。两者该基本重合。
+        print(f'      ↑ 这个数是独立校验：重力方向是从轨迹（里程计）定的，'
+              f'这个平面是从雷达回波拟合的。差 {tilt:.2f}°。')
+        if tilt > 3.0:
+            print('      ⚠ 差太多了，两条独立的路对不上 —— 这张图别拿去'
+                  '定点位。用 --bridge 重录一趟拿 bridge.log，或 --up 手给。')
 
     x0, y0 = lo_xy - 1.0
     x1, y1 = hi_xy + 1.0

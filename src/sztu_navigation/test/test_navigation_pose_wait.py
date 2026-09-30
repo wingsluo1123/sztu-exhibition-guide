@@ -21,80 +21,92 @@ NavigationManager 起步前等位姿的测试（**需要真 rclpy 和 aimdk_msgs
   4. set_goal 单独调（非阻塞路径）在没人转节点时仍然会拒 —— 把故障机理钉住
 """
 
+import importlib.util
 import threading
 import time
 
 import pytest
 
-rclpy = pytest.importorskip('rclpy', reason='需要 ROS 2 环境（source setup.sh）')
-
-# **这里不能写 `pytest.importorskip('aimdk_msgs')`。**
-# 本包的 conftest.py 在收集之前就往 sys.modules 里注入了一个**假**
-# aimdk_msgs（给纯函数用例用的，见 sztu_interaction.testing）。importorskip
-# 只问"能不能 import"，对着替身当然能，于是这组用例会一路跑到建真订阅那一步
-# 才炸，报成 4 个 ERROR：
+# **不要**在这儿写 `pytest.importorskip(...)` 或者
+# `pytest.skip(..., allow_module_level=True)`。pytest 6.2.5（Humble 带的这版）
+# 上，目录里只要有一个文件在**模块级**跳过，整个目录的收集就被掐断 ——
+# 兄弟文件一个都不收，而且结论是"N skipped"，**报成功**。
+# 实测：只 source ROS 和本仓库、不 source aimdk_ws 时，本包 `pytest` 得到
+# `1 skipped`（本该是 126 passed）。缺 SDK 的环境正是最需要那 126 条跑起来的
+# 环境，门禁却恰好在那里空转。`pytest.mark.skipif` 在**收集之后**才判，没这毛病。
+#
+# 判据仍然是"**真**包在不在"，不是"能不能 import"：本包 conftest.py 在收集前
+# 就往 sys.modules 里塞了个**假** aimdk_msgs（给纯函数用例用，见
+# sztu_interaction.testing）。对着替身 import 当然成功，这组用例会一路跑到建真
+# 订阅那一步才炸成 4 个 ERROR：
 #     AttributeError: type object 'type' has no attribute '_TYPE_SUPPORT'
-# 真机上装了真 SDK 时一直是绿的，只有在缺 SDK 的环境里才现形 —— 一条本该
-# "跳过"的路悄悄变成了"错误"。判据要问的是**真包在不在**。
+# 真机上装了真 SDK 时一直是绿的，只有缺 SDK 的环境里才现形 —— 一条本该"跳过"
+# 的路悄悄变成了"错误"。所以这里用 aimdk_msgs_available()，不用 find_spec。
 from sztu_interaction.testing import aimdk_msgs_available          # noqa: E402
 
-if not aimdk_msgs_available():
-    pytest.skip('需要厂商 SDK 的真 aimdk_msgs（本包 conftest 注入的是替身）',
-                allow_module_level=True)
+_HAVE = (importlib.util.find_spec('rclpy') is not None
+         and aimdk_msgs_available())
 
-from nav_msgs.msg import Odometry                                   # noqa: E402
-from rclpy.node import Node                                         # noqa: E402
-from rclpy.qos import (                                             # noqa: E402
-    QoSDurabilityPolicy,
-    QoSHistoryPolicy,
-    QoSProfile,
-    QoSReliabilityPolicy,
-)
+pytestmark = pytest.mark.skipif(
+    not _HAVE, reason='需要 ROS 2 环境和厂商 SDK 的真 aimdk_msgs（本包 conftest '
+                      '注入的是替身）')
 
-from sztu_navigation.navigation_manager import NavigationManager    # noqa: E402
+# 模块体照样会被执行（skipif 只挡用例不挡导入），所以下面这些必须包起来，
+# 否则缺 SDK 时就从"跳过"变成"收集报错"。
+if _HAVE:
+    import rclpy                                                    # noqa: E402
+    from nav_msgs.msg import Odometry                               # noqa: E402
+    from rclpy.node import Node                                     # noqa: E402
+    from rclpy.qos import (                                         # noqa: E402
+        QoSDurabilityPolicy,
+        QoSHistoryPolicy,
+        QoSProfile,
+        QoSReliabilityPolicy,
+    )
 
-# 和 lio_odom_bridge.py:151-155 的发布端一致，照抄是故意的：这组用例同时也在
-# 验 QoS 兼容（两端都 BEST_EFFORT）。哪天发布端改了，这里要跟着改并重新验。
-BRIDGE_QOS = QoSProfile(
-    history=QoSHistoryPolicy.KEEP_LAST,
-    depth=5,
-    reliability=QoSReliabilityPolicy.BEST_EFFORT,
-    durability=QoSDurabilityPolicy.VOLATILE,
-)
+    from sztu_navigation.navigation_manager import NavigationManager  # noqa: E402
 
-# 真机上不存在的私有话题。见 test_slam_localization_wait.py 里同样的理由。
-TEST_ODOM_TOPIC = '/test_only/navigation_pose_wait/odom'
+    # 和 lio_odom_bridge.py:151-155 的发布端一致，照抄是故意的：这组用例同时
+    # 也在验 QoS 兼容（两端都 BEST_EFFORT）。哪天发布端改了，这里要跟着改。
+    BRIDGE_QOS = QoSProfile(
+        history=QoSHistoryPolicy.KEEP_LAST,
+        depth=5,
+        reliability=QoSReliabilityPolicy.BEST_EFFORT,
+        durability=QoSDurabilityPolicy.VOLATILE,
+    )
 
+    # 真机上不存在的私有话题。见 test_slam_localization_wait.py 里同样的理由。
+    TEST_ODOM_TOPIC = '/test_only/navigation_pose_wait/odom'
 
-class OdomSource(Node):
-    """在后台以 10 Hz 发位姿，模拟 lio_odom_bridge。"""
+    class OdomSource(Node):
+        """在后台以 10 Hz 发位姿，模拟 lio_odom_bridge。"""
 
-    def __init__(self, topic=TEST_ODOM_TOPIC):
-        super().__init__('test_nav_odom_source')
-        self.pub = self.create_publisher(Odometry, topic, BRIDGE_QOS)
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._loop, daemon=True)
+        def __init__(self, topic=TEST_ODOM_TOPIC):
+            super().__init__('test_nav_odom_source')
+            self.pub = self.create_publisher(Odometry, topic, BRIDGE_QOS)
+            self._stop = threading.Event()
+            self._thread = threading.Thread(target=self._loop, daemon=True)
 
-    def start(self):
-        self._thread.start()
+        def start(self):
+            self._thread.start()
 
-    def publish_once(self):
-        msg = Odometry()
-        msg.header.frame_id = 'map'
-        msg.child_frame_id = 'base_link'
-        msg.pose.pose.position.x = 2.5
-        msg.pose.pose.orientation.w = 1.0
-        self.pub.publish(msg)
+        def publish_once(self):
+            msg = Odometry()
+            msg.header.frame_id = 'map'
+            msg.child_frame_id = 'base_link'
+            msg.pose.pose.position.x = 2.5
+            msg.pose.pose.orientation.w = 1.0
+            self.pub.publish(msg)
 
-    def _loop(self):
-        while not self._stop.is_set():
-            self.publish_once()
-            self._stop.wait(0.1)
+        def _loop(self):
+            while not self._stop.is_set():
+                self.publish_once()
+                self._stop.wait(0.1)
 
-    def stop(self):
-        self._stop.set()
-        if self._thread.is_alive():
-            self._thread.join(timeout=2.0)
+        def stop(self):
+            self._stop.set()
+            if self._thread.is_alive():
+                self._thread.join(timeout=2.0)
 
 
 @pytest.fixture
