@@ -61,6 +61,17 @@ exhibition_points:
       w: 0.855  # cos(-62.4°/2)
     lecture_duration: 30
 
+# 讲解词写好了、但这张图上放不下的点位。
+# 它们不参与这一趟，但 content_*.yaml 里的讲解词要留着给展厅用。
+# 这个名单**不是免检牌**：里面的 id 必须真的有讲解词，而且一旦对应点位
+# 上线就要从这儿删掉（有测试盯着这两条）。拼错的 id 照样会被查出来。
+pending_points:
+  - "point_03"   # 分布式软总线
+  - "point_04"   # 智能家居
+  - "point_05"   # 互动体验区
+  - "point_06"   # 智慧办公
+  - "point_07"   # 未来展望
+
 # 导航参数
 navigation:
   position_tolerance: 0.3

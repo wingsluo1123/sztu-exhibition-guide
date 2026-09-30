@@ -85,13 +85,56 @@ def test_every_waypoint_has_content(waypoints, contents, lang):
     assert not missing, f'{lang} 缺少这些点位的讲解内容: {missing}'
 
 
+@pytest.fixture(scope='module')
+def raw_waypoints(config_dir):
+    """点位文件的原始 yaml —— pending_points 不在 WaypointConfig 里。"""
+    with open(os.path.join(config_dir, 'waypoints.yaml'), 'r',
+              encoding='utf-8') as f:
+        return yaml.safe_load(f) or {}
+
+
+@pytest.fixture(scope='module')
+def pending(raw_waypoints):
+    return set(raw_waypoints.get('pending_points') or [])
+
+
+def _orphans(content_ids, point_ids, pending_ids):
+    """讲解词里既不对应现役点位、也没被显式挂起的 id。"""
+    return sorted(set(content_ids) - set(point_ids) - set(pending_ids))
+
+
 @pytest.mark.parametrize('lang', sorted(LANGUAGES))
-def test_no_orphan_content_entries(waypoints, contents, lang):
-    """写了讲解词却没有对应点位 —— 要么点位被删了，要么 id 拼错了。"""
+def test_no_orphan_content_entries(waypoints, contents, pending, lang):
+    """写了讲解词却没有对应点位 —— 要么点位被删了，要么 id 拼错了。
+
+    测试房间的图只放得下 2 个点，剩下 5 个点的讲解词要留给展厅，所以
+    waypoints.yaml 里用 pending_points 把它们显式挂起。挂起的才放过，
+    没挂起的照样红 —— 见下面两条测试，那个名单自己也被盯着。
+    """
     content = contents[lang].get('content') or {}
-    ids = set(waypoints.ids())
-    orphans = sorted(set(content) - ids)
+    orphans = _orphans(content, waypoints.ids(), pending)
     assert not orphans, f'{lang} 有讲解内容但没有对应点位: {orphans}'
+
+
+def test_a_typo_is_still_caught_despite_the_pending_list():
+    """负对照：挂起名单不能顺带把拼错的 id 一起放过。"""
+    assert _orphans({'point_01', 'pont_03'}, {'point_01'}, {'point_03'}) == \
+        ['pont_03']
+
+
+def test_pending_points_are_dropped_once_the_point_goes_live(waypoints,
+                                                             pending):
+    """上线了还挂在 pending 里 —— 那张名单就变成永久免检牌了。"""
+    stale = sorted(pending & set(waypoints.ids()))
+    assert not stale, f'这些点位已经上线，要从 pending_points 里删掉: {stale}'
+
+
+@pytest.mark.parametrize('lang', sorted(LANGUAGES))
+def test_pending_points_actually_have_content(contents, pending, lang):
+    """挂起的 id 必须真有讲解词，否则它自己就是个拼错的名字。"""
+    content = contents[lang].get('content') or {}
+    ghosts = sorted(pending - set(content))
+    assert not ghosts, f'{lang} 里 pending_points 这几个 id 没有讲解词: {ghosts}'
 
 
 def test_both_languages_cover_the_same_points(contents):
