@@ -36,6 +36,7 @@ id 一变讲解内容就对不上了。所以 id / name / name_en / lecture_dura
 """
 
 import argparse
+import heapq
 import math
 import os
 import sys
@@ -418,6 +419,50 @@ def spread_pick(cand, start, n, spacing):
         d = np.minimum(d, np.hypot(cand[:, 0] - cand[far][0],
                                    cand[:, 1] - cand[far][1]))
     return np.asarray(picked)
+
+
+def widest_corridor(clr, free, a, b, res, x0, y0):
+    """a 走到 b，沿途最小净空**最多**能有多宽（米）。走不通返回 None。
+
+    最大瓶颈路径（Dijkstra 把"加法松弛"换成"取 min"）。这个数回答的是一个
+    别的判据都回答不了的问题：**这个房间物理上允许机器人在半路停下吗。**
+
+    为什么需要它：2026-09-30 实测房间里三个停留点两两之间直线都被墙挡住，
+    看起来"加几个中转点绕过去"就行。但中转点也是机器人**要停的地方**
+    （`navigate_to` 到点即停车），一样要满净空 = 半径 + 容差 + 滑行。
+    这个函数量出来那三条通路最宽只有 0.70~0.75 m，而停车要 0.95 m ——
+    所以中转点在这个房间里根本放不下，加了也是撞。没有这个数就会去实现
+    一个在本房间里注定用不了的功能。
+
+    通行判据只要 `free`（未知格不算通），瓶颈取净空本身 —— 调用方拿返回值
+    和自己的门槛比，函数不预设门槛。
+    """
+    h, w = clr.shape
+    ia, ja = to_cell([a], res, x0, y0)
+    ib, jb = to_cell([b], res, x0, y0)
+    src = (int(ja[0]), int(ia[0]))
+    dst = (int(jb[0]), int(ib[0]))
+    for iy, ix in (src, dst):
+        if not (0 <= iy < h and 0 <= ix < w) or not free[iy, ix]:
+            return None
+
+    best = np.zeros((h, w))
+    best[src] = clr[src]
+    pq = [(-clr[src], src[0], src[1])]
+    while pq:
+        nb, iy, ix = heapq.heappop(pq)
+        cap = -nb
+        if cap < best[iy, ix] - 1e-12:
+            continue                      # 过期的堆项
+        if (iy, ix) == dst:
+            return float(cap)
+        for jy, jx in ((iy + 1, ix), (iy - 1, ix), (iy, ix + 1), (iy, ix - 1)):
+            if 0 <= jy < h and 0 <= jx < w and free[jy, jx]:
+                nxt = min(cap, clr[jy, jx])
+                if nxt > best[jy, jx] + 1e-12:
+                    best[jy, jx] = nxt
+                    heapq.heappush(pq, (-nxt, jy, jx))
+    return None
 
 
 def nudge_to_clear(x, y, yaw, cand, res, x0, y0, max_m):
@@ -904,6 +949,10 @@ def main():
                          'position_tolerance + --coast 从配置里推 —— 机器人'
                          '不会停在点位上，容差带边缘加滑行才是它真能到的最远处。'
                          '给的值小于推出来的会被拒（现在没有避障兜底）。')
+    ap.add_argument('--drop-unreachable', action='store_true',
+                    help='有点位从别处直线走不过去时，丢掉它、用剩下的点组'
+                         '路线，而不是整个报错退出。默认不丢 —— 悄悄少一个'
+                         '点位比报错难发现。丢掉哪些会打印出来。')
     ap.add_argument('--reorder-only', action='store_true',
                     help='不重新选点：读 -c 里已有的坐标，只重排巡游顺序并'
                          '重算朝向。不需要 --bag（重排只用地图）。')
@@ -1120,10 +1169,36 @@ def main():
     # 第 0 个点（出发点那个）永远排在最前，不参与重排。
     order, dropped = tour_order(pts, is_clear)
     if dropped:
-        raise SystemExit(
-            f'第 {[i + 1 for i in dropped]} 个点从别的点直线走不过去，'
-            '排不进路线。没写出配置。\n'
-            '没有避障的时候，一条不畅通的边就是一次撞墙。')
+        # 走不过去的点：先把**为什么**量出来再说，不然人只知道"不通"，
+        # 不知道该加中转点、该收紧容差、还是这房间根本不行。
+        need_stop = args.radius + margin
+        free = grid == PGM_FREE
+        print(f'\n第 {[i + 1 for i in dropped]} 个点从别的点直线走不过去。'
+              '量一下这个房间到底允许多宽的通路：')
+        for i in dropped:
+            for j in order:
+                wide = widest_corridor(clr, free, pts[j], pts[i], res, x0, y0)
+                if wide is None:
+                    print(f'  第 {j + 1} -> 第 {i + 1} 个：连自由格都连不通')
+                    continue
+                verdict = ('中转点放得下' if wide >= need_stop - 1e-9
+                           else f'中转点放不下（停车要 {need_stop:.2f} m）')
+                print(f'  第 {j + 1} -> 第 {i + 1} 个：最宽通路沿途最小净空 '
+                      f'{wide:.2f} m —— 通行够（要 {args.radius:.2f}），'
+                      f'{verdict}')
+        if not args.drop_unreachable:
+            raise SystemExit(
+                f'第 {[i + 1 for i in dropped]} 个点排不进路线，没写出配置。\n'
+                '没有避障的时候，一条不畅通的边就是一次撞墙。\n'
+                '上面每条通路的宽度决定了下一步该做什么：\n'
+                f'  - 宽度 ≥ {need_stop:.2f} m：加中转点就能绕过去；\n'
+                f'  - 宽度 < {need_stop:.2f} m：中转点也是要停车的地方，放不下。'
+                '只能实测滑行距离把 --coast 降下来，\n'
+                '    或者收紧 position_tolerance，或者把那段路上的东西挪开。\n'
+                '要先拿能走通的那几个点跑起来：加 --drop-unreachable。')
+        print(f'  ! --drop-unreachable：丢掉第 {[i + 1 for i in dropped]} 个，'
+              f'用剩下 {len(order)} 个点组路线。'
+              '**讲解词按顺序往前顶**，被丢掉那个点的词这趟不会讲。')
     before = _tour_len(pts)
     pts = pts[order]
     if fixed_yaws is not None:

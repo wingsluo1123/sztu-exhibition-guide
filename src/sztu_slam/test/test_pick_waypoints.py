@@ -24,6 +24,7 @@ from pick_waypoints import (                                    # noqa: E402
     reachable,
     render_check_png, render_yaml, required_margin, spread_pick, to_cell,
     tour_order, yaw_to_quat,
+    widest_corridor,
 )
 from gridmap import (                                           # noqa: E402
     PGM_FREE, PGM_OCC, PGM_PATH, PGM_UNK, write_pgm,
@@ -1072,3 +1073,85 @@ def test_render_check_png_can_leave_the_legs_out(tmp_path):
     assert (without == MARK_LEG).sum() == 0, 'legs=False 还是画了航段'
     # 点本身照样要画出来
     assert (without == MARK_POINT).sum() > 0
+
+
+def _two_rooms(gap_m, res=RES, w_m=8.0, h_m=6.0, gap_y_m=1.5):
+    """中间一道隔墙，墙上开一个 gap_m 宽的口子。返回 (grid, res, x0, y0)。
+
+    口子的净空是算得出来的：门框两侧各一堵墙，门中心到最近墙面正好 gap/2，
+    所以最宽通路的瓶颈就是 gap/2。不用"差不多"，这个数是闭式的。
+
+    门故意**不开在房间中线上**（默认 y=1.5 m，而测试都拿 y=3.0 m 的两点问）
+    —— 开在中线上的话，那两点之间的直线正好穿过门洞，"直线被挡住"这个
+    负对照就失效了（第一版就是这么写错的，测试自己报了出来）。
+    """
+    g, res, x0, y0 = room(w_m, h_m, res)
+    mid = g.shape[1] // 2
+    g[:, mid] = PGM_OCC                     # 整道隔墙
+    half = int(round(gap_m / 2 / res))
+    cy = int(round(gap_y_m / res))
+    # 夹一下：门比 gap_y_m 到墙的距离还宽时，负下标会被 numpy 当成"从末尾数"
+    # 而切出一个**空**切片 —— 门就没开出来，测试会拿到 None 而看不出原因。
+    g[max(cy - half, 1):cy + half, mid] = PGM_FREE  # 开口
+    return g, res, x0, y0
+
+
+def test_widest_corridor_finds_the_doorway_width_not_the_straight_line():
+    """瓶颈 = 门洞半宽，而且直线被墙挡住时它照样能找到绕路。
+
+    这一条钉的是这个工具做决定时依赖的那个数：门洞 1.0 m 宽，机器人在门
+    中心时离两边门框各 0.5 m，所以最宽通路的沿途最小净空就是 0.50 m ——
+    不是门宽 1.0，也不是直线上的 0。差这个 2 倍就会得出相反的结论
+    （"中转点放得下" vs "放不下"）。
+    """
+    g, res, x0, y0 = _two_rooms(1.0)
+    clr = clearance(g, res)
+    free = g == PGM_FREE
+    a, b = (2.0, 3.0), (6.0, 3.0)           # 隔墙两侧
+    assert not path_is_clear(clr, a, b, res, x0, y0, 0.40), \
+        '负对照失效：这条直线本来就该被隔墙挡住'
+    wide = widest_corridor(clr, free, a, b, res, x0, y0)
+    assert wide == pytest.approx(0.5, abs=1.5 * res), wide
+
+
+def test_widest_corridor_gets_wider_when_the_doorway_does():
+    """门开大一倍，瓶颈也该跟着大一倍 —— 否则它量的不是门。
+
+    只验一个门宽的话，一个"返回房间里最大净空"的实现也能过。
+    """
+    vals = []
+    for gap in (0.6, 1.2, 2.4):
+        g, res, x0, y0 = _two_rooms(gap)
+        clr = clearance(g, res)
+        wide = widest_corridor(clr, g == PGM_FREE, (2.0, 3.0), (6.0, 3.0),
+                               res, x0, y0)
+        vals.append(wide)
+        assert wide == pytest.approx(gap / 2, abs=1.5 * res), (gap, wide)
+    assert vals[0] < vals[1] < vals[2]
+
+
+def test_widest_corridor_is_none_when_the_wall_is_solid():
+    """负对照：隔墙不开口就返回 None，不能给一个"最宽 0.0"糊过去。
+
+    0.0 和 None 的区别很要紧：0.0 会被"和门槛比大小"的调用方当成"有通路
+    但很窄"，而实际是根本没有通路。
+    """
+    g, res, x0, y0 = room(8.0, 6.0)
+    g[:, g.shape[1] // 2] = PGM_OCC
+    clr = clearance(g, res)
+    assert widest_corridor(clr, g == PGM_FREE, (2.0, 3.0), (6.0, 3.0),
+                           res, x0, y0) is None
+    # 同一张图上，同侧的两点必须连通 —— 不然 None 可能是别的原因
+    assert widest_corridor(clr, g == PGM_FREE, (2.0, 3.0), (3.0, 4.0),
+                           res, x0, y0) is not None
+
+
+def test_widest_corridor_does_not_route_through_unknown():
+    """未知格不算通路。没看过的地方不能假设能走 —— 和 clearance 同一条口径。"""
+    g, res, x0, y0 = _two_rooms(1.0)
+    mid = g.shape[1] // 2
+    col = g[:, mid]
+    col[col == PGM_FREE] = PGM_UNK          # 把门洞整个换成"没看过"
+    clr = clearance(g, res)
+    assert widest_corridor(clr, g == PGM_FREE, (2.0, 3.0), (6.0, 3.0),
+                           res, x0, y0) is None
