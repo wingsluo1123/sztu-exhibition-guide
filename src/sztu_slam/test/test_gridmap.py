@@ -27,6 +27,7 @@ from gridmap import (  # noqa: E402
     draw_path,
     classify,
     fit_ground,
+    floor_side,
     ray_samples,
     write_pgm,
     write_png,
@@ -436,3 +437,114 @@ def test_the_shell_one_liner_that_reads_sztu_up_actually_works(tmp_path):
                          capture_output=True, text=True).stdout.strip()
     assert got == '-0.998875,0.027349,-0.038753', (
         f'awk 取出来的是 {got!r}，和写进去的对不上')
+
+
+# --- 重力方向的**符号** -----------------------------------------------------
+#
+# 这组用例是 2026-09-30 那个 bug 的产物：`_up_from_trajectory` 原来拿
+# "法向背着点云重心"定符号，把测试房间那张图整个摊反了（`sztu_up` 记成了
+# 物理上的"下"），而地面 RANSAC 那条"独立校验"比的是**轴**不是符号，
+# 于是 0.10° 的一致性照样绿。图、点位、起步朝向全建在反的系上。
+#
+# 教训还是那条：判据不能用代理量（点云重心），而且判据本身要有合成测试。
+
+def room_projection(sensor_h=1.02, ceiling_h=2.91, extent=6.0,
+                    n_floor=5000, n_ceil=3000, n_wall=8000, seed=3):
+    """造一个房间沿竖直方向的投影 `t`，原点在轨迹（传感器）高度上。
+
+    尺寸照测试房间的实测值：雷达离地 1.02 m、离天花板 2.91 m。
+    墙是竖的，投影上摊成一层平背景 —— 这正是"平面才会堆出尖峰"的依据。
+    """
+    rng = np.random.default_rng(seed)
+    floor = -sensor_h + rng.normal(0, 0.005, n_floor)
+    ceil = +ceiling_h + rng.normal(0, 0.005, n_ceil)
+    wall = rng.uniform(-sensor_h, ceiling_h, n_wall)   # 墙：铺满整个高度
+    return np.concatenate([floor, ceil, wall]), extent
+
+
+def test_floor_side_picks_the_floor_not_the_ceiling():
+    """地面在 -n 那侧 -> 返回 -1，且报出来的离地高度要准。"""
+    t, _ = room_projection()
+    side, h = floor_side(t)
+    assert side == -1
+    assert h == pytest.approx(1.02, abs=0.05)
+
+
+def test_floor_side_is_antisymmetric():
+    """把法向取反，答案必须跟着取反 —— 否则就是有一侧被写死了。"""
+    t, _ = room_projection()
+    assert floor_side(-t)[0] == -floor_side(t)[0]
+
+
+def test_the_old_centroid_rule_would_have_got_this_backwards():
+    """负对照：把旧判据在同一份数据上跑一遍，必须看到它指反。
+
+    这条钉的是**旧写法错在哪**。它绿着，说明这组合成数据真的复现了
+    当初那个失效场景，上面两条才有意义；它红了，说明数据造得不像，
+    上面两条也就不能证明什么。
+    """
+    t, _ = room_projection()
+    # 旧判据：法向背着点云重心。地面在 -n 侧，正确答案是"上 = +n"，
+    # 也就是重心应该落在 -n 侧才对；实际它落在 +n 侧。
+    assert t.mean() > 0, '点云重心没落在天花板那侧，这组数据不构成负对照'
+    old_up_sign = -np.sign(t.mean())      # 背着重心
+    new_up_sign = -floor_side(t)[0]       # 背着地面
+    assert old_up_sign != new_up_sign, '旧判据在这组数据上没出错，负对照失效'
+
+
+def test_floor_side_refuses_when_no_layer_is_at_sensor_height():
+    """一层平面都不在合理高度上 -> 报错，不许蒙。"""
+    rng = np.random.default_rng(1)
+    t = np.concatenate([-8.0 + rng.normal(0, 0.005, 5000),
+                        +9.0 + rng.normal(0, 0.005, 5000),
+                        rng.uniform(-8.0, 9.0, 8000)])
+    with pytest.raises(ValueError, match='没有哪一层'):
+        floor_side(t)
+
+
+def test_floor_side_refuses_when_both_sides_are_plausible():
+    """两侧都有平面落在合理高度上 -> 分不清，必须报错。
+
+    现实里这是"雷达装在半层高的位置"或者"地上还有个大平台"，
+    这时候没有任何几何依据能分出上下，只能让人手给。
+    """
+    rng = np.random.default_rng(2)
+    t = np.concatenate([-1.0 + rng.normal(0, 0.005, 5000),
+                        +1.1 + rng.normal(0, 0.005, 5000),
+                        rng.uniform(-1.0, 1.1, 8000)])
+    with pytest.raises(ValueError, match='两侧都有'):
+        floor_side(t)
+
+
+def test_floor_side_ignores_walls_which_make_no_peak():
+    """只有墙（铺满整个高度、堆不出峰）时必须拒，不能把某个格当成地面。"""
+    rng = np.random.default_rng(4)
+    with pytest.raises(ValueError):
+        floor_side(rng.uniform(-1.2, 3.0, 20000))
+
+
+def test_committed_map_up_points_the_same_way_as_the_measured_imu():
+    """钉住结论本身：仓库里那张图的 sztu_up 必须和实测重力同向。
+
+    实测值来自真机 lio_odom_bridge 的静止段（加速度计量的是比力，静止时
+    指向**上**，物理上没有歧义）。两者反号就是图摊反了 —— 这条红了，
+    说明 maps/ 里的图又回到了 2026-09-30 之前那个状态。
+    """
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        '..', '..', '..')
+    path = os.path.join(root, 'maps', 'testroom.yaml')
+    if not os.path.exists(path):
+        pytest.skip('仓库里没有 maps/testroom.yaml')
+    up = None
+    with open(path, encoding='utf-8') as fh:
+        for ln in fh:
+            if ln.startswith('sztu_up:'):
+                up = [float(x) for x in
+                      ln.split('[', 1)[1].split(']', 1)[0].split(',')]
+    assert up is not None, 'maps/testroom.yaml 里没有 sztu_up'
+    measured = np.array([+0.998, -0.019, +0.058])     # 真机 IMU 静止段实测
+    dot = float(np.dot(up / np.linalg.norm(up), measured))
+    assert dot > 0.9, (
+        f'图记的 sztu_up={up} 和实测重力方向的点积是 {dot:+.3f}。\n'
+        '为负说明这张图是在反着的重力系里摊平的：图和位姿差 180°，'
+        '偏航角的正负也跟着反，机器人会往反方向转。')

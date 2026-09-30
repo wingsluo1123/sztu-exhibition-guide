@@ -360,28 +360,98 @@ def resolve_up(run_dir, bag, explicit=None):
     # 用轨迹而不是用点云，是为了让后面地面 RANSAC 的倾角还能当**独立**的
     # 校验：一个来自里程计，一个来自雷达回波，对得上才说明这个系是对的。
     # 从点云估 up 再用点云验 up 就是循环论证。
-    up, resid, nfit = _up_from_trajectory(bag)
+    up, resid, nfit, height = _up_from_trajectory(bag)
     if up is None:
         raise SystemExit(
             '定不出重力方向：没有 bridge.log、包里没有 IMU、轨迹也不够铺开\n'
             '（轨迹退路要求走出一个面，走直线定不出平面的法向）。\n'
             '用 --up x,y,z 手给，或者用 --bridge 重录一趟。')
     return up, None, (f'轨迹平面（{nfit} 个位姿，离平面的残差 '
-                      f'{resid*1000:.0f} mm）')
+                      f'{resid*1000:.0f} mm，雷达离地 {height:.2f} m）')
+
+
+# 传感器离地的合理区间（米）。X2 是胸挂雷达：TF 里 base_link -> 雷达的
+# z 是 0.334，加上 base_link 自己的高度，实测 1.02 m。上限放到 2.0 是为了
+# 兼容装在杆子上的机型 —— 再矮的天花板也有 2.2 m，所以这个区间不会被
+# 地面和天花板同时命中，这正是下面那条判据成立的前提。
+SENSOR_HEIGHT_RANGE = (0.2, 2.0)
+
+
+def floor_side(t, bin_m=0.05, height_range=SENSOR_HEIGHT_RANGE,
+               layer_factor=3.0):
+    """沿法向投影，定"地面在哪一侧"。返回 (+1 或 -1, 传感器离地 m)。
+
+    `t` 是点云各点相对**轨迹质心**、沿法向 n 的有符号距离。返回 +1 表示
+    地面在 +n 那侧（于是"上"是 -n），-1 表示地面在 -n 那侧。
+    定不下来就抛 ValueError —— 宁可让人手给 `--up`，也不要蒙一个。
+
+    **为什么不能用"点云重心在哪边"**（2026-09-30 之前就是这么写的，它把
+    测试房间那张图整个摊反了，而且没有任何东西报错）：胸挂雷达离地
+    1.02 m、离天花板 2.91 m，墙面在雷达上方的部分是下方的两倍多，重心自然
+    落在上方 —— 法向于是被指到了地下。重心是个**代理量**，它和"地面在哪边"
+    之间那层"雷达看到的东西整体在脚下"的假设，在真实房间里根本不成立。
+
+    这里用的是物理量。地面和天花板都会在投影直方图上堆出一个尖峰（墙是竖的，
+    只摊出一层平背景，堆不出峰），而**只有地面**落在传感器离地的合理区间里。
+    判据可证伪：两侧都命中或都不命中，就报错，不猜。
+    """
+    t = np.asarray(t, dtype=float).ravel()
+    t = t[np.isfinite(t)]
+    if len(t) < 100:
+        raise ValueError(f'点太少（{len(t)} 个），定不出地面在哪一侧')
+
+    lo, hi = float(t.min()), float(t.max())
+    nbins = max(int(math.ceil((hi - lo) / bin_m)), 2)
+    cnt, edges = np.histogram(t, bins=nbins, range=(lo, lo + nbins * bin_m))
+    mid = (edges[:-1] + edges[1:]) / 2.0
+
+    nonempty = cnt[cnt > 0]
+    thresh = layer_factor * float(np.median(nonempty))
+    h_min, h_max = height_range
+    # 够高的尖峰 = 一层平面；再筛出落在传感器离地合理区间里的。
+    layer = cnt >= thresh
+    cand = layer & (np.abs(mid) >= h_min) & (np.abs(mid) <= h_max)
+
+    sides = {}
+    for s in (-1, +1):
+        m = cand & (np.sign(mid) == s)
+        if m.any():
+            # 同一层会占好几个格，取最高的那个格当这层的位置。
+            k = int(np.argmax(np.where(m, cnt, -1)))
+            sides[s] = (abs(float(mid[k])), int(cnt[k]))
+
+    def _dump():
+        k = [(float(mid[i]), int(cnt[i])) for i in np.where(layer)[0]]
+        return '，'.join(f'{d:+.2f} m 处 {n} 点' for d, n in k) or '一层都没有'
+
+    if len(sides) == 1:
+        s, (h, _) = next(iter(sides.items()))
+        return s, h
+    if not sides:
+        raise ValueError(
+            f'没有哪一层平面落在传感器离地 {h_min}~{h_max} m 的区间里，'
+            f'定不出地面在哪一侧。找到的平面层：{_dump()}。\n'
+            f'用 --up x,y,z 手给重力方向。')
+    raise ValueError(
+        f'两侧都有平面落在传感器离地 {h_min}~{h_max} m 的区间里'
+        f'（{sides[-1][0]:.2f} m 和 {sides[+1][0]:.2f} m），分不清哪边是地面。'
+        f'找到的平面层：{_dump()}。\n用 --up x,y,z 手给重力方向。')
 
 
 def _up_from_trajectory(bag, min_span=1.0, max_resid=0.25):
     """从 /Odometry 的轨迹拟合出"上"。
 
-    返回 (up, 残差 m, 位姿数)；铺不开或者不够平就返回 (None, ..., ...)。
+    返回 (up, 残差 m, 位姿数, 雷达离地 m)；铺不开或者不够平就返回
+    (None, ..., ..., None)。
 
     判据是显式的，不是"看着差不多"：
       * 第二大的奇异值对应的展布要 >= min_span 米 —— 走直线的话它接近 0，
         平面的法向就没定义，必须拒掉而不是随便给个方向。
       * 残差（第三个奇异值对应的展布）要 < max_resid 米 —— 机器人走的是
         一层平地，超了说明这趟上下过台阶／楼层，"一个平面"这个前提不成立。
-    符号：法向指向**远离点云重心**的一侧。雷达装在胸口，看到的东西
-    （地面、家具、墙脚）整体在脚底板下方那一侧，所以背着它就是上。
+    符号交给 `floor_side` 定，判据是"哪一层平面落在传感器离地的合理高度上"。
+    2026-09-30 之前这里用的是"法向背着点云重心"，**把测试房间那张图整个
+    摊反了**，见 `floor_side` 的文档。
     """
     from check_lever import read_topics
     P = []
@@ -390,19 +460,26 @@ def _up_from_trajectory(bag, min_span=1.0, max_resid=0.25):
         P.append([p.x, p.y, p.z])
     P = np.asarray(P, dtype=float)
     if len(P) < 10:
-        return None, 0.0, len(P)
+        return None, 0.0, len(P), None
     c = P.mean(axis=0)
     s, V = np.linalg.svd(P - c, full_matrices=False)[1:]
     span = s / math.sqrt(len(P))      # 奇异值换算成米（各方向的 RMS 展布）
     if span[1] < min_span or span[2] >= max_resid:
-        return None, float(span[2]), len(P)
+        return None, float(span[2]), len(P), None
     n = V[-1]
 
-    # 定符号：拿一小撮点云的重心当参照，法向要背着它。
+    # 定符号。**不要**拿点云重心当参照 —— 那是代理量，见 floor_side。
+    C = _sample_cloud(bag, '/cloud_registered')
+    side, height = floor_side((C - c) @ n)
+    return -side * n, float(span[2]), len(P), height
+
+
+def _sample_cloud(bag, topic, every=37, max_msgs=60):
+    """从包里稀疏地取一撮点云，拼成 (N, 3)。只用来定重力方向的符号。"""
     from assemble_map import iter_clouds, xyz_offsets
-    acc, got = np.zeros(3), 0
-    for i, msg in enumerate(iter_clouds(bag, '/cloud_registered')):
-        if i % 37:
+    out = []
+    for i, msg in enumerate(iter_clouds(bag, topic)):
+        if i % every:
             continue
         ox, oy, oz = xyz_offsets(msg)
         buf = np.frombuffer(bytes(msg.data), dtype=np.uint8)
@@ -411,13 +488,10 @@ def _up_from_trajectory(bag, min_span=1.0, max_resid=0.25):
                                for o in (ox, oy, oz)]).astype(np.float64)
         xyz = xyz[np.isfinite(xyz).all(axis=1)]
         if len(xyz):
-            acc += xyz.mean(axis=0)
-            got += 1
-        if got >= 24:
+            out.append(xyz)
+        if len(out) >= max_msgs:
             break
-    if got and (acc / got - c) @ n > 0:
-        n = -n
-    return n, float(span[2]), len(P)
+    return np.vstack(out) if out else np.zeros((0, 3))
 
 
 def _read_imu_if_present(bag, topic):

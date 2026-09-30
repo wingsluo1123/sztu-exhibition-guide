@@ -1,12 +1,12 @@
 image: testroom.pgm
 resolution: 0.05
-origin: [-13.1489, -11.0223, 0.0]
+origin: [-6.7907, -11.1033, 0.0]
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196
 
 # 这张图摊平用的重力方向。实走时必须把它钉给转接层，
 # 否则 bridge 自测的 up 和这个不是一个数，图和位姿整体错开。
-#   tools/run_lio_live.sh --bridge --up -0.998875,0.027349,-0.038753
-sztu_up: [-0.998875, 0.027349, -0.038753]
-sztu_up_source: "轨迹平面（1191 个位姿，离平面的残差 19 mm）"
+#   tools/run_lio_live.sh --bridge --up 0.998875,-0.027349,0.038753
+sztu_up: [0.998875, -0.027349, 0.038753]
+sztu_up_source: "轨迹平面（1191 个位姿，离平面的残差 19 mm，雷达离地 1.00 m）"

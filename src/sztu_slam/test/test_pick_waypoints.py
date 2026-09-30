@@ -17,7 +17,8 @@ sys.path.insert(0, os.path.join(
 
 from pick_waypoints import (                                    # noqa: E402
     DEFAULT_MARGIN, MARK_LEG, MARK_POINT, blit_number, chain_pick, clearance,
-    edt, nearest_wall_yaw, order_tour, path_is_clear, read_map, reachable,
+    edt, map_up, nearest_wall_yaw, order_tour, path_is_clear, read_map,
+    reachable,
     render_check_png, render_yaml, required_margin, spread_pick, to_cell,
     tour_order, yaw_to_quat,
 )
@@ -710,3 +711,60 @@ def test_derived_margin_shrinks_the_candidate_area_it_does_not_grow_it():
     strict = int((clr >= radius + required_margin(0.3, 0.25)).sum())
     assert 0 < strict < loose, (
         f'旧余量 {loose} 格、新余量 {strict} 格 —— 新的没更严，或者严到一格不剩')
+
+
+# --- 选点用的重力系必须以图为准 ---------------------------------------------
+#
+# 2026-09-30：选点原来自己从包里重推一个重力方向，而图是按 gridmap 写进
+# yaml 的那个摊平的。两者不一致时**什么都不报错**，点位就落在一个和图差着
+# 转角的系里。这组用例把"以图为准"钉住。
+
+def _yaml(tmp_path, body):
+    p = tmp_path / 'm.yaml'
+    p.write_text(body, encoding='utf-8')
+    return str(tmp_path / 'm')
+
+
+def test_map_up_reads_and_normalises_sztu_up(tmp_path):
+    base = _yaml(tmp_path,
+                 'resolution: 0.05\norigin: [0, 0, 0]\n'
+                 'sztu_up: [1.9977, -0.0547, 0.0775]\n')   # 故意给 2 倍长
+    got = map_up(base)
+    assert got == pytest.approx([0.998875, -0.027349, 0.038753], abs=1e-5)
+    assert np.linalg.norm(got) == pytest.approx(1.0)
+
+
+def test_map_up_returns_none_for_a_map_without_it(tmp_path):
+    """负对照：老图没有这个键，必须返回 None。
+
+    让调用方退回去自己推并提示，**不能**编一个默认值 —— 编出来的那个
+    正是"图和点位静默错开"的来源。
+    """
+    base = _yaml(tmp_path, 'resolution: 0.05\norigin: [0, 0, 0]\n')
+    assert map_up(base) is None
+
+
+def test_map_up_refuses_a_zero_vector(tmp_path):
+    base = _yaml(tmp_path, 'origin: [0, 0, 0]\nsztu_up: [0, 0, 0]\n')
+    with pytest.raises(SystemExit, match='零向量'):
+        map_up(base)
+
+
+def test_the_committed_map_and_its_waypoints_share_one_frame():
+    """仓库里的图和点位配置必须是配套的一对。
+
+    这条不验数值，只验"图记了它的系、而且那个系是对的"：sztu_up 必须和
+    真机实测的重力方向同向。反了的图照样能出一张看起来很像房间的图
+    （2026-09-30 那张就是：取的是天花板下方那层，墙都在、家具全没了，
+    净空虚高到 3.8 m），所以光看图是看不出来的。
+    """
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        '..', '..', '..')
+    base = os.path.join(root, 'maps', 'testroom')
+    if not os.path.exists(base + '.yaml'):
+        pytest.skip('仓库里没有 maps/testroom.yaml')
+    up = map_up(base)
+    assert up is not None, 'maps/testroom.yaml 里没有 sztu_up'
+    measured = np.array([+0.998, -0.019, +0.058])      # 真机 IMU 静止段实测
+    assert float(np.dot(up, measured)) > 0.9, (
+        f'图记的 sztu_up={up} 和实测重力反向 —— 这张图是反着摊平的')

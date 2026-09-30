@@ -123,6 +123,26 @@ def read_map(base):
     return np.flipud(img).copy(), res, x0, y0
 
 
+def map_up(base):
+    """读 <base>.yaml 里的 sztu_up，没有就返回 None。
+
+    这个数是**图自己**记的重力方向（gridmap.write_yaml 写的）。选点必须用
+    它，不能另推一个：点位坐标只在图的那个系里有意义。老图没这个键，
+    调用方要退回去自己推，并且得让人知道。
+    """
+    path = base + '.yaml'
+    with open(path, encoding='utf-8') as fh:
+        for line in fh:
+            if line.startswith('sztu_up:'):
+                v = line.split(':', 1)[1].strip().strip('[]').split(',')
+                up = np.array([float(x) for x in v], dtype=float)
+                n = np.linalg.norm(up)
+                if n < 1e-9:
+                    raise SystemExit(f'{path} 里的 sztu_up 是零向量')
+                return up / n
+    return None
+
+
 def _edt_1d(f):
     """一维平方距离变换（Felzenszwalb & Huttenlocher 的下包络法）。
 
@@ -667,13 +687,22 @@ def main():
         from check_lever import find_bag, gravity_align_matrix
         from gridmap import resolve_up, sensor_origins
         bag = find_bag(args.bag)
-        # 和 gridmap.py 走同一条路：bridge.log -> 包里的 IMU -> 轨迹平面。
-        # 不能直接调 gravity_from_log —— 没有 bridge.log 时它返回 None，
-        # 解包会炸；而现在一个 run_dir 都没有 bridge.log。
-        # 更要紧的是：**用哪一路必须印出来**。重力方向错了，图和点位会整体
-        # 歪掉而且什么都不报错（实测拿 z 当上，图幅从 30x23 m 缩成 7.5x15.6 m，
-        # 地面拟合还报"很平、可信"）。
-        up, up_bound, up_src = resolve_up(args.bag, bag)
+        # 重力方向**以图为准**：图是在某个重力系里摊平的，点位坐标只有在
+        # 同一个系里才有意义。图自己把这个数记在 <map>.yaml 的 sztu_up 里
+        # （gridmap.write_yaml 写的），所以这里读它，不重新推。
+        #
+        # 为什么不重新推：重新推是"另一次测量"，和图用的那次不一定是同一个数，
+        # 而两者不一致时**什么都不会报错** —— 点位悄悄落在一个和图差着转角的
+        # 系里。这正是 2026-09-30 栽的那个跟头的同一类：那次是 bridge 自测的
+        # up 和图记的 up 不是一个数，这里是选点推的 up 和图记的 up 不是一个数。
+        # 图里没记（老图）才退回去自己推，并且要印出来。
+        up = map_up(args.map_base)
+        if up is not None:
+            up_bound, up_src = None, f'{args.map_base}.yaml 的 sztu_up（图为准）'
+        else:
+            up, up_bound, up_src = resolve_up(args.bag, bag)
+            print(f'hmm，{args.map_base}.yaml 里没有 sztu_up（老图？），'
+                  f'只好自己推一个 —— 它和这张图摊平时用的不一定是同一个数。')
         print(f'重力方向来自：{up_src}')
         print(f'  上 = [{up[0]:+.4f}, {up[1]:+.4f}, {up[2]:+.4f}]'
               + (f'，误差 ≤ {up_bound:.4f}°' if up_bound is not None else ''))
