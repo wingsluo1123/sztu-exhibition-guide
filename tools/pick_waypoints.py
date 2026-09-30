@@ -1102,14 +1102,23 @@ def main():
         tmask[tiy[k], tix[k]] = True
 
         near = edt(tmask, res) <= args.near_traj
-        # 站点要留余量（radius + margin），但**通行**只要求 radius ——
-        # 窄处照样能过去，只是不在窄处停下来讲解。
-        ok = (clr >= args.radius + margin) & near
-        reach = reachable(ok, list(zip(tiy[k], tix[k])))
+        # 「站得住」和「到得了」是两个不同的门槛，**不能用同一个**。
+        #   站得住：净空 >= 半径 + 余量（机器人要停在这儿，容差带 + 滑行）
+        #   到得了：净空 >= 半径（只是路过，不停）
+        # 以前连通性是在「站得住」的格子里泛洪的，等于要求机器人**一路上
+        # 每一格都停得住**才算到得了那儿。后果是实测到的：一个离 base_link
+        # 轨迹只有 0.05 m、净空 0.96 m 的位置被判成"到不了" —— 因为它和
+        # 轨迹之间那几格净空只有 0.88，机器人明明从那儿走过去过。
+        walk_ok = (clr >= args.radius) & near
+        seeds = [(iy, ix) for iy, ix in zip(tiy[k], tix[k]) if walk_ok[iy, ix]]
+        conn = reachable(walk_ok, seeds)
+        reach = conn & (clr >= args.radius + margin)
+        print(f'能走的区 {conn.sum() * res * res:.1f} m²'
+              f'（净空 ≥ {args.radius:.2f} m、离轨迹 ≤ {args.near_traj} m、'
+              '和轨迹连通）')
         print(f'候选区 {int(reach.sum())} 格 = '
               f'{reach.sum() * res * res:.1f} m²'
-              f'（净空 ≥ {args.radius + margin:.2f} m、'
-              f'离轨迹 ≤ {args.near_traj} m、和轨迹连通）')
+              f'（其中还站得住的：净空 ≥ {args.radius + margin:.2f} m）')
         if not reach.any():
             raise SystemExit(
                 '一个候选格都没有 —— 要么 --radius 给大了，要么这张图的空闲区\n'

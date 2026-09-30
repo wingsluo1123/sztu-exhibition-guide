@@ -1155,3 +1155,53 @@ def test_widest_corridor_does_not_route_through_unknown():
     clr = clearance(g, res)
     assert widest_corridor(clr, g == PGM_FREE, (2.0, 3.0), (6.0, 3.0),
                            res, x0, y0) is None
+
+
+def test_a_wide_pocket_behind_a_narrow_neck_is_still_reachable():
+    """站得住的小坑，隔着一段"只够通行不够停车"的窄路，照样算到得了。
+
+    这一条钉的是「站得住」和「到得了」两个门槛不能混用。混用的写法是
+    在"净空 >= 半径 + 余量"的格子里泛洪，等于要求机器人**一路上每一格都
+    停得住**；实测房间里因此把一个离轨迹 0.05 m、净空 0.96 m 的位置判成
+    "到不了"，而机器人明明从那儿走过去过。
+
+    合成图：左边是起点所在的大厅，中间一条 1.4 m 宽的走廊（净空 0.7 m ——
+    过得去 0.40，停不住 0.95），右边一个大房间（净空远超 0.95）。
+    """
+    res = RES
+    w, h = int(12.0 / res), int(8.0 / res)
+    g = np.full((h, w), PGM_OCC, np.uint8)
+
+    def carve(x0m, y0m, x1m, y1m):
+        g[int(y0m / res):int(y1m / res), int(x0m / res):int(x1m / res)] = PGM_FREE
+
+    carve(0.5, 0.5, 4.0, 7.5)        # 左厅
+    carve(4.0, 3.3, 8.0, 4.7)        # 窄走廊：1.4 m 宽 -> 中心净空 0.7 m
+    carve(8.0, 0.5, 11.5, 7.5)       # 右厅
+    clr = clearance(g, res)
+    assert clr[int(4.0 / res), int(6.0 / res)] == pytest.approx(0.7, abs=0.06), \
+        '走廊不是我以为的那么宽，后面的断言就没意义了'
+
+    near = np.ones_like(g, dtype=bool)          # 这条测试不考察离轨迹多远
+    seed_cell = (int(4.0 / res), int(2.0 / res))   # 左厅里
+    far_cell = (int(4.0 / res), int(10.0 / res))   # 右厅里
+    assert clr[far_cell] >= 0.95, '右厅不够宽，负对照失效'
+
+    # 正确做法：在"过得去"的格子里泛洪，再和"停得住"取交
+    walk_ok = (clr >= 0.40) & near
+    conn = reachable(walk_ok, [seed_cell])
+    assert (conn & (clr >= 0.95))[far_cell], \
+        '隔着窄走廊的大房间被判成到不了 —— 两个门槛又混用了'
+
+    # 负对照：老写法（直接在"停得住"里泛洪）确实到不了，
+    # 否则这条测试根本没在考察它想考察的东西
+    old = reachable((clr >= 0.95) & near, [seed_cell])
+    assert not old[far_cell], \
+        '负对照失效：老写法在这张图上也能到，说明图没造出窄路'
+
+    # 真正走不通的地方还是要排除掉：把走廊堵死
+    g2 = g.copy()
+    g2[:, int(6.0 / res):int(6.2 / res)] = PGM_OCC
+    clr2 = clearance(g2, res)
+    conn2 = reachable((clr2 >= 0.40) & near, [seed_cell])
+    assert not conn2[far_cell], '走廊堵死了还说到得了 —— 连通性形同虚设'
