@@ -1,8 +1,29 @@
 #!/usr/bin/env python3
 """
-SLAM 管理器节点
+SLAM 管理器节点 —— **大部分功能在这台机器上是死的，看清楚再用**
 
-负责控制建图、保存地图、加载地图、监控定位状态
+负责控制建图、保存地图、加载地图、监控定位状态。
+
+⚠ 本文件调的 `/integrated_command`（建图命令）和 `GetStoredMapByName`
+（加载地图）都是**厂商 SLAM 的接口**，而厂商 SLAM 的授权**不会开通**
+（2026-10-01：已询价，费用过高，项目决定不采购 —— 见 ROADMAP 的 B4）。
+`MappingModule` / `MapManagerModule` / `RelocalizationModule` 三个模块
+初始化即被拒，所以：
+
+  * 发 `start_mapping` / `stop_mapping` **不会有任何事发生**，也不会报错；
+  * `GetStoredMapByName` 没有服务端；
+  * `relocalize()` 从来没有被任何地方调用过（`guide_manager.py` 那边是
+    `# TODO` + `return False`）。
+
+**别去修这些调用、别去找厂商接口怎么用。** 那不是配错了，是没买。
+
+实际在用的建图链路完全绕开本文件：
+    fastlio_mapping -> /cloud_registered -> tools/gridmap.py -> maps/*.pgm
+实时位姿：
+    lio_odom_bridge -> /slam/lidar_odom
+
+本文件现在真正还在起作用的是**位姿监控那部分**（订阅 /slam/lidar_odom，
+判断定位是否健康），那部分和厂商授权无关，照常可用。
 """
 
 import rclpy

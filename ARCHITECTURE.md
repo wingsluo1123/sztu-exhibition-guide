@@ -47,11 +47,23 @@
 
 ### 1. sztu_slam - 建图与定位模块
 
-**功能**：
-- 展厅环境 SLAM 建图
-- 地图保存与加载
-- 实时重定位
-- 位姿发布
+> ⚠ **本节描述的是厂商 SLAM 接口，那条路已经关闭（2026-10-01，费用过高不采购）。**
+> `/integrated_command`、`GetStoredMapByName`、"实时重定位"全部依赖
+> `MappingModule` / `MapManagerModule` / `RelocalizationModule`，而这三个
+> 模块授权被拒、初始化即失败。**不要照着本节去调厂商接口。**
+>
+> 实际在用的是自研链路：
+> `fastlio_mapping` → `/cloud_registered` → `tools/gridmap.py` → `maps/*.pgm`，
+> 实时位姿 `lio_odom_bridge` → `/slam/lidar_odom`。
+> 详见 `CLAUDE.md` 和 `ROADMAP.md` 的 B4。
+>
+> 本节原文保留，因为厂商那套的接口形状仍是我们灌入位姿时要对齐的契约。
+
+**功能**（↓ 以下为厂商接口的设计意图，非当前实现）：
+- 展厅环境 SLAM 建图 —— **实际由 FAST-LIO2 + `tools/gridmap.py` 完成**
+- 地图保存与加载 —— **实际是 `maps/` 下的 pgm/yaml，进版本库**
+- 实时重定位 —— **没有。** 靠每趟从贴胶带的固定点起步
+- 位姿发布 —— **实际由 `lio_odom_bridge` 完成**
 
 **核心节点**：
 - `slam_manager.py` - SLAM 控制器

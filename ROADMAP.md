@@ -1183,7 +1183,7 @@ ROADMAP 原来这里的一条警告是**错的**，一并纠正：
 
 重定位用的是**像素**坐标（20 px/m），来自 `/agibot/data/var/MapManagerModule/<map_id>/grid_map_info.txt`（第 1 行分辨率、第 2 行原点像素、第 3 行宽高）；`map_id` 从 `sqlite3 /agibot/data/var/MapManagerModule/map.db "SELECT * FROM map;"` 查。
 
-### B4. 问售后 → **剩下的不是技术问题，是采购问题**
+### B4. 问售后 → **已问，已关闭：费用过高，自研是唯一路线**
 
 1. ~~感知模块是否已开通~~ —— **不用问了**。真机实测雷达点云 11.2 Hz、雷达
    IMU 201 Hz 都在正常出数据，模块是开通的（见 B1 的实测表）。
@@ -1204,6 +1204,62 @@ ROADMAP 原来这里的一条警告是**错的**，一并纠正：
 
    **这条不阻塞主线** —— 上面那节的自建方案已经把 `/slam/lidar_odom`
    顶上了。开通了是多一条可对照的参考实现，没开通也能交付。
+
+---
+
+#### 2026-10-01：问过了，**不开通**。这条路关闭。
+
+**已向厂商询价，开通费用过高，项目不采购。** 所以：
+
+> **厂商的 SLAM / 导航自主包不会开通。不要再去找它的接口怎么用、
+> 怎么绕过授权、怎么让那几个模块跑起来 —— 这不是技术问题，
+> 是已经做过的采购决策。自研是唯一路线，不是备选。**
+
+这条对后来者（包括 AI 助手）尤其重要，因为现场证据非常有误导性：
+
+| 看到的现象 | 容易得出的错误结论 |
+|---|---|
+| `/agibot/software/nav/` 下整套代码都在，配置齐全 | "只要配对就能跑" |
+| `map_manager`、`auto_integrated` **进程确实在跑**（各 2 个） | "功能是活的" |
+| `/pnc/*`、`/perception/grid_map` 话题有发布者 | "导航栈能用" |
+| 日志里写 `temporary cert expired` | "续个期就行" |
+| `license.yaml` 里 `slam: authorized: true` | "明明授权了" |
+
+**全都不成立。** 真实情况：`slam`(700301) / `map_manager`(700401) /
+`auto_integrated` 不在正式授权 `license_uuid dd4745cd-…`（"系统集成"，
+29 项，条目无 expire_at）里，只在 2026-08-01 那份 3 天临时授权里出现过。
+`MappingModule` / `LocalizationModule` / `RelocalizationModule` /
+`MapManagerModule` / `IntegratedControlModule` 五个模块初始化即被拒，
+2026-10-01 的日志里仍然如此。**进程在跑 ≠ 模块初始化成功。**
+
+最干净的那条佐证（谈判和自查都优先用它）：**`uwb_fusion`(700302) 在正式
+授权里，`slam`(700301) 不在** —— 相邻的组件 ID，一个买了一个没买。
+"过期"解释不了这个差别。
+
+**那么我们因此要自己写什么、不用写什么**（2026-10-01 核过接口定义后的账）：
+
+| 功能 | 厂商开放的话 | 现实：自研 |
+|---|---|---|
+| 建图 | `MappingModule` | ✅ 已有 FAST-LIO2，两趟独立录制重复性 p90 = 0.10 m |
+| 实时定位 | `LocalizationModule` | ✅ 已有 `lio_odom_bridge` → `/slam/lidar_odom` |
+| 点到点导航 | 发一个 `PncTaskRequest`（`TASK_TYPE_PLANNING_NAVI_TO_POSE_2D`） | ✅ 已有 `sztu_navigation`（控制律 + 到点判定 + 超时 + 卡住检测） |
+| **避障** | pnc 自带（混合 A* + MPPI + 代价地图） | ❌ **没有**。`lidar_callback` 还是 `pass`。**展厅硬前置** |
+| **重定位** | `RelocalizationModule` | ❌ **没有**。现在靠「每趟从贴胶带的固定点起步」顶 |
+| **回环** | `enable_lidar_loop: true` | ❌ **没有**。FAST-LIO2 是纯里程计，漂移沿路程单调累积 |
+| 选点（哪些坐标能当讲解点） | **厂商也不管** —— `NaviPoint` 只有 `point_id` + `Pose2D` | 本来就得自己写，见 `tools/pick_waypoints.py` |
+| 讲解内容与编排 | **厂商给不了** | 本来就得自己写，见 `sztu_guide` / `config/content_*.yaml` |
+
+所以缺口收敛成三个，按紧急程度：**避障（展厅硬前置）> 回环（展厅尺度才显形）
+> 重定位（长期运行才需要）**。
+
+一条省不掉的代价要记住：**因为没有避障，我们在用保守参数换安全**
+（`max_linear_speed` 从 0.5 压到 0.25，见 `config/waypoints.yaml` 的注释）。
+这笔代价只有等自研避障做出来才能收回，厂商那条路已经不存在了。
+
+重定位的现实退路是 **ArUco / 二维码地标**：在展厅几个固定位置贴码，开机或
+定位丢失时扫一眼就知道自己在哪。比通用激光重定位简单一个数量级，而且展厅
+环境可控、允许贴码。顺带一提 pnc 配置里本来就有 `hr_target_update_topic:
+/aruco/target_pose`，说明这个思路在厂商栈里也是成立的。
 
 
 ---
