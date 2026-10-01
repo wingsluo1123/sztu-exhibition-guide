@@ -271,19 +271,46 @@ class NavigationManager(Node):
         查不到时返回 None，调用方据此把这一帧算作"看不见"（而不是
         "没有障碍"）—— TF 断了和雷达断了一样危险。
         """
+        from rclpy.time import Time
         try:
             tf = self._tf_buffer.lookup_transform(
                 self.base_frame, frame_id, stamp,
                 timeout=Duration(seconds=0.05))
-        except Exception as exc:          # tf2 的异常族很杂，一律当查不到
-            if not self._tf_warned:
-                self._tf_warned = True
-                self.get_logger().warn(
-                    f'查不到 {self.base_frame} <- {frame_id} 的变换：{exc}。'
-                    '避障会把这些帧当作"看不见"（即停车），不会放行。'
-                    '若 /tf 本来就没有这条链，用 -p base_frame 指成点云'
-                    '自己的 frame_id 可以跳过变换，但高度过滤就不准了。')
-            return None
+        except Exception as exc:          # tf2 的异常族很杂，一律先当查不到
+            # 退一步：用"缓冲区里最新的那个"变换。
+            #
+            # 为什么需要这条退路：真机实测（2026-10-01），刚启动那几帧的点云
+            # 时间戳比 TF 缓冲区里最早的那条还早，报
+            #   Lookup would require extrapolation at time ...,
+            #   but only time ... is in the buffer
+            # 这不是 TF 坏了，是缓冲区还没攒下历史。不退这一步的话，
+            # 实走开头几秒会白白停车。
+            #
+            # 退路本身是有风险的 —— 拿一个时刻不对的变换去过滤高度。
+            # 所以**限定条件**：只在能拿到最新变换时退，而且退了之后
+            # 仍然要求点云本身是新鲜的（新鲜度在 obstacle_state() 里判，
+            # 和这里是两道独立的闸）。腰关节转得再快，几十毫秒内的
+            # 姿态变化对 0.05~1.8 m 这个高度窗口来说是小量。
+            try:
+                tf = self._tf_buffer.lookup_transform(
+                    self.base_frame, frame_id, Time(),
+                    timeout=Duration(seconds=0.0))
+                if not self._tf_warned:
+                    self._tf_warned = True
+                    self.get_logger().info(
+                        f'{self.base_frame} <- {frame_id} 按点云时间戳查不到'
+                        f'（{exc}），改用缓冲区里最新的那个变换。'
+                        '启动头几帧出现这个是正常的。')
+            except Exception as exc2:
+                if not self._tf_warned:
+                    self._tf_warned = True
+                    self.get_logger().warn(
+                        f'查不到 {self.base_frame} <- {frame_id} 的变换：'
+                        f'{exc2}。避障会把这些帧当作"看不见"（即停车），'
+                        '不会放行。若 /tf 本来就没有这条链，用 '
+                        '-p base_frame 指成点云自己的 frame_id 可以跳过'
+                        '变换，但高度过滤就不准了。')
+                return None
         t = tf.transform.translation
         q = tf.transform.rotation
         x, y, z, w = q.x, q.y, q.z, q.w

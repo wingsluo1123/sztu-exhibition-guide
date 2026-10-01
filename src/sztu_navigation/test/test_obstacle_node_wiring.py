@@ -149,6 +149,17 @@ def test_an_untransformable_frame_is_treated_as_blind(node):
     assert st.stale and st.stop, 'TF 断了要停车，不能放行'
 
 
+def test_an_unknown_frame_still_fails_after_the_fallback(node):
+    """TF 退路不能退成"什么都接受"。
+
+    查不到精确时间戳时会退用"缓冲区里最新的那个"（真机启动头几帧必走这条，
+    见 _lookup_base_from 的注释）。但对一个压根不存在的 frame，两次都该
+    失败，最终仍是 stale。不验这条的话，那条退路可能把真故障也放行了。
+    """
+    assert node._lookup_base_from('definitely_not_a_frame',
+                                  _msg([]).header.stamp) is None
+
+
 def test_disabling_obstacles_is_explicit_not_accidental(ros):
     """关掉避障时是明确放行，不是"因为没数据所以 stale"。"""
     from rclpy.parameter import Parameter
