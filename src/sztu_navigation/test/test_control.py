@@ -498,3 +498,48 @@ def test_stall_detects_the_120_second_burn_well_before_the_timeout():
                 f'省得不够多')
             return
     pytest.fail('一动不动跑了 200 秒都没报卡死')
+
+
+# ------------------------------------------------- advance 阶段的线速度下限
+
+def test_slowdown_must_not_push_below_the_start_threshold():
+    """2026-10-01 真机实测：避障减速把线速度压到动不了。
+
+    现场：目标 0.45 m，min(0.5, 0.45*0.5) * 0.3 = 0.0675 m/s，
+    低于 AimDK 起步阈值 0.09（locomotion.DEFAULT_FORWARD_THRESHOLD），
+    机器人一动不动，而日志里一直在"发速度"，12 秒后报卡死。
+    """
+    from sztu_navigation.locomotion import DEFAULT_FORWARD_THRESHOLD
+    cmd = compute_velocity(0.0, 0.0, 0.0, 0.45, 0.0, None,
+                           position_tolerance=0.3, max_linear_speed=0.5,
+                           obstacle_detected=True)
+    assert cmd.phase == 'advance'
+    assert cmd.linear >= DEFAULT_FORWARD_THRESHOLD, (
+        f'linear={cmd.linear:.4f} 低于起步阈值 {DEFAULT_FORWARD_THRESHOLD} '
+        '—— 机器人不会动，而且不会报错')
+
+
+def test_the_floor_does_not_inflate_a_normal_command():
+    """正对照：本来够大的速度不该被动。"""
+    cmd = compute_velocity(0.0, 0.0, 0.0, 10.0, 0.0, None,
+                           max_linear_speed=0.5)
+    assert cmd.linear == pytest.approx(0.5)
+
+
+def test_the_floor_never_turns_a_stop_into_motion():
+    """**关键**：linear 恰好为 0 时不许抬 —— 那是上层明确要求停。
+
+    避障停车走的是 _publish(0, 0) 那条路，不经过这里；但万一哪天有人
+    让 compute_velocity 自己返回 0，这个下限不能把它变成"慢慢往前"。
+    """
+    from sztu_navigation.control import _ensure_min_forward
+    assert _ensure_min_forward(0.0, 0.12, 0.5) == 0.0
+    assert _ensure_min_forward(-0.1, 0.12, 0.5) == -0.1, '倒车也不该被抬'
+    assert _ensure_min_forward(0.05, 0.12, 0.5) == pytest.approx(0.12)
+    assert _ensure_min_forward(0.3, 0.12, 0.5) == pytest.approx(0.3)
+
+
+def test_the_floor_respects_max_linear_speed():
+    """下限不能顶破上限（把 max 调得很小的场景）。"""
+    from sztu_navigation.control import _ensure_min_forward
+    assert _ensure_min_forward(0.01, 0.12, 0.05) == pytest.approx(0.05)

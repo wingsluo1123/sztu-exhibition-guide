@@ -206,3 +206,59 @@ def test_evaluate_applies_the_matrix():
     raw = cloud([(0.8, 0.0, -0.6)])        # 雷达系 z=-0.6 -> 机体系 0.4
     assert ob.evaluate(raw, 32).n_considered == 0, '不变换时该被当成地面'
     assert ob.evaluate(raw, 32, m).n_considered == 1, '变换后该算障碍'
+
+
+# ------------------------------------------------- 目标之外的障碍不该减速
+
+def test_an_obstacle_beyond_the_goal_does_not_slow_us_down():
+    """2026-10-01 真机实测暴露的缺陷，这是最小复现。
+
+    现场：目标还有 0.45 m，障碍在 1.15 m（**比目标还远 0.70 m**），
+    但 1.15 < slow_distance(2.0)，于是全程挂着减速，线速度被压到
+    0.068 m/s —— 低于 AimDK 起步阈值，机器人一动不动，12 秒后报卡死。
+    """
+    st = ob.ObstacleState(nearest=1.15)
+    stop, slow, why = ob.decide(st, stop_distance=1.0, slow_distance=2.0,
+                                goal_distance=0.45)
+    assert not stop and not slow, '比目标还远的障碍不该让我们减速'
+    assert '不在路上' in why, '要说清楚为什么不减速，否则没人看得懂'
+
+
+def test_an_obstacle_actually_in_the_way_still_slows_and_stops():
+    """正对照：真在路上的障碍照样拦。不验这条，上面那条就是"永远放行"。"""
+    stop, slow, _ = ob.decide(ob.ObstacleState(nearest=1.5),
+                              stop_distance=1.0, slow_distance=2.0,
+                              goal_distance=3.0)
+    assert slow and not stop, '目标更远时，1.5 m 的障碍该减速'
+
+    stop, slow, _ = ob.decide(ob.ObstacleState(nearest=0.8),
+                              stop_distance=1.0, slow_distance=2.0,
+                              goal_distance=3.0)
+    assert stop and slow, '进了停车线必须停'
+
+
+def test_the_stop_line_ignores_the_goal_entirely():
+    """**停车不受目标距离影响** —— 撞不撞和要去哪儿无关。
+
+    这是故意的不对称：减速视野可以收窄（省得为不在路上的东西爬行），
+    但停车线绝不能因为"目标很近"就放宽。
+    """
+    # 目标就在脚下，但障碍在停车线内 -> 还是要停
+    stop, slow, why = ob.decide(ob.ObstacleState(nearest=0.5),
+                                stop_distance=1.0, slow_distance=2.0,
+                                goal_distance=0.05)
+    assert stop and slow, '目标再近也不能取消停车'
+    assert '停车线' in why
+
+
+def test_slow_horizon_arithmetic():
+    assert ob.slow_horizon(2.0, 0.45, 0.40) == pytest.approx(0.85)
+    assert ob.slow_horizon(2.0, 5.0, 0.40) == pytest.approx(2.0), '不该超过原视野'
+    assert ob.slow_horizon(2.0, None) == pytest.approx(2.0), '没目标时不收'
+    assert ob.slow_horizon(2.0, -1.0, 0.40) == pytest.approx(0.40), '负距离按 0 算'
+
+
+def test_stale_overrides_the_goal_logic():
+    """看不见的时候，目标在哪都不重要 —— 一律停。"""
+    stop, slow, why = ob.decide(ob.stale_state(), 1.0, 2.0, goal_distance=0.1)
+    assert stop and slow and '过期' in why

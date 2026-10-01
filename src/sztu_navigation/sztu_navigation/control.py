@@ -40,6 +40,21 @@ HEADING_ROTATE_THRESHOLD = 0.5  # 弧度，约 29°
 # 别拿 align 里"0.45 还在转"去下调它。
 DEFAULT_MIN_TURN_SPEED = 0.7  # 弧度/秒
 
+# advance 阶段的线速度下限，理由和 min_turn_speed 完全对称：
+# AimDK 5.1.2 有"静止起步阈值"，低于它机器人原地不动（locomotion.py 的
+# DEFAULT_FORWARD_THRESHOLD = 0.09 m/s）。而 advance 的线速度有两个连乘的
+# 衰减因子：锥形收敛 `distance * 0.5`，以及避障减速 `× 0.3`。两个一叠就会
+# 掉到阈值以下。
+#
+# 2026-10-01 真机实测到的现场：目标还有 0.45 m，算出
+#     min(0.5, 0.45*0.5) * 0.3 = 0.0675 m/s
+# 低于 0.09，机器人**一动不动**，日志里却一直在"发速度"，12 秒后报卡死，
+# 而且报的诊断是"角速度低于 min_turn_speed" —— 查错了方向。
+#
+# 取 0.12 而不是正好 0.09：阈值本身是文档值（厂商示例里写的是 0.2，
+# 见 ROADMAP:328 的"待定"），留一点余量。真实下限要实测，那要机器人动。
+DEFAULT_MIN_FORWARD_SPEED = 0.12  # 米/秒
+
 # 位姿最少要允许迟到这么久。位姿源标称 10 Hz（fastlio 配置里 scan_rate: 10），
 # 一帧 0.1 秒，给 3 帧的抖动余量。比这更短就成了惊弓之鸟，网络抖一下就中止导航。
 MIN_ODOM_STALE_TIMEOUT = 0.3  # 秒
@@ -96,6 +111,7 @@ def compute_velocity(
     max_linear_speed: float = 0.5,
     max_angular_speed: float = 0.8,
     min_turn_speed: float = DEFAULT_MIN_TURN_SPEED,
+    min_forward_speed: float = DEFAULT_MIN_FORWARD_SPEED,
     obstacle_detected: bool = False,
     obstacle_slowdown: float = 0.3,
 ) -> VelocityCommand:
@@ -107,6 +123,7 @@ def compute_velocity(
     控制律这一层不该自作主张终止任务。
 
     min_turn_speed 是 align 阶段的角速度下限，见 DEFAULT_MIN_TURN_SPEED。
+    min_forward_speed 是 advance 阶段的线速度下限，见 DEFAULT_MIN_FORWARD_SPEED。
     """
     dx = target_x - current_x
     dy = target_y - current_y
@@ -141,6 +158,8 @@ def compute_velocity(
 
     if obstacle_detected:
         linear *= obstacle_slowdown
+
+    linear = _ensure_min_forward(linear, min_forward_speed, max_linear_speed)
 
     return VelocityCommand(linear, angular, arrived=False, phase='advance')
 
@@ -204,6 +223,26 @@ class StallMonitor:
         if self._ref is None:
             return 0.0
         return now - self._ref[0]
+
+
+def _ensure_min_forward(linear: float, min_forward_speed: float,
+                        max_linear_speed: float) -> float:
+    """给 advance 阶段的线速度兜一个下限，保证它真能往前走。
+
+    和 _ensure_min_turn 对称。**只在已经决定要走的时候兜底**：
+    linear 恰好为 0 时不抬（那是上层明确要求停，比如避障停车），
+    只抬"想走但算出来太小"的那种。
+
+    为什么抬而不是停：avoid 的两级里，减速是"收着点"、停车是"别走了"。
+    减速压到动不了，等于把减速悄悄变成了停车，而且是**不报错的那种**停 ——
+    机器人一动不动，日志里一直在发速度，最后报一个方向全错的卡死诊断。
+    0.12 m/s 已经是很慢了（走 1 米要 8 秒），抬到这儿不危险。
+    """
+    if linear <= 0.0:
+        return linear
+    if linear >= min_forward_speed:
+        return linear
+    return min(min_forward_speed, max_linear_speed)
 
 
 def _ensure_min_turn(angular: float, yaw_error: float,

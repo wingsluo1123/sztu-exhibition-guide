@@ -21,6 +21,7 @@ import tf2_ros
 from . import obstacle as obstacle_mod
 
 from .control import (
+    DEFAULT_MIN_FORWARD_SPEED,
     DEFAULT_STALL_ANGLE_EPS,
     DEFAULT_STALL_POSITION_EPS,
     StallMonitor,
@@ -80,6 +81,10 @@ class NavigationManager(Node):
         # 点云多久没来就当"看不见"。10 Hz 的雷达，0.5 s 等于丢了 5 帧。
         self.declare_parameter('obstacle_max_age',
                                obstacle_mod.DEFAULT_MAX_AGE)
+        # 障碍比"目标 + 这个值"还远时，它不在去目标的路上，不该让我们减速。
+        # 只影响减速，不影响停车。见 obstacle.slow_horizon。
+        self.declare_parameter('obstacle_goal_clearance',
+                               obstacle_mod.DEFAULT_GOAL_CLEARANCE)
         # 点云话题。写成参数是为了让测试能订一个假话题 ——
         # 真机上订真话题会收到现场数据，负对照会悄悄通过。
         self.declare_parameter(
@@ -113,6 +118,13 @@ class NavigationManager(Node):
         self.max_linear_speed = self.get_parameter('max_linear_speed').value
         self.max_angular_speed = self.get_parameter('max_angular_speed').value
         self.min_turn_speed = self.get_parameter('min_turn_speed').value
+        # advance 阶段的线速度下限。锥形收敛 × 避障减速两个因子一叠就会掉到
+        # AimDK 的起步阈值以下，机器人一动不动却不报错。见 control.py 的
+        # DEFAULT_MIN_FORWARD_SPEED。
+        self.declare_parameter('min_forward_speed',
+                               DEFAULT_MIN_FORWARD_SPEED)
+        self.min_forward_speed = float(
+            self.get_parameter('min_forward_speed').value)
         self.navigation_timeout = self.get_parameter('navigation_timeout').value
         self.stall_timeout = self.get_parameter('stall_timeout').value
         self.declare_parameter('stall_position_eps', DEFAULT_STALL_POSITION_EPS)
@@ -133,6 +145,8 @@ class NavigationManager(Node):
             self.get_parameter('obstacle_max_height').value)
         self.obstacle_max_age = float(
             self.get_parameter('obstacle_max_age').value)
+        self.obstacle_goal_clearance = float(
+            self.get_parameter('obstacle_goal_clearance').value)
         self.obstacle_enabled = bool(
             self.get_parameter('obstacle_enabled').value)
         self.base_frame = str(self.get_parameter('base_frame').value)
@@ -540,6 +554,17 @@ class NavigationManager(Node):
             self.last_result = 'timeout'
             return
 
+        # 避障判定要在算速度**之前**：obstacle_detected 是 compute_velocity
+        # 的入参。而判定本身要知道目标还有多远 —— 比目标还远的障碍不在路上，
+        # 不该让我们减速（见 obstacle.slow_horizon，真机实测踩过）。
+        obs_stop, obs_slow, obs_why = obstacle_mod.decide(
+            self.obstacle_state(),
+            self.obstacle_stop_distance,
+            self.obstacle_distance,
+            goal_distance=self._distance_to_target(),
+            clearance=self.obstacle_goal_clearance,
+        )
+
         cmd_out = compute_velocity(
             current_x=self.current_pose.position.x,
             current_y=self.current_pose.position.y,
@@ -552,7 +577,8 @@ class NavigationManager(Node):
             max_linear_speed=self.max_linear_speed,
             max_angular_speed=self.max_angular_speed,
             min_turn_speed=self.min_turn_speed,
-            obstacle_detected=self.obstacle_detected,
+            min_forward_speed=self.min_forward_speed,
+            obstacle_detected=obs_slow,
         )
 
         if cmd_out.arrived:
@@ -586,14 +612,33 @@ class NavigationManager(Node):
                     f'跳过这个点位。dry_run 不下发速度，所以这**不是**卡死，'
                     f'只是空跑走不动。空跑时这就是正常的推进方式。')
             else:
+                # 诊断要按**相位**分开给。2026-10-01 真机实测吃过一次教训：
+                # advance 相位下线速度被压到 0.068 m/s（锥形收敛 × 避障减速）
+                # 低于起步阈值而动不了，但这里一律报"角速度低于
+                # min_turn_speed"，把人往完全错的方向带。
+                if cmd_out.phase == 'advance':
+                    extra = (
+                        f'\n  advance 相位动不了，先看**线速度**：当前指令'
+                        f' linear={cmd_out.linear:+.3f} m/s，'
+                        f'下限 min_forward_speed={self.min_forward_speed:.2f}。'
+                        f'\n  线速度有两个连乘的衰减：锥形收敛'
+                        f'（distance×0.5，此刻距离 {self._distance_to_target():.2f} m）'
+                        f'和避障减速（×0.3，此刻 slow={obs_slow}）。'
+                        f'\n  两个一叠就可能掉到 AimDK 的起步阈值以下 —— '
+                        f'那时候机器人一动不动，而日志里一直在"发速度"。')
+                else:
+                    extra = (
+                        f'\n  {cmd_out.phase} 相位是原地转，先看**角速度**：'
+                        f'指令 angular={cmd_out.angular:+.3f} rad/s，'
+                        f'当前 min_turn_speed={self.min_turn_speed:.2f}。'
+                        f'\n  用 tools/turn_probe.py --odom {self.odom_topic} '
+                        f'量一下真实下限，再改 config/waypoints.yaml。')
                 self.get_logger().error(
-                    f'位姿 {self.stall_timeout:.0f} 秒没有明显变化，但还在发速度指令'
-                    f'（{cmd_out.phase} 相位，angular={cmd_out.angular:+.3f}）'
-                    f'—— 放弃这个点位。'
-                    f'\n  最常见的原因是指令角速度低于机器人的最小有效转速'
-                    f'（当前 min_turn_speed={self.min_turn_speed:.2f} rad/s）。'
-                    f'\n  用 tools/turn_probe.py --odom {self.odom_topic} 量一下真实下限，'
-                    f'再改 config/waypoints.yaml 的 min_turn_speed。')
+                    f'位姿 {self.stall_timeout:.0f} 秒没有明显变化，但还在发'
+                    f'速度指令（{cmd_out.phase} 相位，'
+                    f'linear={cmd_out.linear:+.3f} '
+                    f'angular={cmd_out.angular:+.3f}）—— 放弃这个点位。'
+                    + extra)
             self.stop()
             self.is_navigating = False
             self.last_result = 'stalled'
@@ -601,25 +646,22 @@ class NavigationManager(Node):
 
         # 避障只拦**前进**。rotate / align 是原地转，前方走廊里的东西
         # 挡不住转身；而且被障碍卡住时还能转，才有机会转开。
-        obs = self.obstacle_state()
         if cmd_out.phase == 'advance':
-            if obs.stop:
-                why = ('点云过期或 TF 查不到 —— 当作前方有障碍'
-                       if obs.stale else
-                       f'障碍在 {obs.nearest:.2f} m（停车线 '
-                       f'{self.obstacle_stop_distance:.2f} m）')
+            if obs_stop:
                 self.get_logger().warn(
-                    f'避障停车：{why}。原地等待，不取消导航。',
+                    f'避障停车：{obs_why}。原地等待，不取消导航。',
                     throttle_duration_sec=1.0)
                 self._log_obstacle_change('stop')
                 self._publish(0.0, 0.0)
                 return
-            if obs.slow:
+            if obs_slow:
                 self.get_logger().warn(
-                    f'避障减速：障碍在 {obs.nearest:.2f} m',
-                    throttle_duration_sec=1.0)
+                    f'避障减速：{obs_why}', throttle_duration_sec=1.0)
                 self._log_obstacle_change('slow')
             else:
+                if obs_why:        # "比目标还远，不在路上"这种，说一句
+                    self.get_logger().info(
+                        f'避障：{obs_why}', throttle_duration_sec=5.0)
                 self._log_obstacle_change('clear')
 
         self._publish(cmd_out.linear, cmd_out.angular)

@@ -166,3 +166,52 @@ def stale_state(max_age=DEFAULT_MAX_AGE):
 def is_fresh(age, max_age=DEFAULT_MAX_AGE):
     """点云还新鲜吗。age 为 None（一帧都没收到）算不新鲜。"""
     return age is not None and age <= max_age
+
+
+# 机器人半径。障碍比"目标点 + 这个值"还远时，它不在去目标的路上。
+DEFAULT_GOAL_CLEARANCE = 0.40
+
+
+def slow_horizon(slow_distance, goal_distance, clearance=DEFAULT_GOAL_CLEARANCE):
+    """减速该看多远 —— 不该比"我要去的地方"还远。
+
+    2026-10-01 真机实测暴露的问题：目标在 0.45 m，障碍在 1.15 m（**比目标
+    还远 0.70 m**，根本不在路上），但 1.15 < slow_distance(2.0)，于是机器人
+    全程挂着减速，速度被压到 0.068 m/s —— 低于 AimDK 的起步阈值 0.09，
+    物理上动不了，最后报"卡死"。
+
+    所以减速的视野要收到 `目标距离 + 机器人半径`：再远的东西，等走到目标、
+    下一段重新规划时再说。
+
+    **注意只收减速，不收停车。** 停车那条线是"再走就撞了"，和去哪儿无关，
+    任何情况下都要守。见 `decide()`。
+
+    goal_distance 为 None（没有目标，比如被别的逻辑调用）时不收。
+    """
+    if goal_distance is None:
+        return slow_distance
+    return min(slow_distance, max(0.0, goal_distance) + clearance)
+
+
+def decide(state, stop_distance, slow_distance, goal_distance=None,
+           clearance=DEFAULT_GOAL_CLEARANCE):
+    """最终判定：(要停吗, 要减速吗, 一句人话)。
+
+    停 = `nearest <= stop_distance`，**不受目标距离影响**（撞不撞和去哪儿无关）。
+    减速 = `nearest <= slow_horizon(...)`，会被目标距离收窄（见那个函数）。
+    stale 一律两个都是 True。
+    """
+    if state.stale:
+        return True, True, '点云过期或 TF 查不到 —— 当作前方有障碍'
+    if state.nearest <= stop_distance:
+        return True, True, (f'障碍在 {state.nearest:.2f} m'
+                            f'（停车线 {stop_distance:.2f} m）')
+    horizon = slow_horizon(slow_distance, goal_distance, clearance)
+    if state.nearest <= horizon:
+        return False, True, f'障碍在 {state.nearest:.2f} m'
+    if state.nearest <= slow_distance:
+        # 在原视野内但比目标还远 —— 明确说出来，否则"为什么不减速了"没人看得懂
+        return False, False, (
+            f'障碍在 {state.nearest:.2f} m，比目标（{goal_distance:.2f} m）'
+            f'还远，不在路上')
+    return False, False, ''
