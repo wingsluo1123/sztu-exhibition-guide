@@ -27,6 +27,7 @@
 |------|------|------|
 | `STOP` | 停止移动 | 立即发布零速度，并由 50 Hz 定时器继续保持零速度 |
 | `JOY:<x>,<y>` | 摇杆走路 | `x`、`y` 取值 -100..100；`y` 控制前进/后退，`x` 控制原地转向。APP 应在按住摇杆时持续发送（建议 20–50 Hz） |
+| `STRAFE:<value>` | 横向平移 | `value` 取值 -100..100；负值左移，正值右移。侧移控制期间持续发送（建议 20–50 Hz），释放时发送 `STOP` |
 | `MODE` | 查询运动模式 | 返回 `OK:MODE:<模式名>:<状态>`（状态 0=空闲 100=运行中 200=切换中），查询失败返回 `ERR:MODE` |
 
 发布话题：`/aima/mc/locomotion/velocity`（`aimdk_msgs/msg/McLocomotionVelocity`），
@@ -34,9 +35,12 @@ QoS 为 `BEST_EFFORT + VOLATILE`，内部以 50 Hz 发布。输入源默认为
 `sdk_sztu_app`（优先级 55、超时 1000 ms），启动时通过 `SetMcInputSource`
 注册并启用，未使用任何 AimDK 系统预置输入源。
 
-安全机制：最后一条 `JOY` 超过 250 ms 后，服务端自动把目标速度清零；AimDK
+安全机制：最后一条 `JOY` 或 `STRAFE` 超过 250 ms 后，服务端自动把目标速度清零；AimDK
 自身超过 200 ms 未收到速度也会清零，超过 2000 ms 无走跑指令会自动回稳定站立。
-侧移暂未开放给当前二维 APP 摇杆（`lateral_velocity=0`）。
+侧移最大速度由桥接参数 `max_lateral_speed` 控制，默认 `0.8 m/s`。AimDK
+侧移起步阈值为 `0.60 m/s`，低于阈值的指令会被清零；按默认最大速度计算，
+摇杆输入绝对值低于约 75 时不会产生侧移。`STRAFE` 属于高频流式指令，不回复
+ACK；格式错误会回复 `ERR:STRAFE:bad_payload`。
 
 ### 运动模式切换（慢速路径，调用 `SetMcAction`）
 
@@ -120,11 +124,11 @@ AimDK 文档 5.1.1 的 code 表；切换可能需要数秒，期间命令走慢�
 | `OK:<cmd>` | 指令执行成功 |
 | `ERR:<cmd>:<reason>` | 指令执行失败 |
 
-例外：`JOY:` 为高频流式指令，**不回复** ack，以免刷屏。
+例外：`JOY:` 和 `STRAFE:` 为高频流式指令，**不回复** ack，以免刷屏。
 
 ## 并发模型
 
-- 快速路径（`JOY`/`STOP`/姿态）在 socket 线程直接处理，更新目标速度是加锁的，
+- 快速路径（`JOY`/`STRAFE`/`STOP`）在 socket 线程直接处理，更新目标速度是加锁的，
   实际的 `McLocomotionVelocity` 由 50 Hz 定时器发布，保证遥控低延迟。
 - 慢速路径（表情/手势/TTS）入队，由主 ROS 线程的定时器 (20 Hz) 取出执行，
   保证所有 service 调用单线程串行，阻塞式 TTS 不会卡住遥控。

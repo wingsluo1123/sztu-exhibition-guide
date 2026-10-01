@@ -13,6 +13,7 @@ from sztu_guide.protocol import (
     joy_to_twist,
     parse,
     split_lines,
+    strafe_to_velocity,
 )
 
 
@@ -26,6 +27,10 @@ def test_stop_is_fast_path():
 
 def test_joy_is_fast_path():
     assert parse('JOY:10,20').is_fast
+
+
+def test_strafe_is_fast_path():
+    assert parse('STRAFE:-100').is_fast
 
 
 @pytest.mark.parametrize('text', ['stop', 'Stop', 'STOP', '  STOP  '])
@@ -53,6 +58,23 @@ def test_joy_extra_fields_ignored():
     cmd = parse('JOY:10,20,99')
     assert cmd.error is None
     assert (cmd.joy_x, cmd.joy_y) == (10.0, 20.0)
+
+
+@pytest.mark.parametrize(('payload', 'expected'), [
+    ('-100', -100.0), ('25', 25.0), ('0', 0.0),
+])
+def test_strafe_parses_signed_lateral_input(payload, expected):
+    cmd = parse(f'STRAFE:{payload}')
+    assert cmd.kind == Kind.STRAFE
+    assert cmd.error is None
+    assert cmd.strafe_value == expected
+
+
+@pytest.mark.parametrize('payload', ['left', 'nan', 'inf', '-inf'])
+def test_strafe_bad_payload_reports_error(payload):
+    cmd = parse(f'STRAFE:{payload}')
+    assert cmd.kind == Kind.STRAFE
+    assert cmd.error == 'bad_payload'
 
 
 # --- 摇杆换算 ---------------------------------------------------------------
@@ -89,6 +111,12 @@ def test_joy_out_of_range_is_clamped(x, y):
 def test_joy_backward_is_negative_linear():
     linear, _ = joy_to_twist(0, -JOY_RANGE, 0.5, 0.8)
     assert linear == pytest.approx(-0.5)
+
+
+def test_strafe_to_velocity_preserves_side_and_clamps_range():
+    assert strafe_to_velocity(-100, 0.8) == pytest.approx(0.8)
+    assert strafe_to_velocity(50, 0.8) == pytest.approx(-0.4)
+    assert strafe_to_velocity(200, 0.8) == pytest.approx(-0.8)
 
 
 # --- 慢路径分类 -------------------------------------------------------------

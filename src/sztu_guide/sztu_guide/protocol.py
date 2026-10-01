@@ -10,6 +10,7 @@
 命令分类结果统一是 Command(kind, ...)，kind 取值见 Kind。
 """
 
+import math
 from dataclasses import dataclass
 from typing import Optional
 
@@ -17,6 +18,7 @@ from typing import Optional
 class Kind:
     STOP = 'stop'
     JOY = 'joy'
+    STRAFE = 'strafe'
     MODE_QUERY = 'mode_query'
     SAY = 'say'
     MODE_SWITCH = 'mode_switch'
@@ -28,7 +30,7 @@ class Kind:
 
 # 快路径：必须在 socket 线程上立刻处理，不能进队列排队。
 # 走跑控制器会把目标速度以 50 Hz 发布为 McLocomotionVelocity。
-FAST_KINDS = frozenset({Kind.STOP, Kind.JOY})
+FAST_KINDS = frozenset({Kind.STOP, Kind.JOY, Kind.STRAFE})
 
 
 @dataclass
@@ -39,6 +41,8 @@ class Command:
     # JOY 专用：客户端原始摇杆量，-100..100
     joy_x: float = 0.0
     joy_y: float = 0.0
+    # STRAFE 专用：横移量，-100..100（负值左移，正值右移）
+    strafe_value: float = 0.0
     # 原始文本，用于回 ack（客户端按原样匹配）
     raw: str = ''
     # 解析失败的原因，None 表示没问题
@@ -150,6 +154,9 @@ def parse(text: str) -> Command:
     if upper.startswith('JOY:'):
         return _parse_joy(raw)
 
+    if upper.startswith('STRAFE:'):
+        return _parse_strafe(raw)
+
     if upper == 'MODE':
         return Command(Kind.MODE_QUERY, raw=raw)
 
@@ -190,6 +197,16 @@ def _parse_joy(raw: str) -> Command:
     return Command(Kind.JOY, joy_x=x, joy_y=y, raw=raw)
 
 
+def _parse_strafe(raw: str) -> Command:
+    try:
+        value = float(raw[7:])
+    except ValueError:
+        return Command(Kind.STRAFE, raw=raw, error='bad_payload')
+    if not math.isfinite(value):
+        return Command(Kind.STRAFE, raw=raw, error='bad_payload')
+    return Command(Kind.STRAFE, strafe_value=value, raw=raw)
+
+
 def joy_to_twist(joy_x: float, joy_y: float,
                  max_linear: float, max_angular: float):
     """
@@ -201,6 +218,11 @@ def joy_to_twist(joy_x: float, joy_y: float,
     linear = _clamp(joy_y / JOY_RANGE, -1.0, 1.0) * max_linear
     angular = -_clamp(joy_x / JOY_RANGE, -1.0, 1.0) * max_angular
     return linear, angular
+
+
+def strafe_to_velocity(value: float, max_lateral: float) -> float:
+    """换算横移量；命令负值左移/正值右移，AimDK 消息方向相反。"""
+    return -_clamp(value / JOY_RANGE, -1.0, 1.0) * max_lateral
 
 
 def _clamp(value: float, low: float, high: float) -> float:

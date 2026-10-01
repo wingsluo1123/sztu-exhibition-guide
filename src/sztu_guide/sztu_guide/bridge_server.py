@@ -9,7 +9,7 @@ The client (see Robot_APP/entry/src/main/ets/pages/*) connects over TCP
 line-based string commands. This node hosts the server, parses those commands,
 and dispatches them to the existing controllers:
 
-  - JOY / STOP           -> AimDK McLocomotionVelocity (50 Hz, fast path)
+    - JOY / STRAFE / STOP  -> AimDK McLocomotionVelocity (50 Hz, fast path)
   - STAND / WALK / HOIST -> AimDK SetMcAction motion-mode switch (slow path)
   - expression labels     -> EmotionController.show_emotion
   - gesture/action labels -> GestureController.perform_gesture
@@ -19,7 +19,8 @@ and dispatches them to the existing controllers:
 Design notes:
   - 命令文本怎么解析、中文标签往哪路由，全在 sztu_guide.protocol 里，那边不
     依赖 ROS，可以单测。本文件只负责 socket 收发和把解析结果落到控制器上。
-  - Fast commands (JOY/STOP) are handled directly on the socket thread because
+    - Fast commands (JOY/STRAFE/STOP) are handled directly on the socket thread
+        because
     updating the target velocity is lock-protected and must stay low-latency;
     the actual McLocomotionVelocity goes out on the 50 Hz timer.
   - 其余命令（表情/手势/TTS/模式切换/MODE 查询）一律压进线程安全队列，由主
@@ -75,12 +76,14 @@ class BridgeServer(Node):
         self.declare_parameter('locomotion_priority', 55)
         self.declare_parameter('max_linear_speed', 0.5)
         self.declare_parameter('max_angular_speed', 0.8)
+        self.declare_parameter('max_lateral_speed', 0.8)
 
         self.tcp_port = self.get_parameter('tcp_port').value
         self.ws_enabled = self.get_parameter('ws_enabled').value
         self.ws_port = self.get_parameter('ws_port').value
         self.max_linear = self.get_parameter('max_linear_speed').value
         self.max_angular = self.get_parameter('max_angular_speed').value
+        self.max_lateral = self.get_parameter('max_lateral_speed').value
         cmd_vel_topic = self.get_parameter('cmd_vel_topic').value
         locomotion_source = self.get_parameter('locomotion_source').value
         locomotion_priority = self.get_parameter('locomotion_priority').value
@@ -252,6 +255,16 @@ class BridgeServer(Node):
             if not self.locomotion.set_velocity(forward, 0.0, angular):
                 self._reply(conn, 'ERR:JOY:input_source_unavailable')
             # 正常 JOY 不回 ack，避免高频刷屏。
+            return
+
+        if cmd.kind == Kind.STRAFE:
+            if cmd.error:
+                self._reply(conn, f'ERR:STRAFE:{cmd.error}')
+                return
+            lateral = protocol.strafe_to_velocity(
+                cmd.strafe_value, self.max_lateral)
+            if not self.locomotion.set_velocity(0.0, lateral, 0.0):
+                self._reply(conn, 'ERR:STRAFE:input_source_unavailable')
             return
 
         # 其余全部进队列，在 ROS 主线程上执行（含 MODE 查询：它要调 service）
