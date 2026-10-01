@@ -6,6 +6,7 @@
 """
 
 import math
+import struct
 import time
 
 import rclpy
@@ -66,7 +67,11 @@ class NavigationManager(Node):
         # 声明成 ROS 参数后可以用 --ros-args -p 或 yaml 覆盖，不必改代码。
         for name, default in DEFAULT_NAVIGATION_PARAMS.items():
             self.declare_parameter(name, default)
-        self.declare_parameter('obstacle_distance', 0.5)
+        self.declare_parameter('obstacle_distance', 2.0)
+        self.declare_parameter('obstacle_stop_distance', 1.0)
+        self.declare_parameter('obstacle_width', 0.55)
+        self.declare_parameter('obstacle_min_height', 0.05)
+        self.declare_parameter('obstacle_max_height', 1.8)
         self.declare_parameter('cmd_vel_topic', '/aima/mc/locomotion/velocity')
         self.declare_parameter('odom_topic', '/slam/lidar_odom')
         # 走跑输入源（AimDK 5.1.3）。优先级 45 的取法：高于 pnc(40) 好让我们的
@@ -98,7 +103,15 @@ class NavigationManager(Node):
             position_eps=self.get_parameter('stall_position_eps').value,
             angle_eps=self.get_parameter('stall_angle_eps').value,
         )
-        self.obstacle_distance = self.get_parameter('obstacle_distance').value
+        self.obstacle_distance = float(
+            self.get_parameter('obstacle_distance').value)
+        self.obstacle_stop_distance = float(
+            self.get_parameter('obstacle_stop_distance').value)
+        self.obstacle_width = float(self.get_parameter('obstacle_width').value)
+        self.obstacle_min_height = float(
+            self.get_parameter('obstacle_min_height').value)
+        self.obstacle_max_height = float(
+            self.get_parameter('obstacle_max_height').value)
 
         # 位姿过期上限。默认 0 表示按容差和速度推（见 control.odom_stale_timeout），
         # 不要拍一个常数上去：容差或限速改了，这个上限要跟着变。
@@ -171,6 +184,7 @@ class NavigationManager(Node):
         self.target_pose = None
         self.is_navigating = False
         self.obstacle_detected = False
+        self._obstacle_stop = False
         # 'arrived' | 'timeout' | 'stalled' | 'canceled' | 'odom_stale' | None
         self.last_result = None
         self._goal_start_time = None
@@ -195,8 +209,7 @@ class NavigationManager(Node):
         return time.monotonic() - self._last_odom_time
 
     def lidar_callback(self, msg: PointCloud2):
-        """Lidar callback: simple obstacle detection"""
-        # TODO: 实现点云解析和障碍检测。
+        """Detect obstacles in the forward lidar sector."""
         # 字段排布已从真机包里解出（2026-09-28，见 ROADMAP「点云字段排布」），
         # 不用再猜，也不要用 read_points 的默认假设：
         #   point_step = 32   height = 1（无序）  25638 点/帧 @ 10 Hz
@@ -217,7 +230,27 @@ class NavigationManager(Node):
         #      拿 1 秒前的点云做避障是危险的。
         #      （reliability 用 RELIABLE 或 BEST_EFFORT 都能和它兼容；
         #        真正要改的是 durability。）
-        pass
+        step = int(msg.point_step)
+        if step < 12 or not msg.data:
+            self.obstacle_detected = False
+            self._obstacle_stop = False
+            return
+        nearest = float('inf')
+        data = bytes(msg.data)
+        for offset in range(0, len(data) - 11, step):
+            try:
+                x, y, z = struct.unpack_from('<fff', data, offset)
+            except struct.error:
+                break
+            if not all(math.isfinite(value) for value in (x, y, z)):
+                continue
+            if (0.0 < x <= self.obstacle_distance
+                    and abs(y) <= self.obstacle_width
+                    and self.obstacle_min_height <= z
+                    <= self.obstacle_max_height):
+                nearest = min(nearest, math.hypot(x, y))
+        self.obstacle_detected = nearest <= self.obstacle_distance
+        self._obstacle_stop = nearest <= self.obstacle_stop_distance
 
     # --- 目标设置（非阻塞）--------------------------------------------------
     def set_goal(self, x: float, y: float, yaw: float = None) -> bool:
@@ -422,6 +455,13 @@ class NavigationManager(Node):
 
         if self.obstacle_detected and cmd_out.phase == 'advance':
             self.get_logger().warn('Obstacle detected, reducing speed')
+
+        if self._obstacle_stop and cmd_out.phase == 'advance':
+            self.get_logger().warn(
+                'Obstacle within stop distance; holding position',
+                throttle_duration_sec=1.0)
+            self._publish(0.0, 0.0)
+            return
 
         self._publish(cmd_out.linear, cmd_out.angular)
 
