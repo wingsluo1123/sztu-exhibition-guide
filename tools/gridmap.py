@@ -232,7 +232,12 @@ def write_pgm(path, img):
 
 
 def bag_fingerprint(bag):
-    """这个包的身份：相对路径 + 内容哈希 + 字节数。
+    """这个包的身份：内容哈希 + 字节数。
+
+    `bag` 既可以是 rosbag2 的目录，也可以是单个 .db3 —— `check_lever.find_bag`
+    返回的是**后者**（2026-10-01 踩到：原来只按目录 glob，于是在真机上
+    永远返回 None，而 null 又是合法值，这个字段就静默空着。正是本文件
+    warning 过的那种"悄悄的 null"）。
 
     哈希取每个 .db3 的 sha256，按文件名排序后再哈希一遍，所以多分片的包
     也有一个稳定的值。**文件名和时间戳不算身份** —— 换个名字内容不变，
@@ -243,7 +248,16 @@ def bag_fingerprint(bag):
     那一趟出的"，不是用来防篡改。
     """
     import hashlib
-    parts = sorted(glob.glob(os.path.join(bag, '*.db3')))
+    if os.path.isdir(bag):
+        parts = sorted(glob.glob(os.path.join(bag, '*.db3')))
+    elif os.path.isfile(bag):
+        # 单个分片：把同目录下的兄弟分片一起算进来，否则 odom_0 和 odom_1
+        # 会给出不同的指纹，而它们本来是同一个包。
+        parts = sorted(glob.glob(os.path.join(os.path.dirname(bag), '*.db3')))
+        if not parts:
+            parts = [bag]
+    else:
+        return None
     if not parts:
         return None
     outer = hashlib.sha256()

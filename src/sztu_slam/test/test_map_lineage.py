@@ -152,6 +152,44 @@ def test_the_map_the_waypoints_use_has_no_holes_at_all():
         '  而那正是 2026-09-30 已经发生过一次的事故。')
 
 
+def test_the_fingerprint_takes_whatever_find_bag_returns(tmp_path):
+    """回归：`check_lever.find_bag` 返回的是 **.db3 文件**，不是目录。
+
+    2026-10-01 踩到的：`bag_fingerprint` 原来只按目录 glob，于是在真机上
+    **永远返回 None**。而 null 是这个字段的合法值（老图补不上），所以
+    `sztu_lineage_missing` 里多出 bag_sha256_head_tail 看着完全正常 ——
+    悄悄空着，没有任何东西报错。正是这个文件头注释里骂的那种情况。
+
+    所以判据要钉的是「两种入参都给得出指纹，而且是**同一个**」。
+    """
+    import sys
+    sys.path.insert(0, os.path.join(_ROOT, 'tools'))
+    from gridmap import bag_fingerprint
+
+    d = tmp_path / 'odom'
+    d.mkdir()
+    (d / 'odom_0.db3').write_bytes(b'X' * 2048)
+
+    by_dir = bag_fingerprint(str(d))
+    by_file = bag_fingerprint(str(d / 'odom_0.db3'))
+    assert by_dir is not None, '传目录拿不到指纹'
+    assert by_file is not None, \
+        '传 .db3 文件拿不到指纹 —— find_bag 返回的就是这个形状'
+    assert by_dir == by_file, (
+        f'目录和分片给出不同指纹：{by_dir} vs {by_file}\n'
+        '  同一个包的身份不能取决于调用方传的是哪一种路径。')
+
+    # 多分片：传任一分片都要等于传目录。
+    (d / 'odom_1.db3').write_bytes(b'Y' * 1024)
+    multi = bag_fingerprint(str(d))
+    assert multi['parts'] == 2 and multi['bytes'] == 3072
+    assert bag_fingerprint(str(d / 'odom_0.db3')) == multi, \
+        '多分片时传单个分片应该把兄弟分片一起算进来'
+    assert multi != by_dir, '加了一个分片指纹居然没变'
+
+    assert bag_fingerprint(str(tmp_path / 'nope')) is None
+
+
 def test_the_fingerprint_actually_tells_two_bags_apart(tmp_path):
     """指纹的全部意义就是区分两个包。不验这条，它可能是个常量。
 
