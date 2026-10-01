@@ -49,10 +49,14 @@ y-z 面，竖直在 x 上。拿 z 当上，`fit_ground` 会在一个根本不是
 """
 
 import argparse
+import datetime
+import glob
 import math
 import os
+import shlex
 import sqlite3
 import struct
+import subprocess
 import sys
 import zlib
 
@@ -227,10 +231,69 @@ def write_pgm(path, img):
         fh.write(img.tobytes())
 
 
-def write_yaml(path, pgm_name, res, origin, up=None, up_src=None):
+def bag_fingerprint(bag):
+    """这个包的身份：相对路径 + 内容哈希 + 字节数。
+
+    哈希取每个 .db3 的 sha256，按文件名排序后再哈希一遍，所以多分片的包
+    也有一个稳定的值。**文件名和时间戳不算身份** —— 换个名字内容不变，
+    或者同名内容变了，都看不出来。
+
+    大包不值得整个读进来算，所以每个分片取「头 8 MiB + 尾 8 MiB + 字节数」。
+    这不是密码学意义上的完整性校验，是**身份标签**：用来回答"这张图是不是
+    那一趟出的"，不是用来防篡改。
+    """
+    import hashlib
+    parts = sorted(glob.glob(os.path.join(bag, '*.db3')))
+    if not parts:
+        return None
+    outer = hashlib.sha256()
+    total = 0
+    for p in parts:
+        n = os.path.getsize(p)
+        total += n
+        h = hashlib.sha256()
+        h.update(os.path.basename(p).encode())
+        h.update(str(n).encode())
+        with open(p, 'rb') as fh:
+            h.update(fh.read(8 << 20))
+            if n > (16 << 20):
+                fh.seek(-(8 << 20), os.SEEK_END)
+                h.update(fh.read())
+        outer.update(h.digest())
+    return {'sha256_head_tail': outer.hexdigest(), 'bytes': total,
+            'parts': len(parts)}
+
+
+def source_revision():
+    """出这张图的代码是哪一版。脏工作区要说出来，否则这个字段会骗人。"""
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        rev = subprocess.run(
+            ['git', '-C', here, 'rev-parse', '--short', 'HEAD'],
+            capture_output=True, text=True, timeout=10)
+        if rev.returncode != 0:
+            return 'unknown'
+        sha = rev.stdout.strip()
+        dirty = subprocess.run(
+            ['git', '-C', here, 'status', '--porcelain', '--', 'gridmap.py',
+             'pick_waypoints.py', 'check_lever.py'],
+            capture_output=True, text=True, timeout=10)
+        return sha + ('-dirty' if dirty.stdout.strip() else '')
+    except Exception:
+        return 'unknown'
+
+
+def _yaml_str(v):
+    return '"' + str(v).replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+
+def write_yaml(path, pgm_name, res, origin, up=None, up_src=None,
+               lineage=None):
     """Nav2 map_server 的 .yaml。阈值用的是它的默认值。
 
-    额外写一个 `sztu_up`：这张图是在**哪个重力系**里摊平的。
+    额外写两组键。
+
+    1. `sztu_up`：这张图是在**哪个重力系**里摊平的。
 
     这个值必须记下来，否则这张图的坐标系是**定义不出来**的。实走时
     lio_odom_bridge 会自己从 IMU 静止段测一个 up，那和建图用的 up 不是
@@ -239,7 +302,21 @@ def write_yaml(path, pgm_name, res, origin, up=None, up_src=None):
     `run_lio_live.sh --up`（转成 bridge 的 up_axis 参数）钉回同一个值，
     图和实走就是**按构造**同一个系，不靠运气。
 
-    map_server 不认识的键会被忽略，所以加这个键不影响导航读图。
+    2. `sztu_lineage`：这张图是**哪一趟、用什么命令、什么版本的代码**出的。
+
+    2026-09-30 栽过一次：仓库里的图和点位来自两趟不同的录制，是两个坐标系，
+    点位在正确的图上净空 0.96 m、在那张上 0.56 m，没有任何东西报错。当时
+    补的门禁是对原点和分辨率，那是**间接判据** —— 它靠"两趟原点恰好不同"
+    才有效。来源直接写进图里才是直接判据。
+
+    2026-10-01 又多一条理由：实测 FAST-LIO **回放不是确定性的**（同一个包
+    跑两遍，轨迹中位差 0.013 m、p95 0.133 m、最大 0.371 m，机制是 ikd-Tree
+    的后台重建线程）。所以「包还在，图随时能重出一张」是**假的** —— 重出的
+    是另一张图。图本身必须进版本库，而且要能说出自己是哪一趟的哪一次生成。
+
+    拿不到的字段写 `null` 并在 `sztu_lineage_missing` 里列出来，**不猜**。
+
+    map_server 不认识的键会被忽略，所以加这些键不影响导航读图。
     """
     with open(path, 'w', encoding='utf-8') as fh:
         fh.write(
@@ -258,6 +335,31 @@ def write_yaml(path, pgm_name, res, origin, up=None, up_src=None):
                 f'sztu_up: [{up[0]:.6f}, {up[1]:.6f}, {up[2]:.6f}]\n')
             if up_src:
                 fh.write(f'sztu_up_source: "{up_src}"\n')
+        if lineage:
+            fh.write(
+                '\n# 这张图是哪一趟出的。FAST-LIO 回放不确定（同包两遍最大\n'
+                '# 差 0.371 m），所以**重出一张不等于这一张** —— 图必须和\n'
+                '# 点位同一次提交进版本库，这一段是用来事后对账的。\n'
+                'sztu_lineage:\n')
+            missing = []
+            for k in ('run_dir', 'bag', 'bag_sha256_head_tail', 'bag_bytes',
+                      'odom_topic', 'odom_t0', 'odom_t1', 'odom_count',
+                      'slab_lo', 'slab_hi', 'range_m', 'stride',
+                      'source_revision', 'generated_at', 'invocation'):
+                v = (lineage or {}).get(k)
+                if v is None:
+                    missing.append(k)
+                    fh.write(f'  {k}: null\n')
+                elif isinstance(v, (int, float)):
+                    fh.write(f'  {k}: {v}\n')
+                else:
+                    fh.write(f'  {k}: {_yaml_str(v)}\n')
+            if missing:
+                fh.write(
+                    '# 下面这些这次没拿到。**空着比编一个强** —— 编的那个\n'
+                    '# 会让后来的人以为对过账了。\n'
+                    'sztu_lineage_missing: ['
+                    + ', '.join(_yaml_str(m) for m in missing) + ']\n')
 
 
 def ascii_preview(img, width=100):
@@ -672,6 +774,31 @@ def main():
     odo = sensor_origins(bag, R)
     lo, hi = args.slab
 
+    # 来源链：这张图是哪一趟、什么命令、什么版本的代码出的。现在采集，
+    # 因为出完图之后 argv 还在、包还在，事后补就只能靠记忆了（而靠记忆
+    # 那次的结果是 2026-09-30 图和点位错配，见 write_yaml 的注释）。
+    _stamps = sorted(odo.keys())
+    lineage = {
+        'run_dir': os.path.abspath(args.run_dir),
+        'bag': os.path.abspath(bag),
+        'odom_topic': args.topic,
+        'odom_count': len(_stamps),
+        'odom_t0': (round(_stamps[0][0] + _stamps[0][1] * 1e-9, 6)
+                    if _stamps else None),
+        'odom_t1': (round(_stamps[-1][0] + _stamps[-1][1] * 1e-9, 6)
+                    if _stamps else None),
+        'slab_lo': lo, 'slab_hi': hi,
+        'range_m': args.range, 'stride': args.stride,
+        'source_revision': source_revision(),
+        'generated_at': datetime.datetime.now(
+            datetime.timezone.utc).isoformat(timespec='seconds'),
+        'invocation': ' '.join(shlex.quote(a) for a in sys.argv),
+    }
+    _fp = bag_fingerprint(bag)
+    if _fp:
+        lineage['bag_sha256_head_tail'] = _fp['sha256_head_tail']
+        lineage['bag_bytes'] = _fp['bytes']
+
     # === 第一趟：地面 + 图幅 ===
     # 两趟流式，而不是一次性读进内存。展厅那种十几二十分钟的包，全读进来
     # 是几个 GB；分两趟多花一遍反序列化的时间（约 25 s / 2 分钟量级），
@@ -783,7 +910,7 @@ def main():
     # 给人看的那张才叠轨迹 —— 画进 .pgm 就成了一排假障碍
     write_png(base + '.png', draw_path(img.copy(), path, x0, y0, args.res))
     write_yaml(base + '.yaml', os.path.basename(base) + '.pgm',
-               args.res, (x0, y0), up, up_src)
+               args.res, (x0, y0), up, up_src, lineage)
 
     tot = W * H
     for name, v in (('占据', PGM_OCC), ('空闲', PGM_FREE), ('未知', PGM_UNK)):
