@@ -199,3 +199,39 @@ def test_the_legacy_flag_still_reflects_freshness(node, monkeypatch):
     real = time.monotonic
     monkeypatch.setattr(time, 'monotonic', lambda: real() + 10.0)
     assert node.obstacle_detected is True
+
+
+def test_the_tf_lookup_never_blocks_the_executor(node, monkeypatch):
+    """TF 查询的 timeout 必须是 0 —— 这是单线程执行器，控制环 10 Hz。
+
+    在回调里等 50 ms 会把控制环一起拖住。而且实测点云 stamp 比 TF 中位
+    早 85 ms（要查的时刻本来就在缓冲区里），等待没有意义。
+    """
+    seen = []
+
+    def fake(target, source, when, timeout=None):
+        seen.append(timeout)
+        raise RuntimeError('forced')
+
+    monkeypatch.setattr(node._tf_buffer, 'lookup_transform', fake)
+    node._lookup_base_from('some_frame', _msg([]).header.stamp)
+    assert seen, 'lookup_transform 没有被调用'
+    for t in seen:
+        secs = t.nanoseconds / 1e9 if hasattr(t, 'nanoseconds') else float(t)
+        assert secs == 0.0, (
+            f'TF 查询 timeout={secs}s，必须是 0。'
+            '单线程执行器里阻塞等待会拖住 10 Hz 的控制环。')
+
+
+def test_the_fallback_is_counted_so_its_rate_is_visible(node):
+    """退路要计数。只打一次日志的话，没人知道它占多大比例。
+
+    而比例变高（实测常态约 10%）正是"TF 发布变慢了"的信号 ——
+    那是个该被看见的退化，不该藏在一条启动期的 info 里。
+    """
+    assert hasattr(node, '_tf_ok_count')
+    assert hasattr(node, '_tf_fallback_count')
+    before = node._tf_ok_count + node._tf_fallback_count
+    node.lidar_callback(_msg([(1.0, 0.0, 0.5)], frame='another_frame'))
+    after = node._tf_ok_count + node._tf_fallback_count
+    assert after > before, '查过 TF 之后计数没动'

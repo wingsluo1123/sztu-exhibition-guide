@@ -231,6 +231,9 @@ class NavigationManager(Node):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
         self._tf_warned = False
+        self._tf_ok_count = 0          # 按点云时间戳查到的帧数
+        self._tf_fallback_count = 0    # 退用"最新变换"的帧数
+        self._tf_fallback_logged = 0.0
 
         # 状态变量
         self.current_pose = None
@@ -273,18 +276,30 @@ class NavigationManager(Node):
         """
         from rclpy.time import Time
         try:
+            # timeout=0：**不要阻塞**。这是单线程执行器，控制环是 10 Hz，
+            # 在回调里等 50 ms 会把控制环一起拖住。
+            # 实测（2026-10-01，12 秒 105 帧）点云 stamp 比 torso_link 的 TF
+            # 中位早 85 ms，也就是说要查的时刻**本来就在缓冲区里**，不用等；
+            # 只有 10% 的帧落在 TF 之后（p95 +38 ms，最大 +166 ms），
+            # 那些走下面的退路。
             tf = self._tf_buffer.lookup_transform(
                 self.base_frame, frame_id, stamp,
-                timeout=Duration(seconds=0.05))
+                timeout=Duration(seconds=0.0))
         except Exception as exc:          # tf2 的异常族很杂，一律先当查不到
             # 退一步：用"缓冲区里最新的那个"变换。
             #
-            # 为什么需要这条退路：真机实测（2026-10-01），刚启动那几帧的点云
-            # 时间戳比 TF 缓冲区里最早的那条还早，报
-            #   Lookup would require extrapolation at time ...,
-            #   but only time ... is in the buffer
-            # 这不是 TF 坏了，是缓冲区还没攒下历史。不退这一步的话，
-            # 实走开头几秒会白白停车。
+            # 为什么需要这条退路，**两种情况，都不是故障**：
+            #   1. 刚启动时缓冲区还没攒下历史 ->
+            #      "only time X is in the buffer"
+            #   2. 点云 stamp 偶尔跑到最新 TF 之后 ->
+            #      "extrapolation into the future"
+            # 实测（12 秒 105 帧）点云比 torso_link 的 TF 中位早 85 ms，
+            # 90% 的帧能精确匹配；剩下 10% 走这条退路（p95 +38 ms）。
+            # 不退的话这 10% 会被当成"看不见"而停车 —— 而实走时表现就是
+            # 走走停停。
+            #
+            # 注意 lidar_chest_front <- torso_link 本身在 /tf_static 里；
+            # 动态的是 base_link -> ... -> torso_link 那段关节链（41 Hz）。
             #
             # 退路本身是有风险的 —— 拿一个时刻不对的变换去过滤高度。
             # 所以**限定条件**：只在能拿到最新变换时退，而且退了之后
@@ -295,12 +310,21 @@ class NavigationManager(Node):
                 tf = self._tf_buffer.lookup_transform(
                     self.base_frame, frame_id, Time(),
                     timeout=Duration(seconds=0.0))
-                if not self._tf_warned:
-                    self._tf_warned = True
+                # 这条退路是**常态**，不是只在启动时出现：实测约 10% 的帧
+                # 点云 stamp 落在最新 TF 之后（p95 +38 ms，最大 +166 ms）。
+                # 所以不打 warn，也不只打一次 —— 打一次的话没人知道它到底
+                # 占多大比例，而比例变高是"TF 发布变慢了"的信号。
+                self._tf_fallback_count += 1
+                now = time.monotonic()
+                if now - self._tf_fallback_logged >= 30.0:
+                    self._tf_fallback_logged = now
+                    total = self._tf_ok_count + self._tf_fallback_count
                     self.get_logger().info(
-                        f'{self.base_frame} <- {frame_id} 按点云时间戳查不到'
-                        f'（{exc}），改用缓冲区里最新的那个变换。'
-                        '启动头几帧出现这个是正常的。')
+                        f'{self.base_frame} <- {frame_id}：按点云时间戳查不到，'
+                        f'改用缓冲区里最新的变换。最近累计 '
+                        f'{self._tf_fallback_count}/{total} 帧走了这条退路'
+                        f'（实测常态约 10%，明显高于这个数说明 TF 发布变慢了）。'
+                        f'最后一次原因：{exc}')
             except Exception as exc2:
                 if not self._tf_warned:
                     self._tf_warned = True
@@ -311,6 +335,8 @@ class NavigationManager(Node):
                         '-p base_frame 指成点云自己的 frame_id 可以跳过'
                         '变换，但高度过滤就不准了。')
                 return None
+        else:
+            self._tf_ok_count += 1
         t = tf.transform.translation
         q = tf.transform.rotation
         x, y, z, w = q.x, q.y, q.z, q.w
