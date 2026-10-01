@@ -25,6 +25,7 @@ class Kind:
     EMOTION = 'emotion'
     GESTURE = 'gesture'
     HAND_TURN = 'hand_turn'
+    GUIDE = 'guide'
     UNKNOWN = 'unknown'
 
 
@@ -36,13 +37,15 @@ FAST_KINDS = frozenset({Kind.STOP, Kind.JOY, Kind.STRAFE})
 @dataclass
 class Command:
     kind: str
-    # 给 SAY / GESTURE / EMOTION / MODE_SWITCH / HAND_TURN 用的载荷
+    # 给 SAY / GESTURE / EMOTION / MODE_SWITCH / HAND_TURN / GUIDE 用的载荷
     value: Optional[str] = None
     # JOY 专用：客户端原始摇杆量，-100..100
     joy_x: float = 0.0
     joy_y: float = 0.0
     # STRAFE 专用：横移量，-100..100（负值左移，正值右移）
     strafe_value: float = 0.0
+    # GUIDE 专用：引导手臂相对水平的仰角（度），+ 向上 / - 向下
+    elevation_deg: float = 0.0
     # 原始文本，用于回 ack（客户端按原样匹配）
     raw: str = ''
     # 解析失败的原因，None 表示没问题
@@ -116,6 +119,25 @@ HAND_TURN_LABELS = {
     '双手转手': 'both',
 }
 
+# 引导手势标签 -> (哪条手臂, 相对水平的仰角/度)，交给
+# GestureController.guide_point。讲解展品时抬手把视线引过去。
+#
+# 这条也不走预设动作服务：预设动作里只有固定造型的"抬手"(1001)，角度不可调，
+# 指不到具体某一件展品。手臂保持在机身冠状面内（与机器人同面、不向前伸），
+# 所以方向只有"哪一侧 + 仰多高"两个量，方位角靠机器人自身朝向给。
+#
+# 仰角档位的用途：平举指同高度的展墙/展台，上扬指高处的屏幕/挂件，
+# 下压指低处的展台/地面展品。±30° 都在 guide_pose 的 ±60° 软限制内。
+GUIDE_LABELS = {
+    '引导': ('right', 0.0),
+    '引导左': ('left', 0.0),
+    '引导右': ('right', 0.0),
+    '引导左上': ('left', 30.0),
+    '引导右上': ('right', 30.0),
+    '引导左下': ('left', -30.0),
+    '引导右下': ('right', -30.0),
+}
+
 # 运控模式标签（中文）-> MotionModeController.set_mode 的 label。
 # 按 AimDK 文档 5.1.1，没有专门的"吊起"模式：吊起状态下机器人必须处于零力矩
 # 模式（PASSIVE_DEFAULT），所以 吊起 映射到它。
@@ -179,6 +201,10 @@ def parse(text: str) -> Command:
 
     if raw in HAND_TURN_LABELS:
         return Command(Kind.HAND_TURN, value=HAND_TURN_LABELS[raw], raw=raw)
+
+    if raw in GUIDE_LABELS:
+        side, elevation = GUIDE_LABELS[raw]
+        return Command(Kind.GUIDE, value=side, elevation_deg=elevation, raw=raw)
 
     # 认不出来的标签当作预设动作名透传给手势控制器
     return Command(Kind.UNKNOWN, value=raw, raw=raw)

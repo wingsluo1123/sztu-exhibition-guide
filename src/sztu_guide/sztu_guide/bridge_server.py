@@ -14,6 +14,7 @@ and dispatches them to the existing controllers:
   - expression labels     -> EmotionController.show_emotion
   - gesture/action labels -> GestureController.perform_gesture
   - hand-turn labels      -> GestureController.turn_hand (wrist roll)
+  - guide labels          -> GestureController.guide_point (冠状面内抬手指引)
   - SAY:<text>            -> TtsController.speak
 
 Design notes:
@@ -49,6 +50,7 @@ from . import protocol
 from .protocol import (
     EXPRESSION_LABELS,
     GESTURE_LABELS,
+    GUIDE_LABELS,
     HAND_TURN_LABELS,
     MOTION_MODE_LABELS,
     Kind,
@@ -57,7 +59,8 @@ from .protocol import (
 # 标签表搬到 protocol.py 了，这里重新导出，保持 from bridge_server import ... 可用。
 __all__ = [
     'BridgeServer', 'main',
-    'EXPRESSION_LABELS', 'GESTURE_LABELS', 'HAND_TURN_LABELS', 'MOTION_MODE_LABELS',
+    'EXPRESSION_LABELS', 'GESTURE_LABELS', 'GUIDE_LABELS', 'HAND_TURN_LABELS',
+    'MOTION_MODE_LABELS',
 ]
 
 
@@ -319,6 +322,16 @@ class BridgeServer(Node):
         if cmd.kind == Kind.HAND_TURN:
             # 腕部插值是阻塞的，要好几秒 —— 只能在慢路径上做
             ok = self.gesture.turn_hand(cmd.value)
+            self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
+            return
+
+        if cmd.kind == Kind.GUIDE:
+            # 引导手势比转手更久（抬起 + 保持 + 放下，约 6 s），整段都阻塞在
+            # 这个单线程 executor 上，期间 locomotion.tick 不会发布 ——
+            # 先把目标速度清零，免得手臂放下后又接着执行手势前那条摇杆指令。
+            # （AimDK 自己 200 ms 没收到速度也会清零，这里只是不留陈旧目标。）
+            self.locomotion.stop()
+            ok = self.gesture.guide_point(cmd.value, cmd.elevation_deg)
             self._reply(conn, f'{"OK" if ok else "ERR"}:{cmd.raw}')
             return
 

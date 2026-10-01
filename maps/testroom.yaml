@@ -10,3 +10,34 @@ free_thresh: 0.196
 #   tools/run_lio_live.sh --bridge --up 0.997989,-0.015611,0.061440
 sztu_up: [0.997989, -0.015611, 0.061440]
 sztu_up_source: "包里的 /aima/hal/sensor/lidar_chest_front/imu 开头静止段"
+
+# 这张图是哪一趟出的。FAST-LIO 回放不确定（同包两遍最大差 0.371 m），
+# 所以**重出一张不等于这一张** —— 图必须和点位同一次提交进版本库，
+# 这一段是用来事后对账的。
+#
+# 这一段是 2026-10-01 **手工补**的（图是 09-30 出的，那版 gridmap.py
+# 还不写来源链）。下面每个有值的字段都有来路：
+#   run_dir / bag  —— maps/README.md 记的，并在机器人上 ls 核对过存在
+#   odom_topic     —— ros2 bag info 核对过这个话题在包里
+#   odom_count     —— 同上，/Odometry 计数 1319
+#   slab_*         —— maps/README.md 记的出图命令
+# 拿不到的在 sztu_lineage_missing 里列着，**没有编**。
+sztu_lineage:
+  run_dir: "/home/agi/sztu_lio_runs/20260930_214128_live"
+  bag: "/home/agi/sztu_lio_runs/20260930_214128_live/odom"
+  bag_sha256_head_tail: null
+  bag_bytes: null
+  odom_topic: "/cloud_registered"
+  odom_t0: null
+  odom_t1: null
+  odom_count: 1319
+  slab_lo: 0.25
+  slab_hi: 1.80
+  range_m: null
+  stride: null
+  source_revision: null
+  generated_at: null
+  invocation: null
+# 下面这些这次没拿到。**空着比编一个强** —— 编的那个会让后来的人
+# 以为对过账了。补齐的办法只有一个：重建图那趟由新版 gridmap.py 自动写。
+sztu_lineage_missing: ["bag_sha256_head_tail", "bag_bytes", "odom_t0", "odom_t1", "range_m", "stride", "source_revision", "generated_at", "invocation"]

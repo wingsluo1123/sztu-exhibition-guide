@@ -116,6 +116,94 @@ def test_bridge_gesture_dispatch_interrupts_running_preset_motion():
     assert replies == ['OK:挥手']
 
 
+# --- 引导手势 ---------------------------------------------------------------
+
+def test_every_guide_label_is_accepted_by_the_controller():
+    """
+    桥接发出的每条引导标签，guide_pose 都必须能算出姿态。
+
+    这是真正会咬人的那一类不一致：标签表里把仰角写成 70°，解析侧一切正常，
+    直到现场按下去才在日志里看到一句"超出软限制"。
+    """
+    from sztu_interaction.gesture_controller import guide_pose
+
+    for label, (side, elevation) in protocol.GUIDE_LABELS.items():
+        try:
+            pose = guide_pose(side, elevation)
+        except ValueError as exc:
+            raise AssertionError(f'{label} -> ({side}, {elevation}°) 被拒: {exc}')
+        assert pose, label
+
+
+def test_guide_labels_do_not_collide_with_preset_gesture_targets(
+        gesture_controller_cls):
+    """
+    引导走的是关节插值，不是预设动作。
+
+    侧别名 'left'/'right' 不能同时是预设动作表里的键，否则日志里只看到一个
+    名字，分不清这次到底走了哪条路。
+    """
+    sides = {side for side, _ in protocol.GUIDE_LABELS.values()}
+    overlap = sides & set(gesture_controller_cls.GESTURES)
+    assert not overlap, f'引导侧别名与预设动作名重复: {sorted(overlap)}'
+
+
+def test_bridge_guide_dispatch_passes_side_and_elevation_through():
+    """
+    桥接必须把仰角一起传下去。
+
+    漏传的话 guide_point 会用默认的 0°，'引导右上' 和 '引导右' 做出同一个
+    动作 —— 现场看上去"能用"，但指不到高处的展品。
+    """
+    from types import SimpleNamespace
+
+    from sztu_guide.bridge_server import BridgeServer
+    from sztu_guide.protocol import Command, Kind
+
+    calls = []
+    replies = []
+    stops = []
+    bridge = SimpleNamespace(
+        gesture=SimpleNamespace(
+            guide_point=lambda *args, **kwargs: calls.append((args, kwargs)) or True),
+        locomotion=SimpleNamespace(stop=lambda: stops.append(True)),
+        _reply=lambda conn, message: replies.append(message),
+    )
+
+    BridgeServer._dispatch_slow(
+        bridge,
+        Command(Kind.GUIDE, value='right', elevation_deg=30.0, raw='引导右上'),
+        None)
+
+    assert calls == [(('right', 30.0), {})]
+    assert replies == ['OK:引导右上']
+    assert stops == [True], (
+        '引导要阻塞约 6 s，期间 locomotion.tick 不发布；'
+        '不先清零的话手臂放下后会接着执行手势前那条摇杆指令')
+
+
+def test_bridge_guide_dispatch_reports_failure():
+    """guide_point 返回 False 时必须回 ERR，不能把失败报成成功。"""
+    from types import SimpleNamespace
+
+    from sztu_guide.bridge_server import BridgeServer
+    from sztu_guide.protocol import Command, Kind
+
+    replies = []
+    bridge = SimpleNamespace(
+        gesture=SimpleNamespace(guide_point=lambda *args, **kwargs: False),
+        locomotion=SimpleNamespace(stop=lambda: None),
+        _reply=lambda conn, message: replies.append(message),
+    )
+
+    BridgeServer._dispatch_slow(
+        bridge,
+        Command(Kind.GUIDE, value='left', elevation_deg=-30.0, raw='引导左下'),
+        None)
+
+    assert replies == ['ERR:引导左下']
+
+
 # --- 运控模式 ---------------------------------------------------------------
 
 def test_every_bridge_mode_label_exists_in_controller(motion_modes):
