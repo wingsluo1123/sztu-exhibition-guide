@@ -35,6 +35,12 @@ elif [ -d ~/aimdk/src/aimdk_msgs/prebuilt_aarch64 ]; then
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/aimdk/src/aimdk_msgs/prebuilt_aarch64/lib
     export AMENT_PREFIX_PATH=$AMENT_PREFIX_PATH:$HOME/aimdk/src/aimdk_msgs/prebuilt_aarch64
     echo -e "${GREEN}✓${NC} AimDK 预编译库已加载"
+elif [ -d /agibot/software/common/local/lib/python3.10/dist-packages/aimdk_msgs ]; then
+    # 机器人上的厂商 SDK 没有 setup.bash，需要手动挂载 Python 和 typesupport。
+    AGIBOT_PY=/agibot/software/common/local/lib/python3.10/dist-packages
+    export PYTHONPATH=$AGIBOT_PY:${PYTHONPATH:-}
+    export LD_LIBRARY_PATH=$AGIBOT_PY/aimdk_msgs:/agibot/software/common/lib:${LD_LIBRARY_PATH:-}
+    echo -e "${GREEN}✓${NC} 机器人厂商 AimDK 接口已加载"
 else
     echo -e "${YELLOW}⚠${NC} 警告: 未找到 AimDK 环境"
 fi
