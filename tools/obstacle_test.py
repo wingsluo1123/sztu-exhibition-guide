@@ -8,6 +8,7 @@ independent emergency stop are ready.
 import argparse
 
 import rclpy
+from rclpy.parameter import Parameter
 
 from sztu_navigation.navigation_manager import NavigationManager
 
@@ -24,9 +25,9 @@ def main() -> int:
 
     rclpy.init()
     navigation = NavigationManager(parameter_overrides=[
-        ('dry_run', not args.move),
-        ('obstacle_distance', 2.0),
-        ('obstacle_stop_distance', 1.0),
+        Parameter('dry_run', value=not args.move),
+        Parameter('obstacle_distance', value=2.0),
+        Parameter('obstacle_stop_distance', value=1.0),
     ])
     try:
         navigation.get_logger().warn(
