@@ -1,0 +1,315 @@
+# 真机实时建图用的 rviz2 配置（tools/run_lio_live.sh --rviz 会加载这个）
+#
+# 为什么不用 src/fast_lio/ 里那两个：
+#   * rviz_cfg/loam_livox.rviz 是 **ROS 1 格式**（`Class: rviz/PointCloud2`，
+#     rviz2 要的是 `rviz_default_plugins/PointCloud2`）。rviz2 加载它会把
+#     每个图层都报一遍 "PluginlibFactory: ... failed to load"，然后开出一个
+#     **什么都没有的空窗口** —— 窗口在、脚本也打印 ✓，只是里面是空的。
+#     这是上游 loam_livox 时代留下的文件，不要再指它。
+#   * rviz/fastlio.rviz 是 ROS 2 格式、能用，但它是上游的文件。改它就得碰
+#     GPLv2 的分发边界（同 config/fastlio_x2_chest.yaml 的立场：不改上游），
+#     而且下面这几条调整是我们这台机器特有的，不该写回上游。
+#
+# 和 fastlio.rviz 的差别，每条都有原因：
+#
+#   1. 去掉了 /Laser_map 那个图层。它要 `publish.map_en: true` 才有数据，
+#      而我们配的是 false（config/fastlio_x2_chest.yaml:102，理由见那里的
+#      pcd_save 段）。留着就是一个永远空着的图层，只会让人以为建图没成。
+#      要看攒起来的整张点云走离线那条：--map 录 + tools/assemble_map.py。
+#
+#   2. /cloud_registered 拆成两个图层。上游那个 `Decay Time: 30` 的意思是
+#      只留最近 30 秒，走远了后面的点云就消失 —— 看着像个跟着机器人走的
+#      气泡，不像一张图。但 Decay 调大很贵：这个话题实测约 10 Hz、每帧
+#      约 8600 点（1191 帧 1021 万点，见 20260928_165013 那趟），120 秒就是
+#      **一千万点**，rviz 渲染这个量会吃掉几个 GB 显存。
+#      所以默认开 CloudLive（Decay 0，只画当前帧，轻），想看房间攒出来的
+#      样子再手动勾上 CloudAccum（Decay 120，默认关着）。卡就把它的
+#      Decay Time 往下调。
+#
+#   3. 去掉了 /cloud_effected。那是 FAST-LIO 内部参与配准的有效点，调参时
+#      有用，看建图效果用不上，白占渲染。
+#
+#   4. TF 只显示我们自己这几个 frame（All Enabled: false + 显式列出）。
+#      开发机和真机同网段、共用 DDS domain 0，真机的 TF 树里还有厂商那
+#      一整套（包括 start_vectorflux.sh 写死的 map -> foot_contact）。
+#      All Enabled: true 会把屏幕糊满无关坐标轴。
+#
+#   5. 删掉了 SetInitialPose / SetGoal / PublishPoint 三个工具。留着的话在
+#      rviz 里误点一下 "2D Goal Pose"，就会往 /goal_pose 发一个目标点 ——
+#      而我们和真机在同一个 domain 上，这是**能让机器人动起来**的消息。
+#      看图不需要发任何东西，所以这三个干脆不装。
+#
+#   6. Fixed Frame 还是 camera_init，视角拉近到 25 m（房间 30 m 见方，
+#      上游那个 216 m 的距离是给室外数据集留的）。
+#      `Pitch: 0` / `Yaw: 0` 不是随手填的：Orbit 相机位置是
+#      focal + distance·(cos p·cos y, cos p·sin y, sin p)，所以 p=y=0 把相机
+#      放在 **+x 轴**上往原点看 —— 而上面第 8 条说了这里的"上"就是 +x，
+#      于是这是**俯视图**，看房间平面用的就是它。
+#      上游那个 Pitch 1.57 是把相机放在 +z 顶上，对 z-up 的数据集才是俯视；
+#      放在我们这儿看到的是"高度 × 一个水平方向"的侧剖面 —— 一条斜长条，
+#      截图验过。rviz 的 Orbit 把 up 向量锁死在 z，没法配置，所以画面上方
+#      会是 +z 方向（一个水平方向），这个只能接受，鼠标拖一下就行。
+#      注意焦点是 (0,0,0)，也就是**机器人开机站的地方**，不是房间中心。
+#      另外：正俯视点云，看到的绝大部分就是**地面**（地面点最多，墙从正上方
+#      看只占细边）。这不是出了问题，是点云俯视的固有样子，而它恰好是建图
+#      时最该看的东西 —— "要用的区域走到了没"。想看立体结构，鼠标左键拖一下
+#      就行；想看房间轮廓（墙在哪、能站哪）看 gridmap 出的栅格图，那个按切
+#      层带把地面排除掉了。
+#      试过 Pitch 0.7 的斜视，更差：相机一离开 +x 轴，锁死的 up 就把高度方向
+#      混进画面，变成一条竖直彩虹长条，什么都看不出来。截图比过两次。
+#      注意 camera_init 是 **FAST-LIO 每次开机时机器人站的地方**，不是
+#      maps/testroom 那张图的原点。这个配置里看到的位置是相对本次开机
+#      起点的，和已有地图没有对齐关系（FAST-LIO 这个分支没有重定位）。
+#
+#   7. 两个点云图层的订阅 QoS 是 **Reliable**，不是 rviz 默认的 Best Effort。
+#      发布端是默认 QoS —— laserMapping.cpp:930 那句
+#      `create_publisher<PointCloud2>("/cloud_registered", 20)` 等于
+#      RELIABLE / KEEP_LAST(20)，所以 Reliable 订阅能匹配上，而且有重传。
+#      为什么非要重传：src/sztu_slam/config/fastdds_large_cloud.xml 的头
+#      注释里记着实测，同一个发布者、同一趟数据，RELIABLE 订阅者收
+#      1195/1195，BEST_EFFORT 收 100/1195 —— **丢 92%，而且不报错**，
+#      只表现为画面一卡一卡。一帧 801 KB，UDP 分片丢一片整帧就没了。
+#      把 rviz 开在开发机上跨网络看的时候这一项尤其要紧。
+#
+#   8. 点云按 **X 轴**上色（`Axis: X`），不是上游那个 `Axis: Z`。
+#      因为这里的"上"是 x 不是 z：FAST-LIO 这个分支不做重力对齐
+#      （IMU_Processing.hpp:195 那行 `state_inout.rot = Eye3d` 是注释掉的），
+#      世界系 camera_init 直接继承 IMU 自己的轴向，而 X2 胸前雷达的 IMU
+#      静止时 ax=+9.75 —— x 轴朝上。实测 /tmp 那张拼好的点云，x 跨度
+#      5.44 m（房间高度），z 跨度 17.48 m（水平），和 maps/testroom.yaml
+#      里 `sztu_up: [0.998, -0.016, 0.061]` 对得上。
+#      按 z 上色不会报错，只是颜色表达的是"水平走了多远"，看不出地面和
+#      墙面的分层 —— 和 tools/lio_report.py 头注释里那个"照着 z 量会得到
+#      8.32 m 假漂移"是同一个坑。
+#
+# 注意：在 rviz 里点 File > Save Config 会把这些注释全部丢掉。要调参数
+# 请直接改这个文件，或者另存成别的名字。
+#
+#   9. 只留 Displays 一个面板。上游那份还带 Selection / Views / Time 三个，
+#      而这份**没有**上游那串 base64 的 `QMainWindow State`（那是 rviz 自己
+#      存的窗口布局，手写配置里给不出来）。没有它，面板只能按默认尺寸堆在
+#      左边，四个摞起来会把 3D 视图挤成右边一条细缝 —— 截图验过，确实很窄。
+#      看建图这三个面板都用不上：Selection 是点选结果，Time 是回放时钟
+#      （实时跑没有意义），Views 只是切视角，鼠标就能做。
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Status1
+      Splitter Ratio: 0.5
+    Tree Height: 700
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        base_link:
+          Value: true
+        body:
+          Value: true
+        camera_init:
+          Value: true
+        odom:
+          Value: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        camera_init:
+          body:
+            {}
+      Update Interval: 0
+      Value: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz_default_plugins/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: false
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: false
+        Value: false
+      Enabled: true
+      Keep: 100
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /Odometry
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /path
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 2
+        Min Value: -2
+        Value: true
+      Axis: X
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 186
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: CloudLive
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.05000000074505806
+      Style: Flat Squares
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /cloud_registered
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 2
+        Min Value: -2
+        Value: true
+      Axis: X
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 120
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 186
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: CloudAccum
+      Position Transformer: XYZ
+      Selectable: false
+      Size (Pixels): 2
+      Size (m): 0.05000000074505806
+      Style: Points
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /cloud_registered
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+  Enabled: true
+  Global Options:
+    Background Color: 0; 0; 0
+    Fixed Frame: camera_init
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 25
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz_default_plugins)
+      Yaw: 0
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 1000
+  Hide Left Dock: false
+  Hide Right Dock: true
+  Width: 1600
+  X: 100
+  Y: 60

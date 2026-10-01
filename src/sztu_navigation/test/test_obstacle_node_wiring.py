@@ -223,15 +223,60 @@ def test_the_tf_lookup_never_blocks_the_executor(node, monkeypatch):
             '单线程执行器里阻塞等待会拖住 10 Hz 的控制环。')
 
 
-def test_the_fallback_is_counted_so_its_rate_is_visible(node):
+def test_the_fallback_is_counted_so_its_rate_is_visible(node, monkeypatch):
     """退路要计数。只打一次日志的话，没人知道它占多大比例。
 
     而比例变高（实测常态约 10%）正是"TF 发布变慢了"的信号 ——
     那是个该被看见的退化，不该藏在一条启动期的 info 里。
+
+    注意计数的是**三条路里的两条**：精确匹配成功 -> _tf_ok_count，
+    退用最新变换成功 -> _tf_fallback_count，两次都失败 -> 都不加（直接
+    返回 None，调用方按"看不见"处理）。第三种不该算进占比，否则
+    "TF 整个断了"会被混进"时间戳偶尔对不上"的统计里。
     """
     assert hasattr(node, '_tf_ok_count')
     assert hasattr(node, '_tf_fallback_count')
-    before = node._tf_ok_count + node._tf_fallback_count
-    node.lidar_callback(_msg([(1.0, 0.0, 0.5)], frame='another_frame'))
-    after = node._tf_ok_count + node._tf_fallback_count
-    assert after > before, '查过 TF 之后计数没动'
+
+    calls = []
+
+    class FakeTF:
+        transform = type('T', (), {
+            'translation': type('V', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})(),
+            'rotation': type('Q', (), {
+                'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0})(),
+        })()
+
+    def only_latest_works(target, source, when, timeout=None):
+        # 第一次（按点云 stamp）失败，第二次（Time()，即"最新"）成功
+        # —— 正是真机上那 10% 的帧走的路。
+        #
+        # 用调用次序区分，不用时间戳的值：_msg() 造的 stamp 是全零，
+        # 和 rclpy 的 Time() 撞在一起，按值分不开（第一版就栽在这儿）。
+        calls.append(when)
+        if len(calls) == 1:
+            raise RuntimeError('extrapolation into the future')
+        return FakeTF()
+
+    monkeypatch.setattr(node._tf_buffer, 'lookup_transform', only_latest_works)
+    before = node._tf_fallback_count
+    assert node._lookup_base_from('x', _msg([]).header.stamp) is not None, \
+        '退路该拿到变换'
+    assert node._tf_fallback_count == before + 1, '走了退路但没计数'
+    assert len(calls) == 2, '应该先按时间戳查、失败后再查最新'
+
+    # 精确匹配成功时计另一个数。
+    monkeypatch.setattr(node._tf_buffer, 'lookup_transform',
+                        lambda *a, **k: FakeTF())
+    ok_before = node._tf_ok_count
+    assert node._lookup_base_from('x', _msg([]).header.stamp) is not None
+    assert node._tf_ok_count == ok_before + 1, '精确匹配成功没计数'
+
+    # 两次都失败：都不加，而且返回 None（按"看不见"处理）。
+    def always_fails(*a, **k):
+        raise RuntimeError('no such frame')
+
+    monkeypatch.setattr(node._tf_buffer, 'lookup_transform', always_fails)
+    snap = (node._tf_ok_count, node._tf_fallback_count)
+    assert node._lookup_base_from('x', _msg([]).header.stamp) is None
+    assert (node._tf_ok_count, node._tf_fallback_count) == snap, \
+        '彻底查不到时不该计入占比 —— 那是故障，不是"时间戳偶尔对不上"'

@@ -17,6 +17,9 @@ setup(
         # .xml 是 Fast DDS 的传输配置，不装上点云会丢 92%，见那个文件的注释。
         ('share/' + package_name + '/config',
             glob('config/*.yaml') + glob('config/*.xml')),
+        # 真机实时建图的 rviz2 配置。tools/run_lio_live.sh --rviz 读的是
+        # 源码树那份，这里装一份是为了从 install/ 单独起 rviz 时也能指到。
+        ('share/' + package_name + '/rviz', glob('rviz/*.rviz')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

@@ -40,8 +40,22 @@ import pytest
 # 而 `pytest test --ignore=本文件` 得到 `207 passed`。也就是说缺 SDK 的环境里
 # （开发机、干净 CI）这个门禁是空转的，还一路绿灯。
 # `pytest.mark.skipif` 是在**收集之后**才判的，不碰收集，所以没这个毛病。
+# 判据用 aimdk_msgs_available()，**不要** find_spec('aimdk_msgs')。两个原因：
+#
+#   1. 别的包的 conftest.py 会往 sys.modules 里塞一个**替身** aimdk_msgs
+#      （给纯函数用例用，见 sztu_interaction.testing）。替身没有 __spec__，
+#      而 find_spec 碰上这种模块会**抛 ValueError**，不是返回 None：
+#          ValueError: aimdk_msgs.__spec__ is None
+#      2026-10-01 实测：分包跑（pytest src/sztu_slam/test）全绿，但
+#      tools/run_tests.sh 四个包一起跑时，本文件在**收集阶段**炸掉整轮。
+#      触发条件是收集顺序 —— sztu_navigation 的 conftest 先装了替身。
+#   2. 即使不抛异常，"能 import 到"也不等于"是真包"。对着替身建真订阅会
+#      在运行时炸成 ERROR 而不是 skip，详见
+#      sztu_navigation/test/test_navigation_pose_wait.py 的同一段注释。
+from sztu_interaction.testing import aimdk_msgs_available       # noqa: E402
+
 _HAVE = (importlib.util.find_spec('rclpy') is not None
-         and importlib.util.find_spec('aimdk_msgs') is not None)
+         and aimdk_msgs_available())
 
 pytestmark = pytest.mark.skipif(
     not _HAVE, reason='需要 ROS 2 环境和厂商 SDK 的 aimdk_msgs（source setup.sh）')
