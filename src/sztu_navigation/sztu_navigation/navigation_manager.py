@@ -6,14 +6,19 @@
 """
 
 import math
-import struct
 import time
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy
+from rclpy.duration import Duration
+from rclpy.qos import (
+    QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy,
+)
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
+import tf2_ros
+
+from . import obstacle as obstacle_mod
 
 from .control import (
     DEFAULT_STALL_ANGLE_EPS,
@@ -72,6 +77,20 @@ class NavigationManager(Node):
         self.declare_parameter('obstacle_width', 0.55)
         self.declare_parameter('obstacle_min_height', 0.05)
         self.declare_parameter('obstacle_max_height', 1.8)
+        # 点云多久没来就当"看不见"。10 Hz 的雷达，0.5 s 等于丢了 5 帧。
+        self.declare_parameter('obstacle_max_age',
+                               obstacle_mod.DEFAULT_MAX_AGE)
+        # 点云话题。写成参数是为了让测试能订一个假话题 ——
+        # 真机上订真话题会收到现场数据，负对照会悄悄通过。
+        self.declare_parameter(
+            'lidar_topic',
+            '/aima/hal/sensor/lidar_chest_front/lidar_pointcloud')
+        # 机体系。高度过滤必须在这个系里做：雷达装在 torso 上，中间隔着
+        # 受驱动的腰关节，腰一弯雷达系的 z 就不是离地高度了。
+        self.declare_parameter('base_frame', 'base_link')
+        # 避障总开关。关掉时**不是**"当作没有障碍"，而是完全不看点云、
+        # 也不做 stale 判定 —— 给纯空跑和离线回放用。实走别关。
+        self.declare_parameter('obstacle_enabled', True)
         self.declare_parameter('cmd_vel_topic', '/aima/mc/locomotion/velocity')
         self.declare_parameter('odom_topic', '/slam/lidar_odom')
         # 走跑输入源（AimDK 5.1.3）。优先级 45 的取法：高于 pnc(40) 好让我们的
@@ -112,6 +131,16 @@ class NavigationManager(Node):
             self.get_parameter('obstacle_min_height').value)
         self.obstacle_max_height = float(
             self.get_parameter('obstacle_max_height').value)
+        self.obstacle_max_age = float(
+            self.get_parameter('obstacle_max_age').value)
+        self.obstacle_enabled = bool(
+            self.get_parameter('obstacle_enabled').value)
+        self.base_frame = str(self.get_parameter('base_frame').value)
+        if self.obstacle_stop_distance > self.obstacle_distance:
+            raise ValueError(
+                f'obstacle_stop_distance({self.obstacle_stop_distance}) > '
+                f'obstacle_distance({self.obstacle_distance})：停车距离比减速'
+                '距离还远，机器人会先停后减速。两个值写反了。')
 
         # 位姿过期上限。默认 0 表示按容差和速度推（见 control.odom_stale_timeout），
         # 不要拍一个常数上去：容差或限速改了，这个上限要跟着变。
@@ -172,19 +201,46 @@ class NavigationManager(Node):
         )
 
         # 订阅者：激光雷达（避障）
+        #
+        # **不要和 odom_qos 共用**，这两个的语义不一样：
+        # 位姿要"最新一帧，丢了无所谓"；避障点云要"绝不能收历史帧"。
+        #
+        # 发布端实测是 RELIABLE / TRANSIENT_LOCAL（2026-10-01 真机
+        # ros2 topic info -v 核过）。durability 必须显式写 VOLATILE，
+        # 不能镜像成 TRANSIENT_LOCAL，也不能靠 rclpy 的默认值兜底 ——
+        # 否则一订阅就会收到一批过期的历史点云，真包里实测最老的一帧比
+        # 当前时刻早 1.15 秒。**拿 1 秒前的点云做避障是危险的。**
+        # depth=1：避障只关心最新那帧，排队没有意义，堆积反而增加延迟。
+        self.lidar_topic = str(self.get_parameter('lidar_topic').value)
+        lidar_qos = QoSProfile(
+            depth=1,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            durability=QoSDurabilityPolicy.VOLATILE,
+        )
         self.lidar_sub = self.create_subscription(
             PointCloud2,
-            '/aima/hal/sensor/lidar_chest_front/lidar_pointcloud',
+            self.lidar_topic,
             self.lidar_callback,
-            odom_qos
+            lidar_qos
         )
+
+        # TF：点云在雷达系，高度过滤要在机体系做。整条链
+        # base_link <- lidar_chest_front 穿过受驱动的腰关节，是**动态**的，
+        # 所以每帧都查，不缓存成常量。
+        self._tf_buffer = tf2_ros.Buffer()
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
+        self._tf_warned = False
 
         # 状态变量
         self.current_pose = None
         self.target_pose = None
         self.is_navigating = False
-        self.obstacle_detected = False
-        self._obstacle_stop = False
+        # 避障状态。初值按"看不见"算 —— 一帧点云都还没收到的时候，
+        # 不该让机器人以为前方是空的。见 obstacle.stale_state 的注释。
+        self._obstacle = obstacle_mod.stale_state()
+        self._last_lidar_time = None
+        self._obstacle_log_state = None
         # 'arrived' | 'timeout' | 'stalled' | 'canceled' | 'odom_stale' | None
         self.last_result = None
         self._goal_start_time = None
@@ -208,49 +264,86 @@ class NavigationManager(Node):
             return None
         return time.monotonic() - self._last_odom_time
 
+    def _lookup_base_from(self, frame_id, stamp):
+        """查 base_link <- frame_id 的 4x4 齐次矩阵。查不到返回 None。
+
+        这条链穿过受驱动的腰关节，是**动态**的，所以每帧都查。
+        查不到时返回 None，调用方据此把这一帧算作"看不见"（而不是
+        "没有障碍"）—— TF 断了和雷达断了一样危险。
+        """
+        try:
+            tf = self._tf_buffer.lookup_transform(
+                self.base_frame, frame_id, stamp,
+                timeout=Duration(seconds=0.05))
+        except Exception as exc:          # tf2 的异常族很杂，一律当查不到
+            if not self._tf_warned:
+                self._tf_warned = True
+                self.get_logger().warn(
+                    f'查不到 {self.base_frame} <- {frame_id} 的变换：{exc}。'
+                    '避障会把这些帧当作"看不见"（即停车），不会放行。'
+                    '若 /tf 本来就没有这条链，用 -p base_frame 指成点云'
+                    '自己的 frame_id 可以跳过变换，但高度过滤就不准了。')
+            return None
+        t = tf.transform.translation
+        q = tf.transform.rotation
+        x, y, z, w = q.x, q.y, q.z, q.w
+        return (
+            (1 - 2 * (y * y + z * z), 2 * (x * y - z * w),
+             2 * (x * z + y * w), t.x),
+            (2 * (x * y + z * w), 1 - 2 * (x * x + z * z),
+             2 * (y * z - x * w), t.y),
+            (2 * (x * z - y * w), 2 * (y * z + x * w),
+             1 - 2 * (x * x + y * y), t.z),
+            (0.0, 0.0, 0.0, 1.0),
+        )
+
     def lidar_callback(self, msg: PointCloud2):
-        """Detect obstacles in the forward lidar sector."""
-        # 字段排布已从真机包里解出（2026-09-28，见 ROADMAP「点云字段排布」），
-        # 不用再猜，也不要用 read_points 的默认假设：
-        #   point_step = 32   height = 1（无序）  25638 点/帧 @ 10 Hz
-        #   x/y/z FLOAT32 @ 0/4/8，offset 12 是 4 字节填充，
-        #   intensity FLOAT32 @16，ring UINT16 @20，timestamp FLOAT64 @24
-        # 只做避障的话读 x/y/z 就够，按 32 字节步进即可：
-        #   struct.unpack_from('<fff', msg.data, i * 32)
-        # 两个坑：
-        #   1. frame_id 是 lidar_chest_front，不是 base_link。雷达装在
-        #      torso_link 上、且中间隔着受驱动的腰关节，必须查 /tf（动态），
-        #      不能当成固定变换。
-        #      （实测 torso_link -> lidar_chest_front 是静态的，但
-        #        base_link -> lidar_chest_front 整条链是动态的。）
-        #   2. 发布端是 RELIABLE/TRANSIENT_LOCAL。避障订阅端的 durability
-        #      要用 VOLATILE，不要镜像成 TRANSIENT_LOCAL —— 否则一订阅就会
-        #      收到一批**过期的历史点云**。真包里实测过：录制刚开始的 12 帧
-        #      是历史突发，最老的一帧比当前时刻早 1.15 秒。
-        #      拿 1 秒前的点云做避障是危险的。
-        #      （reliability 用 RELIABLE 或 BEST_EFFORT 都能和它兼容；
-        #        真正要改的是 durability。）
-        step = int(msg.point_step)
-        if step < 12 or not msg.data:
-            self.obstacle_detected = False
-            self._obstacle_stop = False
+        """一帧点云 -> 避障状态。判定逻辑全在 obstacle.py（纯函数，可合成测）。"""
+        if not self.obstacle_enabled:
             return
-        nearest = float('inf')
-        data = bytes(msg.data)
-        for offset in range(0, len(data) - 11, step):
-            try:
-                x, y, z = struct.unpack_from('<fff', data, offset)
-            except struct.error:
-                break
-            if not all(math.isfinite(value) for value in (x, y, z)):
-                continue
-            if (0.0 < x <= self.obstacle_distance
-                    and abs(y) <= self.obstacle_width
-                    and self.obstacle_min_height <= z
-                    <= self.obstacle_max_height):
-                nearest = min(nearest, math.hypot(x, y))
-        self.obstacle_detected = nearest <= self.obstacle_distance
-        self._obstacle_stop = nearest <= self.obstacle_stop_distance
+        frame_id = msg.header.frame_id or self.base_frame
+        if frame_id == self.base_frame:
+            matrix = None            # 调用方声明点云已在机体系
+        else:
+            matrix = self._lookup_base_from(frame_id, msg.header.stamp)
+            if matrix is None:
+                # TF 查不到 —— 当作看不见，不是当作安全。
+                self._obstacle = obstacle_mod.stale_state()
+                self._last_lidar_time = None
+                return
+        self._obstacle = obstacle_mod.evaluate(
+            bytes(msg.data), int(msg.point_step), matrix,
+            slow_distance=self.obstacle_distance,
+            stop_distance=self.obstacle_stop_distance,
+            half_width=self.obstacle_width,
+            min_height=self.obstacle_min_height,
+            max_height=self.obstacle_max_height,
+        )
+        self._last_lidar_time = time.monotonic()
+
+    def lidar_age(self):
+        """最后一帧点云到现在多久（秒）。一帧都没收到返回 None。"""
+        if self._last_lidar_time is None:
+            return None
+        return time.monotonic() - self._last_lidar_time
+
+    def obstacle_state(self):
+        """当前避障状态，**已经把"点云过期"算进去**。
+
+        控制循环必须走这个方法，不要直接读 self._obstacle ——
+        那个不含新鲜度判断，雷达掉线时它会停在最后一帧的结论上，
+        而那一帧可能说"前方无障碍"。
+        """
+        if not self.obstacle_enabled:
+            return obstacle_mod.ObstacleState()      # 全 False，明确放行
+        if not obstacle_mod.is_fresh(self.lidar_age(), self.obstacle_max_age):
+            return obstacle_mod.stale_state()
+        return self._obstacle
+
+    @property
+    def obstacle_detected(self):
+        """兼容旧调用方（compute_velocity 的 obstacle_detected 参数）。"""
+        return self.obstacle_state().slow
 
     # --- 目标设置（非阻塞）--------------------------------------------------
     def set_goal(self, x: float, y: float, yaw: float = None) -> bool:
@@ -453,17 +546,38 @@ class NavigationManager(Node):
             self.last_result = 'stalled'
             return
 
-        if self.obstacle_detected and cmd_out.phase == 'advance':
-            self.get_logger().warn('Obstacle detected, reducing speed')
-
-        if self._obstacle_stop and cmd_out.phase == 'advance':
-            self.get_logger().warn(
-                'Obstacle within stop distance; holding position',
-                throttle_duration_sec=1.0)
-            self._publish(0.0, 0.0)
-            return
+        # 避障只拦**前进**。rotate / align 是原地转，前方走廊里的东西
+        # 挡不住转身；而且被障碍卡住时还能转，才有机会转开。
+        obs = self.obstacle_state()
+        if cmd_out.phase == 'advance':
+            if obs.stop:
+                why = ('点云过期或 TF 查不到 —— 当作前方有障碍'
+                       if obs.stale else
+                       f'障碍在 {obs.nearest:.2f} m（停车线 '
+                       f'{self.obstacle_stop_distance:.2f} m）')
+                self.get_logger().warn(
+                    f'避障停车：{why}。原地等待，不取消导航。',
+                    throttle_duration_sec=1.0)
+                self._log_obstacle_change('stop')
+                self._publish(0.0, 0.0)
+                return
+            if obs.slow:
+                self.get_logger().warn(
+                    f'避障减速：障碍在 {obs.nearest:.2f} m',
+                    throttle_duration_sec=1.0)
+                self._log_obstacle_change('slow')
+            else:
+                self._log_obstacle_change('clear')
 
         self._publish(cmd_out.linear, cmd_out.angular)
+
+    def _log_obstacle_change(self, state):
+        """避障状态**变化**时打一行。限流日志会把"什么时候恢复的"吞掉。"""
+        if state == self._obstacle_log_state:
+            return
+        self._obstacle_log_state = state
+        if state == 'clear':
+            self.get_logger().info('避障解除，恢复前进')
 
     def _distance_to_target(self) -> float:
         return math.hypot(
