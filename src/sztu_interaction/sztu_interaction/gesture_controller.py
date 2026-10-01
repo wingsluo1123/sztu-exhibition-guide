@@ -9,7 +9,6 @@
   interface/robot/mc/motion/msg/McControlArea.msg
 """
 
-import math
 import time
 
 import rclpy
@@ -58,127 +57,6 @@ WRIST_ROLL = {
     'left': 'left_wrist_roll_joint',
     'right': 'right_wrist_roll_joint',
 }
-
-# --- 引导手势 ---------------------------------------------------------------
-# 讲解时抬手把游客的视线引到展品上，要求「手臂和机器人处于同一个平面」——
-# 机身冠状面（左右 × 上下），手臂不向前伸。
-#
-# 这个约束不是摆造型摆出来的，是 URDF 定死的。sztu_description/urdf/x2_ultra.urdf：
-#   · {left,right}_shoulder_roll_joint 的 axis 是 (1,0,0)；
-#   · 它的父链 shoulder_pitch_link 相对 torso_link 只有一个绕 x 的 rpy 偏置；
-#   · 所以 shoulder_pitch=0 时，roll 轴就是 torso 的 +x（机器人正前方）。
-# 绕 x 转不改变 x 坐标 —— 于是只要其余关节归零、只动 shoulder_roll，
-# 整条手臂就始终留在 torso 的 x=0 平面里，也就是机身冠状面。
-#
-# 反过来说，pitch / elbow / wrist_pitch 只要不是 0 就会把手臂带出这个平面
-# （它们的轴都垂直于 x，绕它们转会产生 x 分量），所以这几个关节必须归零，
-# 不能"保持当前角度"。elbow 的 0 正好是它的上限（手臂完全伸直），符合预期。
-#
-# 零位时手臂并非垂直向下：上面那个 rpy 偏置让它向外撇开约 12°（0.2094 rad）。
-# 这 12° 必须补偿掉，否则"平举"会差 12°。
-SHOULDER_TILT = {
-    'left': 0.209439453777995,    # left_shoulder_pitch_joint 的 rpy roll
-    'right': -0.209442812383636,  # right_shoulder_pitch_joint 的 rpy roll
-}
-
-# roll 增大时手臂往哪边扫：左臂正方向朝外（+y），右臂相反
-GUIDE_SWEEP_SIGN = {'left': 1.0, 'right': -1.0}
-
-# 除 shoulder_roll 以外，这一侧其余关节在引导姿态下一律归零
-GUIDE_ZERO_SEGMENTS = (
-    'shoulder_pitch', 'shoulder_yaw', 'elbow',
-    'wrist_yaw', 'wrist_pitch', 'wrist_roll',
-)
-
-# 仰角上下限（度，相对水平）。这是一个保守的**软**限制：
-# 关节限位本身还允许更大（右臂 roll 到 -2.993 对应仰角约 +93°），
-# 但接近竖直时手臂会靠近头部，而本仓库没有自碰撞模型，也没在真机上量过
-# 包络。±60° 足够指展墙、展台和屏幕，超出就拒绝，不做静默裁剪。
-GUIDE_ELEVATION_LIMIT_DEG = 60.0
-
-# 关节限位的第二份来源：x2_ultra.urdf 的 <limit>。
-# 上面的 ARM_JOINTS 取自 AimDK 官方示例，两份在 3 个关节上并不一致
-# （shoulder_roll URDF 更宽、wrist_pitch/wrist_roll 代码更宽）。哪份"对"没有
-# 现场依据，所以引导姿态按**两份的交集**校验，不往任何一份的外侧下发。
-# test_guide_gesture_geometry.py 会重新解析 URDF 核对这张表，改了会红。
-#
-# 2026-10-01 补一条溯源：运控自己的关节表在
-#   mc-x86-.../bin/mc_param/src/robot/lx2501_3_t2d5/robot_model.yaml 的 ARM 段。
-# 它和 ARM_JOINTS **完全一致**（含 shoulder_roll 2.993、wrist_pitch 0.558、
-# wrist_roll 1.571），只有 elbow 的下限不同（MC -2.556 / URDF 与本表 -2.3556）。
-# 也就是说 ARM_JOINTS 那份是 MC 会接受的量，URDF 那份是运动学模型；
-# 取交集仍然是对的（elbow 上取更紧的 -2.3556），而引导姿态的 elbow 目标是 0，
-# 两份都不越界。
-URDF_ARM_LIMITS = {
-    'left_shoulder_pitch_joint': (-3.08, 2.04),
-    'left_shoulder_roll_joint': (-0.061, 3.0456),
-    'left_shoulder_yaw_joint': (-2.556, 2.556),
-    'left_elbow_joint': (-2.3556, 0.0),
-    'left_wrist_yaw_joint': (-2.556, 2.556),
-    'left_wrist_pitch_joint': (-0.5236, 0.5236),
-    'left_wrist_roll_joint': (-1.5097, 0.724),
-    'right_shoulder_pitch_joint': (-3.08, 2.04),
-    'right_shoulder_roll_joint': (-3.0456, 0.061),
-    'right_shoulder_yaw_joint': (-2.556, 2.556),
-    'right_elbow_joint': (-2.3556, 0.0),
-    'right_wrist_yaw_joint': (-2.556, 2.556),
-    'right_wrist_pitch_joint': (-0.5236, 0.5236),
-    'right_wrist_roll_joint': (-0.724, 1.5097),
-}
-
-# 引导手势抬到位后保持多久（秒），之后自动回到抬手前的姿态。
-# 不自动回位的话，客户端掉线就会把手臂留在空中。
-DEFAULT_GUIDE_HOLD = 3.0
-
-
-def arm_joint_range(joint_name: str):
-    """返回某关节可下发的角度区间：ARM_JOINTS 与 URDF 两份限位的交集。"""
-    lower, upper, _, _ = ARM_JOINTS[joint_name]
-    urdf_lower, urdf_upper = URDF_ARM_LIMITS[joint_name]
-    return max(lower, urdf_lower), min(upper, urdf_upper)
-
-
-def guide_pose(side: str, elevation_deg: float = 0.0):
-    """
-    算出"往 side 侧、仰角 elevation_deg 指引"这个姿态的整臂关节目标。
-
-    Args:
-        side: 'left' / 'right'
-        elevation_deg: 相对水平的仰角，+ 向上 / - 向下，0 为平举
-
-    Returns:
-        dict: 关节名 -> 目标角度（弧度），含该侧全部 7 个关节
-
-    Raises:
-        ValueError: side 不认识、仰角超出 ±GUIDE_ELEVATION_LIMIT_DEG，
-                    或算出的角度落在关节限位之外
-    """
-    side = (side or 'right').lower()
-    if side not in GUIDE_SWEEP_SIGN:
-        raise ValueError(f'未知的手臂侧别: {side}（可用 left/right）')
-
-    if not -GUIDE_ELEVATION_LIMIT_DEG <= elevation_deg <= GUIDE_ELEVATION_LIMIT_DEG:
-        raise ValueError(
-            f'引导仰角 {elevation_deg}° 超出软限制 '
-            f'±{GUIDE_ELEVATION_LIMIT_DEG}°')
-
-    # 从"垂直向下"量起的张开角：平举是 90°，再加上要求的仰角
-    from_down = math.pi / 2 + math.radians(elevation_deg)
-    # 补掉零位那 12° 外撇，再按左右镜像定号
-    roll = GUIDE_SWEEP_SIGN[side] * (from_down - abs(SHOULDER_TILT[side]))
-
-    pose = {f'{side}_{segment}_joint': 0.0 for segment in GUIDE_ZERO_SEGMENTS}
-    pose[f'{side}_shoulder_roll_joint'] = roll
-
-    for name, target in pose.items():
-        lower, upper = arm_joint_range(name)
-        if not lower <= target <= upper:
-            raise ValueError(
-                f'{name} 目标 {target:.4f} rad 超出可用限位 '
-                f'[{lower:.4f}, {upper:.4f}]')
-
-    return pose
-
 
 # 机械臂状态订阅 QoS，与官方示例保持一致
 ARM_STATE_QOS = QoSProfile(
@@ -233,6 +111,26 @@ class GestureController(Node):
         'wave_right': (1002, AREA_RIGHT_HAND),         # 右手挥手
         'salute': (1013, AREA_RIGHT_HAND),             # 右手敬礼
         'hug': (3008, AREA_COMBINED),                  # 拥抱
+        # --- 讲解引导手势（4xxx = 运控的“讲解”族动画）---
+        # ⚠ 这一族的 area **不是** McControlArea（1=左手/2=右手/11=组合），
+        #    而是动画表里的**变体选择器**。来源：运控自己的
+        #    mc_param/src/robot/lx2501_3_t2d5/classic/animation_player.yaml
+        #    的 ani_table，每个 animation 下挂若干 (area, csv) 组合。
+        #    所以别拿 AREA_* 常量套这几条，写错只会播到另一个变体。
+        #
+        # 下面每一条都在 x86 MuJoCo 仿真上实调过，确认 MC 真的加载了对应的 csv
+        # （mc.log 的 "call animation path"），不是照着 yaml 抄的。
+        # 括号里的出平面角/仰角是拿动画 csv 的峰值帧跑正运动学量出来的。
+        'guide_right': (4108, 11),   # JJ_YouShouYinDao  右手引导 (出平面 28°, 仰角 -1°)
+        'guide_left': (4108, 12),    # JJ_ZuoShouYinDao  左手引导 (出平面 34°, 仰角 +0°)
+        'reach_right_up': (4106, 12),     # JJ_YouShangFangShenShou 右上方伸手 (仰角 +7°)
+        'reach_left_up': (4106, 16),      # JJ_ZuoShangFangShenShou 左上方伸手
+        'reach_right_front': (4106, 11),  # JJ_YouQianFangShenShou  右前方伸手 (仰角 -21°)
+        'reach_left_front': (4106, 15),   # JJ_ZuoQianFangShenShou  左前方伸手
+        'reach_front_right': (4106, 13),  # JJ_ZhengQianFangShenYouShou 正前方伸右手
+        'reach_front_left': (4106, 14),   # JJ_ZhengQianFangShenZuoShou 正前方伸左手
+        'raise_right': (4105, 11),        # JJ_TaiYouShou 抬右手
+        'raise_left': (4105, 12),         # JJ_TaiZuoShou 抬左手
         # 点头/摇头、思考和低头没有官方文档支持的预设动作组合，暂不映射。
     }
 
@@ -338,84 +236,6 @@ class GestureController(Node):
         self.get_logger().info(f'Turn hand done: {side}')
         return True
 
-    def guide_point(self, side: str = 'right', elevation_deg: float = 0.0,
-                    duration: float = 1.5, steps: int = 30,
-                    hold: float = DEFAULT_GUIDE_HOLD):
-        """
-        引导手势：把一条手臂在机身冠状面内抬起，指向正在讲解的展品。
-
-        手臂与机器人同面（不向前伸），方向由仰角决定：0 为平举，正值往上、
-        负值往下。抬到位后保持 hold 秒，再回到抬手前的姿态。
-
-        这条不走预设动作服务 —— 预设动作目录里只有固定造型的"抬手"(1001)，
-        角度不可调，给不出"指向那一件展品"的方向。
-
-        ⚠ 现状（2026-10-01，x86 MuJoCo 仿真实测）：**这个方法在 MC 运行时
-        动不了手臂**，会返回 False。原因不是姿态算错（几何有
-        test_guide_gesture_geometry.py 的门禁），而是 MC 以 500 Hz 主动伺服
-        同一个话题，20 Hz 抢不过它 —— 详见 _check_joints 的说明。已验证
-        STAND_DEFAULT 和 WHOLE_BODY_TELEOP 两种模式都是如此；同一原因下
-        已有的 turn_hand 也动不了。要让它真的动，得改走 MC 的输入通道
-        （/aima/mc/joint/retargeting），那是另一件事，还没做。
-
-        Args:
-            side: 'left' / 'right'，不区分大小写
-            elevation_deg: 相对水平的仰角（度），范围 ±60
-            duration: 单程抬起/放下的时长（秒）
-            steps: 轨迹插值步数
-            hold: 抬到位后保持的时长（秒）
-
-        Returns:
-            True 成功，False 失败（原因见日志）
-        """
-        side = (side or 'right').lower()
-        try:
-            targets = guide_pose(side, elevation_deg)
-        except ValueError as exc:
-            self.get_logger().error(f'Cannot build guide pose: {exc}')
-            return False
-
-        if not self._wait_for_arm_state():
-            return False
-
-        starts = {}
-        for name in targets:
-            current = self.arm_joint_state.get(name)
-            if current is None:
-                self.get_logger().error(f'Joint {name} not present in arm state')
-                return False
-            starts[name] = current
-
-        roll_joint = f'{side}_shoulder_roll_joint'
-        self.get_logger().info(
-            f'Guide gesture: {side} arm, elevation {elevation_deg:+.1f} deg, '
-            f'{roll_joint} {starts[roll_joint]:.3f} -> '
-            f'{targets[roll_joint]:.3f} rad')
-
-        if not self._move_joints(starts, targets, duration, steps):
-            return False
-
-        if not self._check_joints(targets):
-            return False
-
-        # 保持姿态期间继续收状态，否则放下时用的是过期角度
-        deadline = time.time() + max(0.0, hold)
-        while time.time() < deadline:
-            rclpy.spin_once(self, timeout_sec=0.05)
-            # 保持期间持续补发，避免被 mc_ros2_node 的全零指令慢慢压回去
-            if not self._publish_arm_command(targets):
-                return False
-            time.sleep(0.05)
-
-        if not self._move_joints(targets, starts, duration, steps):
-            return False
-
-        if not self._check_joints(starts):
-            return False
-
-        self.get_logger().info(f'Guide gesture done: {side}')
-        return True
-
     def _wait_for_arm_state(self, timeout: float = 3.0):
         """等到 /aima/hal/joint/arm/state 上有数据，没有就别盲目下发。"""
         if self.arm_joint_state:
@@ -448,12 +268,14 @@ class GestureController(Node):
         (右肩 pitch=0.400 / roll≈0 / 肘=-1.200)；切到 WHOLE_BODY_TELEOP
         之后 stiffness 更高（50）。所以这不是"有风险"，而是**必然被压过**：
         同一个话题上 500 Hz 对 20 Hz，最后一帧写入者几乎总是 MC。
-        仿真里 guide_point 和 turn_hand 都因此返回 False（关节一动不动），
-        而这条回读校验正确地报出了原因、没有谎报成功。
+        仿真里 turn_hand 因此返回 False（腕关节一动不动：目标 0.802，
+        实际停在 0.0047），而这条回读校验正确地报出了原因、没有谎报成功。
 
-        结论：MC 在跑的时候不能直接往这个话题写。正确的通道是喂给 MC
-        （/aima/mc/joint/retargeting 的 McRetargetFrame，或预设动作服务），
-        而不是和它抢。详见 docs/REMOTE_PROTOCOL.md 的引导手势一节。
+        结论：MC 在跑的时候不能直接往这个话题写。「引导」手势原本也走这条路，
+        同样动不了，后来改成调运控自己的讲解族预设动作（4105/4106/4108）才
+        真的动起来 —— 见 GESTURES 表。turn_hand 还留在这条老路上，所以在
+        MC 运行时它是不工作的；真要修，运控动画表里有 1012
+        (SM_turn_left/SM_turn_right)，看着就是腕部翻转，但**还没验证过**。
 
         expected 里的每个关节都要落在容差内才算到位。
         """

@@ -118,90 +118,81 @@ def test_bridge_gesture_dispatch_interrupts_running_preset_motion():
 
 # --- 引导手势 ---------------------------------------------------------------
 
-def test_every_guide_label_is_accepted_by_the_controller():
+def test_every_guide_label_has_a_preset_motion(gesture_controller_cls):
     """
-    桥接发出的每条引导标签，guide_pose 都必须能算出姿态。
+    引导标签走的是预设动作，每一条都必须在 GESTURES 里。
 
-    这是真正会咬人的那一类不一致：标签表里把仰角写成 70°，解析侧一切正常，
-    直到现场按下去才在日志里看到一句"超出软限制"。
+    漏一条不会报错：parse 的兜底会把它当动作名透传，服务那边找不到，
+    现场表现是"按了没反应"。
     """
-    from sztu_interaction.gesture_controller import guide_pose
-
-    for label, (side, elevation) in protocol.GUIDE_LABELS.items():
-        try:
-            pose = guide_pose(side, elevation)
-        except ValueError as exc:
-            raise AssertionError(f'{label} -> ({side}, {elevation}°) 被拒: {exc}')
-        assert pose, label
+    known = set(gesture_controller_cls.GESTURES)
+    missing = set(protocol.GUIDE_LABELS.values()) - known
+    assert not missing, f'引导标签映射到了 GESTURES 里没有的动作: {sorted(missing)}'
 
 
-def test_guide_labels_do_not_collide_with_preset_gesture_targets(
+def test_guide_labels_route_to_gesture_kind():
+    """
+    引导必须走 GESTURE（预设动作），不能再走自己写关节的老路。
+
+    老路（直接发 /aima/hal/joint/arm/command）实测抢不过 MC 的 500 Hz 伺服，
+    手臂一动不动。这条用例钉死"别再退回去"。
+    """
+    from sztu_guide.protocol import Kind, parse
+
+    for label in protocol.GUIDE_LABELS:
+        cmd = parse(label)
+        assert cmd.kind == Kind.GESTURE, f'{label} 走的是 {cmd.kind}'
+        assert cmd.value == protocol.GUIDE_LABELS[label]
+
+
+def test_guide_presets_are_the_narration_family(gesture_controller_cls):
+    """
+    引导用的必须是 4xxx 讲解族动画，并且 area 是**变体选择器**而非 McControlArea。
+
+    这一族的 area 取值 11~16，和 AREA_LEFT_HAND=1 / AREA_RIGHT_HAND=2 /
+    AREA_COMBINED=11 不是同一套语义。拿 AREA_* 常量套会播到别的变体。
+    """
+    gestures = gesture_controller_cls.GESTURES
+    for name in protocol.GUIDE_LABELS.values():
+        motion, area = gestures[name]
+        assert 4100 <= motion <= 4199, f'{name} 的 motion {motion} 不在讲解族'
+        assert 11 <= area <= 16, f'{name} 的 area {area} 不是讲解族的变体号'
+
+
+def test_guide_preset_combinations_are_the_ones_verified_in_sim(
         gesture_controller_cls):
     """
-    引导走的是关节插值，不是预设动作。
+    这些 (motion, area) 组合都在 x86 MuJoCo 仿真上实调过。
 
-    侧别名 'left'/'right' 不能同时是预设动作表里的键，否则日志里只看到一个
-    名字，分不清这次到底走了哪条路。
+    2026-10-01 逐条确认 MC 的 mc.log 打出了
+    "call animation path: .../<对应的 csv>"，不是照着 yaml 抄的。
+    改动这张表就等于声称有新的实测依据 —— 这条用例让它必须是刻意的。
     """
-    sides = {side for side, _ in protocol.GUIDE_LABELS.values()}
-    overlap = sides & set(gesture_controller_cls.GESTURES)
-    assert not overlap, f'引导侧别名与预设动作名重复: {sorted(overlap)}'
+    expected = {
+        'guide_right': (4108, 11),        # JJ_YouShouYinDao
+        'guide_left': (4108, 12),         # JJ_ZuoShouYinDao
+        'reach_right_front': (4106, 11),  # JJ_YouQianFangShenShou
+        'reach_right_up': (4106, 12),     # JJ_YouShangFangShenShou
+        'reach_front_right': (4106, 13),  # JJ_ZhengQianFangShenYouShou
+        'reach_front_left': (4106, 14),   # JJ_ZhengQianFangShenZuoShou
+        'reach_left_front': (4106, 15),   # JJ_ZuoQianFangShenShou
+        'reach_left_up': (4106, 16),      # JJ_ZuoShangFangShenShou
+        'raise_right': (4105, 11),        # JJ_TaiYouShou
+        'raise_left': (4105, 12),         # JJ_TaiZuoShou
+    }
+    for name, combination in expected.items():
+        assert gesture_controller_cls.GESTURES[name] == combination, name
 
 
-def test_bridge_guide_dispatch_passes_side_and_elevation_through():
-    """
-    桥接必须把仰角一起传下去。
-
-    漏传的话 guide_point 会用默认的 0°，'引导右上' 和 '引导右' 做出同一个
-    动作 —— 现场看上去"能用"，但指不到高处的展品。
-    """
-    from types import SimpleNamespace
-
-    from sztu_guide.bridge_server import BridgeServer
-    from sztu_guide.protocol import Command, Kind
-
-    calls = []
-    replies = []
-    stops = []
-    bridge = SimpleNamespace(
-        gesture=SimpleNamespace(
-            guide_point=lambda *args, **kwargs: calls.append((args, kwargs)) or True),
-        locomotion=SimpleNamespace(stop=lambda: stops.append(True)),
-        _reply=lambda conn, message: replies.append(message),
-    )
-
-    BridgeServer._dispatch_slow(
-        bridge,
-        Command(Kind.GUIDE, value='right', elevation_deg=30.0, raw='引导右上'),
-        None)
-
-    assert calls == [(('right', 30.0), {})]
-    assert replies == ['OK:引导右上']
-    assert stops == [True], (
-        '引导要阻塞约 6 s，期间 locomotion.tick 不发布；'
-        '不先清零的话手臂放下后会接着执行手势前那条摇杆指令')
-
-
-def test_bridge_guide_dispatch_reports_failure():
-    """guide_point 返回 False 时必须回 ERR，不能把失败报成成功。"""
-    from types import SimpleNamespace
-
-    from sztu_guide.bridge_server import BridgeServer
-    from sztu_guide.protocol import Command, Kind
-
-    replies = []
-    bridge = SimpleNamespace(
-        gesture=SimpleNamespace(guide_point=lambda *args, **kwargs: False),
-        locomotion=SimpleNamespace(stop=lambda: None),
-        _reply=lambda conn, message: replies.append(message),
-    )
-
-    BridgeServer._dispatch_slow(
-        bridge,
-        Command(Kind.GUIDE, value='left', elevation_deg=-30.0, raw='引导左下'),
-        None)
-
-    assert replies == ['ERR:引导左下']
+def test_guide_left_right_variants_differ(gesture_controller_cls):
+    """左右不能映射到同一个变体，否则'引导左'会指到右边。"""
+    gestures = gesture_controller_cls.GESTURES
+    pairs = [('guide_left', 'guide_right'),
+             ('reach_left_up', 'reach_right_up'),
+             ('reach_left_front', 'reach_right_front'),
+             ('raise_left', 'raise_right')]
+    for left, right in pairs:
+        assert gestures[left] != gestures[right], f'{left} 和 {right} 撞了'
 
 
 # --- 运控模式 ---------------------------------------------------------------

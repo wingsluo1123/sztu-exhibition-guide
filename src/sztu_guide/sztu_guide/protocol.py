@@ -25,7 +25,6 @@ class Kind:
     EMOTION = 'emotion'
     GESTURE = 'gesture'
     HAND_TURN = 'hand_turn'
-    GUIDE = 'guide'
     UNKNOWN = 'unknown'
 
 
@@ -37,15 +36,13 @@ FAST_KINDS = frozenset({Kind.STOP, Kind.JOY, Kind.STRAFE})
 @dataclass
 class Command:
     kind: str
-    # 给 SAY / GESTURE / EMOTION / MODE_SWITCH / HAND_TURN / GUIDE 用的载荷
+    # 给 SAY / GESTURE / EMOTION / MODE_SWITCH / HAND_TURN 用的载荷
     value: Optional[str] = None
     # JOY 专用：客户端原始摇杆量，-100..100
     joy_x: float = 0.0
     joy_y: float = 0.0
     # STRAFE 专用：横移量，-100..100（负值左移，正值右移）
     strafe_value: float = 0.0
-    # GUIDE 专用：引导手臂相对水平的仰角（度），+ 向上 / - 向下
-    elevation_deg: float = 0.0
     # 原始文本，用于回 ack（客户端按原样匹配）
     raw: str = ''
     # 解析失败的原因，None 表示没问题
@@ -119,23 +116,28 @@ HAND_TURN_LABELS = {
     '双手转手': 'both',
 }
 
-# 引导手势标签 -> (哪条手臂, 相对水平的仰角/度)，交给
-# GestureController.guide_point。讲解展品时抬手把视线引过去。
+# 引导手势标签 -> GestureController.GESTURES 里的讲解族预设动作。
 #
-# 这条也不走预设动作服务：预设动作里只有固定造型的"抬手"(1001)，角度不可调，
-# 指不到具体某一件展品。手臂保持在机身冠状面内（与机器人同面、不向前伸），
-# 所以方向只有"哪一侧 + 仰多高"两个量，方位角靠机器人自身朝向给。
+# 走的是 SetMcPresetMotion（运控自己播动画），**不是**我们自己写关节话题 ——
+# 后者抢不过 MC 的 500 Hz 伺服，实测一动不动，见 gesture_controller 里
+# _check_joints 的说明。
 #
-# 仰角档位的用途：平举指同高度的展墙/展台，上扬指高处的屏幕/挂件，
-# 下压指低处的展台/地面展品。±30° 都在 guide_pose 的 ±60° 软限制内。
+# 括号里的仰角是拿动画 csv 的峰值帧跑正运动学量出来的，不是标称值。
+# 注意：这几个动画的手臂会往前伸 28°~64°（出平面角），**不是严格贴在机身
+# 冠状面里**。厂商做的是自然的讲解手势，不是平面内的指向。要严格同平面只能
+# 自己写关节轨迹，而那条路被 MC 占着（见上）。
 GUIDE_LABELS = {
-    '引导': ('right', 0.0),
-    '引导左': ('left', 0.0),
-    '引导右': ('right', 0.0),
-    '引导左上': ('left', 30.0),
-    '引导右上': ('right', 30.0),
-    '引导左下': ('left', -30.0),
-    '引导右下': ('right', -30.0),
+    '引导': 'guide_right',               # 缺省右手，和 '转手' 一致
+    '引导右': 'guide_right',             # 右手引导，仰角 -1°（基本平举）
+    '引导左': 'guide_left',              # 左手引导，仰角 +0°
+    '引导右上': 'reach_right_up',        # 右上方伸手，仰角 +7°，指高处屏幕
+    '引导左上': 'reach_left_up',
+    '引导右下': 'reach_right_front',     # 右前方伸手，仰角 -21°，指展台
+    '引导左下': 'reach_left_front',
+    '引导正前': 'reach_front_right',     # 正前方伸右手
+    '引导正前左': 'reach_front_left',
+    '抬右手': 'raise_right',
+    '抬左手': 'raise_left',
 }
 
 # 运控模式标签（中文）-> MotionModeController.set_mode 的 label。
@@ -203,8 +205,8 @@ def parse(text: str) -> Command:
         return Command(Kind.HAND_TURN, value=HAND_TURN_LABELS[raw], raw=raw)
 
     if raw in GUIDE_LABELS:
-        side, elevation = GUIDE_LABELS[raw]
-        return Command(Kind.GUIDE, value=side, elevation_deg=elevation, raw=raw)
+        # 引导手势就是预设动作，和 '挥手' 走同一条路，不需要单独的 kind
+        return Command(Kind.GESTURE, value=GUIDE_LABELS[raw], raw=raw)
 
     # 认不出来的标签当作预设动作名透传给手势控制器
     return Command(Kind.UNKNOWN, value=raw, raw=raw)

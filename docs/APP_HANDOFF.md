@@ -53,7 +53,19 @@ APP 工程：HarmonyOS ArkTS 项目 `Robot_APP`，相关文件：
 
 1. 启动机器人侧：`source /home/agi/sztu/install/setup.bash && ros2 launch sztu_guide remote.launch.py`
 2. APP 连接机器人 IP:8888，依次发送 `MODE`、`STAND`、`挥手`，确认各收到 `OK:...` 回复
-3. 无真机时可先用 `nc <机器人IP> 8888` 手工发指令验证服务端行为，或本地起一个 echo 服务调试 TCP 路径
+3. 从开发机命令行手工发指令验证服务端行为：`tools/send_cmd.py`
+
+   ```bash
+   export SZTU_ROBOT_IP=<机器人上位机 IP>
+   tools/send_cmd.py MODE STAND 挥手
+   ```
+
+   **不要用 `printf '挥手\r\n' | nc <机器人IP> 8888`** —— printf 一结束
+   stdin 就 EOF，nc 立刻关连接，而手势/转手/模式切换都是慢路径、ack 要几秒
+   后才回，那时 socket 已经没了。症状是"发出去了但什么都没看见"，很容易误判
+   成服务端没响应。2026-10-01 在仿真上复现过：同一条 `引导右`，管道写法什么
+   都收不到，把连接按住 18 秒才看到 `ERR:引导右`。
+   非要用 nc 的话得按住连接：`{ printf '挥手\r\n'; sleep 10; } | nc <ip> 8888`。
 
 ### 参考文档
 
