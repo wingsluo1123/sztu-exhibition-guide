@@ -6,6 +6,7 @@ import pytest
 from sztu_guide.protocol import (
     EXPRESSION_LABELS,
     GESTURE_LABELS,
+    GUIDE_LABELS,
     HAND_TURN_LABELS,
     JOY_RANGE,
     MOTION_MODE_LABELS,
@@ -188,6 +189,7 @@ def test_no_label_collides_across_tables():
     tables = {
         'EXPRESSION_LABELS': set(EXPRESSION_LABELS),
         'GESTURE_LABELS': set(GESTURE_LABELS),
+        'GUIDE_LABELS': set(GUIDE_LABELS),
         'HAND_TURN_LABELS': set(HAND_TURN_LABELS),
         'MOTION_MODE_LABELS': set(MOTION_MODE_LABELS),
     }
@@ -207,6 +209,59 @@ def test_turn_hand_labels_are_not_shadowed_by_gestures():
     """
     for label in HAND_TURN_LABELS:
         assert parse(label).kind == Kind.HAND_TURN, f'{label} 被别的表抢走了'
+
+
+# --- 引导手势 ---------------------------------------------------------------
+
+def test_every_guide_label_routes_to_guide():
+    """
+    引导标签必须全部走 GUIDE。
+
+    漏掉一条的后果不是报错：parse 的兜底会把它当预设动作名透传给
+    perform_gesture，服务那边找不到这个名字，现场表现是"按了没反应"。
+    """
+    for label in GUIDE_LABELS:
+        assert parse(label).kind == Kind.GUIDE, f'{label} 没有走 GUIDE'
+
+
+def test_guide_label_carries_side_and_elevation():
+    cmd = parse('引导右上')
+    assert cmd.kind == Kind.GUIDE
+    assert cmd.value == 'right'
+    assert cmd.elevation_deg == 30.0
+    assert cmd.raw == '引导右上', 'ack 要按客户端原文回'
+
+
+def test_guide_labels_cover_both_arms_and_three_elevations():
+    """左右各三档。少一档不算错，但得是明确决定，而不是漏写。"""
+    assert {payload for payload in GUIDE_LABELS.values()} == {
+        ('left', 0.0), ('right', 0.0),
+        ('left', 30.0), ('right', 30.0),
+        ('left', -30.0), ('right', -30.0),
+    }
+
+
+def test_bare_guide_label_defaults_to_right_arm_level():
+    """'引导' 不带方向时取右手平举，和 '转手' 缺省右手的约定一致。"""
+    cmd = parse('引导')
+    assert (cmd.value, cmd.elevation_deg) == ('right', 0.0)
+
+
+def test_guide_label_sides_are_spelled_the_way_the_controller_expects():
+    """side 直接传给 guide_point，拼成 '左'/'LEFT' 都会被它拒掉。"""
+    for label, (side, _) in GUIDE_LABELS.items():
+        assert side in ('left', 'right'), f'{label} -> {side}'
+
+
+def test_guide_is_not_a_fast_path_command():
+    """抬手是阻塞动作，走快路径会把 socket 线程卡住几秒。"""
+    assert not parse('引导右').is_fast
+
+
+def test_non_guide_commands_carry_zero_elevation():
+    """elevation_deg 只对 GUIDE 有意义，别的命令不该带上非零值。"""
+    for text in ('STOP', 'JOY:10,20', 'MODE', 'SAY:你好', '挥手', '转手', '稳定站立'):
+        assert parse(text).elevation_deg == 0.0, text
 
 
 # --- TCP 分帧 ---------------------------------------------------------------
