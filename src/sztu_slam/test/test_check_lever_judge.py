@@ -47,6 +47,8 @@ from check_lever import (  # noqa: E402
     RESID_DEG,
     RATE_MIN_DEG_S,
     STALE_MAX_MS,
+    IMU_DELTA_DEG,
+    gravity_from_log,
     judge,
 )
 
@@ -58,6 +60,40 @@ N = 1200                  # 帧数，和真机一趟差不多（120 s @ 10 Hz）
 RATE = 20.0               # 链角速度 °/s，真机实测中位 9.6、90 分位 37
 CHAIN_DEG = 21.0          # 这趟链动了多少，真机实测 21.07°
 DELTA = 0.016             # 重力量化误差 δ（度），真机实测 0.016 ~ 0.044
+
+
+def test_gravity_log_uses_map_parameter_without_reestimating(tmp_path):
+    up = [0.997989, -0.015611, 0.06144]
+    (tmp_path / 'bridge.log').write_text(
+        f'[INFO] 重力方向由参数给定：{up}，跳过实测\n', encoding='utf-8')
+    actual, bound = gravity_from_log(tmp_path)
+    np.testing.assert_array_equal(actual, up)
+    assert bound == IMU_DELTA_DEG
+
+
+def test_gravity_log_parameter_supports_scientific_notation(tmp_path):
+    (tmp_path / 'bridge.log').write_text(
+        '重力方向由参数给定：[1.0, -2e-5, 3e-06]，跳过实测\n',
+        encoding='utf-8')
+    actual, _ = gravity_from_log(tmp_path)
+    np.testing.assert_array_equal(actual, [1.0, -2e-5, 3e-6])
+
+
+def test_gravity_log_preserves_measured_quantization_bound(tmp_path):
+    (tmp_path / 'bridge.log').write_text(
+        '重力方向实测完成：上 = [+0.998, -0.022, +0.061]\n',
+        encoding='utf-8')
+    actual, bound = gravity_from_log(tmp_path)
+    np.testing.assert_array_equal(actual, [0.998, -0.022, 0.061])
+    assert bound == pytest.approx(DELTA_BOUND)
+
+
+@pytest.mark.parametrize('parameter', ['[0, 0, 0]', '[1, 0]', '[1, None, 0]'])
+def test_gravity_log_rejects_invalid_parameter(tmp_path, parameter):
+    (tmp_path / 'bridge.log').write_text(
+        f'重力方向由参数给定：{parameter}，跳过实测\n', encoding='utf-8')
+    with pytest.raises(SystemExit, match='重力参数无效'):
+        gravity_from_log(tmp_path)
 
 
 def healthy(n=N, delta=DELTA, jitter=0.0, seed=0):

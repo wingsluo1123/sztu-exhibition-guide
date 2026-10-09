@@ -23,14 +23,9 @@ license_id 不在任何一份有效授权里）起不来，这个口子是空的
 回放或没有 IMU 时可以跳过重力实测，直接给轴：
     ros2 run sztu_slam lio_odom_bridge --ros-args -p up_axis:=[1.0,0.0,0.0]
 
-两个已知缺陷（都在上游 FAST-LIO，不是这里）
--------------------------------------------
-1. `twist` 永远是 0。laserMapping.cpp 的 publish_odometry 只写 pose 和
-   covariance，压根不碰 twist。要速度得自己差分，别信这个字段。
-2. `pose.covariance` 比位姿**晚一帧**。那个函数是先 publish、再往
-   odomAftMapped 里填协方差，于是发出去的是上一帧算的值。我们原样透传
-   （见 on_odom 里的注释），没有去修，也没有把它旋转到 odom 系 ——
-   要拿它做滤波的话得先处理这两件事。
+`twist` 上游未填，仍为 0，不能作为速度测量使用。
+协方差依赖本仓库修正后的 FAST-LIO：同帧发布，姿态误差转到世界轴。
+这里再传播重力旋转和杠杆臂；不包含关节 TF 或外参的测量不确定性。
 """
 
 import numpy as np
@@ -63,13 +58,15 @@ from .odom_transform import (
     odom_pose_to_base,
     is_bogus_stamp,
     quat_to_matrix,
+    transform_pose_covariance,
 )
+from .gravity_estimator import StaticGravityEstimator
 
 
 class LioOdomBridge(Node):
 
-    def __init__(self):
-        super().__init__('lio_odom_bridge')
+    def __init__(self, **node_kwargs):
+        super().__init__('lio_odom_bridge', **node_kwargs)
 
         self.declare_parameter('in_topic', '/Odometry')
         self.declare_parameter('out_topic', '/slam/lidar_odom')
@@ -87,6 +84,10 @@ class LioOdomBridge(Node):
         # 实测重力用的静止时长。录包规程本来就要求开头静止 2 秒
         # （FAST-LIO 自己的 IMU 初始化也需要），正好复用。
         self.declare_parameter('gravity_static_s', 2.0)
+        self.declare_parameter('gravity_min_rate', 100.0)
+        self.declare_parameter('gravity_max_gap', 0.05)
+        self.declare_parameter('gravity_max_gyro', 0.05)
+        self.declare_parameter('gravity_max_acc_std', 0.35)
         # 给了就不测，直接用。回放和单元测试用。
         self.declare_parameter('up_axis', [0.0, 0.0, 0.0])
         self.declare_parameter('publish_tf', True)
@@ -118,9 +119,11 @@ class LioOdomBridge(Node):
         # --- 重力方向 -------------------------------------------------------
         up = [float(v) for v in g('up_axis').value]
         self.R_grav = None
-        self._acc = np.zeros(3)
-        self._acc_n = 0
-        self._acc_t0 = None
+        self._gravity_estimator = StaticGravityEstimator(
+            self.static_s, float(g('gravity_min_rate').value),
+            float(g('gravity_max_gap').value),
+            float(g('gravity_max_gyro').value),
+            float(g('gravity_max_acc_std').value))
         self.imu_sub = None
         if any(abs(v) > 1e-9 for v in up):
             self.R_grav = gravity_align_matrix(up)
@@ -171,30 +174,14 @@ class LioOdomBridge(Node):
     # --- 重力实测 -----------------------------------------------------------
     def on_imu(self, msg: Imu):
         now = Time.from_msg(msg.header.stamp).nanoseconds / 1e9
-        if self._acc_t0 is None:
-            self._acc_t0 = now
         a = msg.linear_acceleration
-        self._acc += np.array([a.x, a.y, a.z])
-        self._acc_n += 1
-
-        if now - self._acc_t0 < self.static_s:
+        angular_velocity = msg.angular_velocity
+        mean = self._gravity_estimator.add(
+            now, (a.x, a.y, a.z),
+            (angular_velocity.x, angular_velocity.y, angular_velocity.z))
+        if mean is None:
             return
-
-        mean = self._acc / self._acc_n
         norm = float(np.linalg.norm(mean))
-        # 静止时这个模长应该接近 g。差太多说明这段根本没静止，或者订阅到的
-        # 不是这颗 IMU —— 这时候定出来的"上"是歪的，整条轨迹会跟着歪，
-        # 所以宁可报错也不要静悄悄地用。
-        if not 9.0 <= norm <= 10.6:
-            self.get_logger().error(
-                f'静止段平均加速度模长 {norm:.2f} m/s²，不像重力（期望 ~9.8）。'
-                f'开头这 {self.static_s:g} 秒机器人动了，或者 IMU 话题给错了。'
-                f'重新起，起来前先让它站稳。')
-            # 清零重来，给下一段机会。
-            self._acc[:] = 0.0
-            self._acc_n = 0
-            self._acc_t0 = None
-            return
 
         try:
             self.R_grav = gravity_align_matrix(mean)
@@ -205,7 +192,7 @@ class LioOdomBridge(Node):
         self.get_logger().info(
             f'重力方向实测完成：上 = [{mean[0] / norm:+.3f}, '
             f'{mean[1] / norm:+.3f}, {mean[2] / norm:+.3f}]'
-            f'（{self._acc_n} 帧 IMU，|a| = {norm:.2f}）')
+            f'（{self._gravity_estimator.count} 帧 IMU，|a| = {norm:.2f}）')
         # 测完就退订，后面不再需要 IMU。
         if self.imu_sub is not None:
             self.destroy_subscription(self.imu_sub)
@@ -259,10 +246,8 @@ class LioOdomBridge(Node):
         out.pose.pose.orientation.y = float(q[1])
         out.pose.pose.orientation.z = float(q[2])
         out.pose.pose.orientation.w = float(q[3])
-        # 协方差原样透传。两个坑写在模块注释里：上游发的是**上一帧**的值，
-        # 而且这里没有把它旋转到 odom 系。我们这几个下游都不读它；要拿它
-        # 做滤波的话先去把那两件事解决了。twist 上游从来不填，保持全 0。
-        out.pose.covariance = msg.pose.covariance
+        out.pose.covariance = transform_pose_covariance(
+            msg.pose.covariance, self.R_grav, R_cb, tf).ravel().tolist()
 
         self.pub.publish(out)
         self.n_ok += 1

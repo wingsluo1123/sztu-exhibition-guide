@@ -22,6 +22,7 @@ from sztu_slam.odom_transform import (
     odom_pose_to_base,
     quat_to_matrix,
     shortest_arc,
+    transform_pose_covariance,
 )
 
 # X2 胸前雷达这颗 IMU 静止时 ax=+9.75 —— X 轴朝上。这是真机实测值。
@@ -69,6 +70,30 @@ def test_quat_matrix_roundtrip(axis, angle):
 def test_quat_to_matrix_rejects_zero():
     with pytest.raises(OdomTransformError):
         quat_to_matrix([0.0, 0.0, 0.0, 0.0])
+
+
+def test_quat_to_matrix_rejects_nonfinite():
+    with pytest.raises(OdomTransformError):
+        quat_to_matrix([np.nan, 0.0, 0.0, 1.0])
+
+
+def test_base_covariance_includes_orientation_lever_arm():
+    covariance = np.zeros((6, 6))
+    covariance[5, 5] = 0.01
+    transformed = transform_pose_covariance(
+        covariance, np.eye(3), np.eye(3), (np.eye(3), [1.0, 0.0, 0.0]))
+    assert transformed[1, 1] == pytest.approx(0.01)
+    assert transformed[1, 5] == pytest.approx(-0.01)
+    assert np.allclose(transformed, transformed.T)
+    assert np.min(np.linalg.eigvalsh(transformed)) >= -1e-12
+
+
+def test_covariance_rotates_position_axes_with_gravity():
+    covariance = np.diag([1.0, 2.0, 3.0, 0.0, 0.0, 0.0])
+    transformed = transform_pose_covariance(
+        covariance, gravity_align_matrix([1.0, 0.0, 0.0]), np.eye(3),
+        (np.eye(3), [0.0, 0.0, 0.0]))
+    assert np.allclose(np.diag(transformed)[:3], [3.0, 2.0, 1.0])
 
 
 def test_quat_to_matrix_normalizes():

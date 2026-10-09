@@ -1,5 +1,8 @@
 # sztu_navigation - 导航控制模块
 
+定位默认要求 odom → base_link；过期或重复位姿、无效点云和过时动态 TF
+会被拒绝。回放需启用 ROS 仿真时钟。详见 [运行时检查](../../docs/slam_runtime_checks.md)。
+
 ## 功能
 
 - 点位导航

@@ -174,6 +174,74 @@ ROADMAP B4 那个授权申请是"以后再说"还是**展厅的前置条件**，
 教训：出图和选点在机器人上做完之后，**图和点位要同一次提交进去**。
 只进一半比两个都不进更危险 —— 两个都不进至少跑不起来。
 
+### 怎么看建好的图 / 点云
+
+三条路，按"要不要机器人"分：
+
+**1. 已经建好的那张图 —— 什么都不需要。**
+
+    xdg-open maps/testroom.png
+
+`gridmap.py` 出图时顺带渲染的，就是导航真正吃的那张栅格图。读图时注意：
+主体那个矩形是房间，**上方和左侧那些细长白扇形不是房间** —— 那是雷达从
+门/窗打出去几十米没有回波，被极角扫描碾出来的空闲区，忽略掉。
+
+**2. 点云 —— 要从包里拼，FAST-LIO 不自己存。**
+
+    tools/assemble_map.py <run_dir>/odom -o /tmp/map.pcd
+
+前提是那趟录制带了 `--map`（否则包里只有 `/Odometry`）。实测 1191 帧
+1021 万点，体素 0.05 m 降到 40.8 万点 / 4.7 MB。
+
+脚本末尾提示的 `pcl_viewer` 这台机器上没装，用 rviz2 看（remap 成配置里
+已经在订的那个话题，这样不用改配置）：
+
+    ros2 run pcl_ros pcd_to_pointcloud --ros-args \
+        -p file_name:=/tmp/map.pcd -p tf_frame:=camera_init \
+        -p publishing_period_ms:=1000 \
+        -r /cloud_pcd:=/cloud_registered &
+    rviz2 -d src/sztu_slam/rviz/live_mapping.rviz
+
+`publishing_period_ms` 必须设：那个节点的发布者是 `Durability: VOLATILE`，
+不设周期就只发一次，rviz2 后启动什么都收不到 —— 话题在、点数也打印了，
+但画面是空的。
+
+**3. 建图过程中实时看 —— 机器人在跑，rviz 开在开发机上。**
+
+机器人上（**别**加 `--rviz`，它那边没有屏幕，rviz2 在无 DISPLAY 下是
+core dump，不是报错退出）：
+
+    tools/run_lio_live.sh --map
+
+开发机上：
+
+    tools/watch_lio.sh          # --check 只检查不开 rviz
+
+rviz 可以先开着等，真机话题一上来就自己开始画。能看到实时位姿（红箭头）、
+走过的轨迹、以及点云。
+
+跨机器这条路有两道坎，`watch_lio.sh` 会逐条检查并告诉你怎么办：
+
+| 坎 | 为什么 | 怎么办 |
+|---|---|---|
+| 内核接收缓冲 | 默认 `net.core.rmem_max` 208 KB < 一帧点云 801 KB，UDP 分片丢一片整帧就没了，**日志里什么都没有** | `sudo sysctl -w net.core.rmem_max=8388608` |
+| 带宽 | 801 KB × 10 Hz = 64 Mbit/s，WiFi 名义 130 Mbit/s 实际只有一半 | 插网线（本机 10.0.1.2/24，机器人 10.0.1.41）；或者在 rviz 里把 CloudLive/CloudAccum 取消勾选 —— 只剩 `/Odometry` + `/path` 不到 10 KB/s，位置和轨迹照样看得见 |
+
+两件容易误会的事：
+
+* **rviz 里看不到 `maps/testroom` 那张图。** 没有 Map 图层，这台也没装
+  `nav2_map_server`，`src/` 里没有任何发 `OccupancyGrid` 的节点。实时看到
+  的"场景"是雷达此刻的点云，不是那张图。
+* **看到的位置是相对本次开机起点的。** Fixed Frame 是 `camera_init`，也就是
+  FAST-LIO 每次开机时机器人站的地方，和那张图的原点 (-16.20, -17.18) 没有
+  对齐关系 —— FAST-LIO 这个分支没有重定位（见上面那一节）。要让位姿落在
+  已有图上，目前只有"从贴胶带的同一点同朝向开机 + `--map-frame`"这条土办法。
+
+rviz 配置是 `src/sztu_slam/rviz/live_mapping.rviz`，**不要**用
+`src/fast_lio/rviz_cfg/loam_livox.rviz` —— 那个是 ROS 1 格式，rviz2 加载它
+每个图层都 `failed to load`，开出来是个空窗口（窗口在、脚本照样打印 ✓，
+里面什么都没有）。为什么做了哪些调整，写在那个配置的头注释里。
+
 ### 重新建图那趟要怎么录
 
 

@@ -30,6 +30,7 @@ class WaypointExecutor(Node):
         # 以前这里写死 ~/sztu/config/waypoints.yaml，换部署目录就得改代码。
         self.declare_parameter('waypoints_file', '')
         self.declare_parameter('auto_start', False)
+        self.declare_parameter('navigation_backend', 'nav2')
 
         resolved = waypoints_file or self.get_parameter('waypoints_file').value
         self.waypoints_file = resolved or default_config_path()
@@ -40,6 +41,7 @@ class WaypointExecutor(Node):
 
         self.current_waypoint_index = 0
         self.is_executing = False
+        self.navigation_manager = None
 
         self.get_logger().info('Waypoint Executor ready')
 
@@ -74,6 +76,7 @@ class WaypointExecutor(Node):
             return False
 
         self.is_executing = True
+        self.navigation_manager = navigation_manager
         self.current_waypoint_index = 0
 
         self.get_logger().info(
@@ -108,6 +111,8 @@ class WaypointExecutor(Node):
         """取消执行"""
         self.get_logger().info('Canceling waypoint execution')
         self.is_executing = False
+        if self.navigation_manager is not None:
+            self.navigation_manager.cancel_navigation()
 
     def get_current_waypoint(self):
         """获取当前点位信息"""
@@ -137,7 +142,14 @@ def main(args=None):
     rclpy.init(args=args)
 
     executor_node = WaypointExecutor()
-    nav = NavigationManager()
+    backend = executor_node.get_parameter('navigation_backend').value
+    if backend == 'nav2':
+        from .nav2_navigator import Nav2Navigator
+        nav = Nav2Navigator()
+    elif backend == 'legacy':
+        nav = NavigationManager()
+    else:
+        raise ValueError(f'Unknown navigation_backend: {backend}')
 
     # 两个节点都要转起来：导航的 10 Hz 控制循环和里程计回调在这里驱动，
     # 巡航序列则跑在下面的主线程上，互不阻塞。
@@ -163,7 +175,8 @@ def main(args=None):
             nav.stop()
             ros_executor.shutdown()
             # locomotion 是 nav 名下的独立节点，没进 executor，要单独销毁
-            nav.locomotion.destroy_node()
+            if getattr(nav, 'locomotion', None) is not None:
+                nav.locomotion.destroy_node()
             nav.destroy_node()
             executor_node.destroy_node()
             rclpy.shutdown()

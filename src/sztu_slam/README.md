@@ -1,5 +1,9 @@
 # sztu_slam - SLAM 建图与定位模块
 
+实际在用的是 FAST-LIO2 建图与 lio_odom_bridge 位姿桥接。下面的厂商建图、
+加载地图和重定位接口未获授权，不能用于本项目；自研仍缺回环与重定位。
+运行时新鲜度、初始化门槛和补丁部署见 [运行时检查](../../docs/slam_runtime_checks.md)。
+
 ## 功能
 
 - SLAM 建图控制
