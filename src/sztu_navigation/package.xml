@@ -13,6 +13,17 @@
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>aimdk_msgs</depend>
+  <exec_depend>sztu_slam</exec_depend>
+  <depend>tf2_ros</depend>
+  <depend>nav2_msgs</depend>
+  <depend>action_msgs</depend>
+  <depend>lifecycle_msgs</depend>
+  <depend>std_srvs</depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

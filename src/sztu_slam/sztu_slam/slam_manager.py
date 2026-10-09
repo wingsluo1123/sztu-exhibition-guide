@@ -34,6 +34,7 @@ from nav_msgs.msg import Odometry
 from aimdk_msgs.srv import GetStoredMapByName
 from geometry_msgs.msg import Pose
 import time
+from .message_validation import MessageFreshness, valid_pose
 
 
 def spin_node_once(node, timeout_sec: float = 0.1) -> None:
@@ -82,6 +83,14 @@ class SlamManager(Node):
         # 同时存成属性：调用方报"定位没就绪，去查这个话题"时要说得出订的是哪个。
         self.declare_parameter('odom_topic', '/slam/lidar_odom')
         self.odom_topic = str(self.get_parameter('odom_topic').value)
+        self.declare_parameter('odom_frame', 'odom')
+        self.declare_parameter('base_frame', 'base_link')
+        self.declare_parameter('odom_max_age', 0.6)
+        self.declare_parameter('stamp_future_tolerance', 0.05)
+        self._freshness = MessageFreshness(
+            float(self.get_parameter('odom_max_age').value),
+            float(self.get_parameter('stamp_future_tolerance').value))
+        self._localized = False
 
         # QoS 配置（匹配 AimDK 要求）
         command_qos = QoSProfile(
@@ -132,10 +141,28 @@ class SlamManager(Node):
 
     def odom_callback(self, msg: Odometry):
         """Pose callback: update current position"""
+        was_localized = self.is_localized
+        if (msg.header.frame_id != self.get_parameter('odom_frame').value
+                or msg.child_frame_id != self.get_parameter('base_frame').value
+                or not valid_pose(msg.pose.pose)
+                or not self._freshness.accept(
+                    msg.header.stamp, self.get_clock().now().nanoseconds,
+                    time.monotonic())):
+            return
         self.current_pose = msg.pose.pose
-        if not self.is_localized:
+        if not was_localized:
             self.is_localized = True
             self.get_logger().info('Localization successful')
+
+    @property
+    def is_localized(self):
+        age = self._freshness.age(
+            self.get_clock().now().nanoseconds, time.monotonic())
+        return self._localized and age is not None and age <= self._freshness.max_age
+
+    @is_localized.setter
+    def is_localized(self, value):
+        self._localized = bool(value)
 
     def start_mapping(self):
         """Start mapping"""

@@ -11,13 +11,21 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 import math
+import time
+from .message_validation import MessageFreshness, valid_pose
 
 
 class PoseMonitor(Node):
-    def __init__(self):
-        super().__init__('pose_monitor')
+    def __init__(self, **node_kwargs):
+        super().__init__('pose_monitor', **node_kwargs)
 
         self.get_logger().info('Pose Monitor initializing...')
+        self.declare_parameter('odom_topic', '/slam/lidar_odom')
+        self.declare_parameter('max_pose_age', 0.6)
+        self.declare_parameter('stamp_future_tolerance', 0.05)
+        self._freshness = MessageFreshness(
+            float(self.get_parameter('max_pose_age').value),
+            float(self.get_parameter('stamp_future_tolerance').value))
 
         # QoS 配置
         odom_qos = QoSProfile(
@@ -28,7 +36,7 @@ class PoseMonitor(Node):
         # 订阅里程计
         self.odom_sub = self.create_subscription(
             Odometry,
-            '/slam/lidar_odom',
+            self.get_parameter('odom_topic').value,
             self.odom_callback,
             odom_qos
         )
@@ -52,6 +60,11 @@ class PoseMonitor(Node):
 
     def odom_callback(self, msg: Odometry):
         """里程计回调"""
+        if (not msg.header.frame_id or not valid_pose(msg.pose.pose)
+                or not self._freshness.accept(
+                    msg.header.stamp, self.get_clock().now().nanoseconds,
+                    time.monotonic())):
+            return
         self.current_odom = msg
 
         # 保存历史（用于速度估计等）
@@ -61,19 +74,20 @@ class PoseMonitor(Node):
 
     def publish_pose(self):
         """发布当前位姿"""
-        if self.current_odom is None:
+        if self.get_current_position() is None:
             return
 
         pose_stamped = PoseStamped()
-        pose_stamped.header.stamp = self.get_clock().now().to_msg()
-        pose_stamped.header.frame_id = 'map'
+        pose_stamped.header = self.current_odom.header
         pose_stamped.pose = self.current_odom.pose.pose
 
         self.pose_pub.publish(pose_stamped)
 
     def get_current_position(self):
         """获取当前位置 (x, y, yaw)"""
-        if self.current_odom is None:
+        age = self._freshness.age(
+            self.get_clock().now().nanoseconds, time.monotonic())
+        if self.current_odom is None or age is None or age > self._freshness.max_age:
             return None
 
         pose = self.current_odom.pose.pose
@@ -81,9 +95,12 @@ class PoseMonitor(Node):
         y = pose.position.y
 
         # 四元数转 yaw
-        qz = pose.orientation.z
-        qw = pose.orientation.w
-        yaw = math.atan2(2.0 * qz * qw, 1.0 - 2.0 * qz * qz)
+        orientation = pose.orientation
+        norm = sum(value * value for value in (
+            orientation.x, orientation.y, orientation.z, orientation.w))
+        yaw = math.atan2(
+            2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+            norm - 2.0 * (orientation.y ** 2 + orientation.z ** 2))
 
         return (x, y, yaw)
 

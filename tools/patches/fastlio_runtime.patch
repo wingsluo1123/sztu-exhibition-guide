@@ -1,0 +1,87 @@
+diff --git a/src/laserMapping.cpp b/src/laserMapping.cpp
+index e5d9950..ac3f918 100644
+--- a/src/laserMapping.cpp
++++ b/src/laserMapping.cpp
+@@ -283,7 +283,7 @@ void lasermap_fov_segment()
+ void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::UniquePtr msg) 
+ {
+     mtx_buffer.lock();
+-    scan_count ++;
++    if (scan_count < MAXN) ++scan_count;
+     double cur_time = get_time_sec(msg->header.stamp);
+     double preprocess_start_time = omp_get_wtime();
+     if (!is_first_lidar && cur_time < last_timestamp_lidar)
+@@ -301,7 +301,8 @@ void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::UniquePtr msg)
+     lidar_buffer.push_back(ptr);
+     time_buffer.push_back(cur_time);
+     last_timestamp_lidar = cur_time;
+-    s_plot11[scan_count] = omp_get_wtime() - preprocess_start_time;
++    if (scan_count < MAXN)
++        s_plot11[scan_count] = omp_get_wtime() - preprocess_start_time;
+     mtx_buffer.unlock();
+     sig_buffer.notify_all();
+ }
+@@ -313,7 +314,7 @@ void livox_pcl_cbk(const livox_ros_driver2::msg::CustomMsg::UniquePtr msg)
+     mtx_buffer.lock();
+     double cur_time = get_time_sec(msg->header.stamp);
+     double preprocess_start_time = omp_get_wtime();
+-    scan_count ++;
++    if (scan_count < MAXN) ++scan_count;
+     if (!is_first_lidar && cur_time < last_timestamp_lidar)
+     {
+         std::cerr << "lidar loop back, clear buffer" << std::endl;
+@@ -342,7 +343,8 @@ void livox_pcl_cbk(const livox_ros_driver2::msg::CustomMsg::UniquePtr msg)
+     lidar_buffer.push_back(ptr);
+     time_buffer.push_back(last_timestamp_lidar);
+     
+-    s_plot11[scan_count] = omp_get_wtime() - preprocess_start_time;
++    if (scan_count < MAXN)
++        s_plot11[scan_count] = omp_get_wtime() - preprocess_start_time;
+     mtx_buffer.unlock();
+     sig_buffer.notify_all();
+ }
+@@ -631,18 +633,26 @@ void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPt
+     odomAftMapped.child_frame_id = "body";
+     odomAftMapped.header.stamp = get_ros_time(lidar_end_time);
+     set_posestamp(odomAftMapped.pose);
+-    pubOdomAftMapped->publish(odomAftMapped);
+     auto P = kf.get_P();
+-    for (int i = 0; i < 6; i ++)
++    Eigen::Matrix<double, 6, 6> pose_covariance;
++    for (int row = 0; row < 6; ++row)
++    {
++        const int state_row = row < 3 ? row + 3 : row - 3;
++        for (int column = 0; column < 6; ++column)
++        {
++            const int state_column = column < 3 ? column + 3 : column - 3;
++            pose_covariance(row, column) = P(state_row, state_column);
++        }
++    }
++    Eigen::Matrix<double, 6, 6> pose_jacobian = Eigen::Matrix<double, 6, 6>::Identity();
++    pose_jacobian.block<3, 3>(3, 3) = state_point.rot.toRotationMatrix();
++    pose_covariance = (pose_jacobian * pose_covariance * pose_jacobian.transpose()).eval();
++    for (int row = 0; row < 6; ++row)
+     {
+-        int k = i < 3 ? i + 3 : i - 3;
+-        odomAftMapped.pose.covariance[i*6 + 0] = P(k, 3);
+-        odomAftMapped.pose.covariance[i*6 + 1] = P(k, 4);
+-        odomAftMapped.pose.covariance[i*6 + 2] = P(k, 5);
+-        odomAftMapped.pose.covariance[i*6 + 3] = P(k, 0);
+-        odomAftMapped.pose.covariance[i*6 + 4] = P(k, 1);
+-        odomAftMapped.pose.covariance[i*6 + 5] = P(k, 2);
++        for (int column = 0; column < 6; ++column)
++            odomAftMapped.pose.covariance[row * 6 + column] = pose_covariance(row, column);
+     }
++    pubOdomAftMapped->publish(odomAftMapped);
+ 
+     geometry_msgs::msg::TransformStamped trans;
+     trans.header.frame_id = "camera_init";
+@@ -1076,7 +1086,7 @@ private:
+             // if (map_pub_en) publish_map(pubLaserCloudMap_);
+ 
+             /*** Debug variables ***/
+-            if (runtime_pos_log)
++            if (runtime_pos_log && time_log_counter < MAXN)
+             {
+                 frame_num ++;
+                 kdtree_size_end = ikdtree.size();

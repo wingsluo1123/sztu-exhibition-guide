@@ -18,9 +18,8 @@
 #   src/livox_ros_driver2_stub/ 这个只有两个消息定义的占位包顶上，
 #   而不是去删它的 find_package。理由见那个目录的 README.md。
 #
-#   整棵树里我们只改一个文件：CMakeLists.txt 的 C++ 标准 14 → 17（第 3c 步，
-#   脚本自动打，可重复执行）。理由见坑 5 —— 那是上游的 bug，不是口味问题。
-#   .cpp / .hpp 一个字节都不动。
+#   本地修复包括 C++17 和 tools/patches/fastlio_runtime.patch（第 3c/3d 步，
+#   脚本自动打，可重复执行）。运行时补丁修复日志数组越界和协方差发布。
 #
 # 坑 1：pcl_ros 不在 ros-humble-desktop 里。
 #     FAST_LIO 需要 pcl_ros，而它不是 desktop 元包的一部分。缺了它 cmake 会
@@ -319,14 +318,25 @@ else
     ok "C++ 标准已是 17，不用动"
 fi
 
-# 源码必须只有 3c 那一处改动 —— 我们的整套做法建立在"基本不改 FAST_LIO"上面。
+head2 "3d. FAST-LIO 运行时修复"
+RUNTIME_PATCH="$WS/tools/patches/fastlio_runtime.patch"
+if git -C "$DEST" apply --reverse --check "$RUNTIME_PATCH" 2>/dev/null; then
+    ok "运行时补丁已应用"
+elif git -C "$DEST" apply --check "$RUNTIME_PATCH"; then
+    git -C "$DEST" apply "$RUNTIME_PATCH" || exit 1
+    ok "已修复长时间运行数组越界与同帧世界轴协方差"
+else
+    bad "运行时补丁与当前 FAST-LIO 源码冲突，请核对本地改动"
+    exit 1
+fi
+
 if [ -d "$DEST/.git" ]; then
     unexpected="$(git -C "$DEST" status --porcelain 2>/dev/null \
-                  | awk '{print $2}' | grep -v '^CMakeLists\.txt$' || true)"
+                  | awk '{print $2}' | grep -v -E '^(CMakeLists\.txt|src/laserMapping\.cpp)$' || true)"
     if [ -n "$unexpected" ]; then
         hmm "$DEST 里有计划外的改动："
         echo "$unexpected" | while read -r f; do say "     $f"; done
-        say "   我们只改 CMakeLists.txt 的 C++ 标准（第 3c 步），别的配置全在"
+        say "   预期改动是 C++17（3c）和运行时补丁（3d），别的配置全在"
         say "   src/sztu_slam/config/fastlio_x2_chest.yaml。改了源码的话，"
         say "   换机器就复现不出来 —— 这些改动不在 git 里。"
     else

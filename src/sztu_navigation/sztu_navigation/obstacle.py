@@ -146,7 +146,13 @@ def evaluate(data, point_step, matrix=None,
              min_height=DEFAULT_MIN_HEIGHT,
              max_height=DEFAULT_MAX_HEIGHT):
     """一帧点云 -> ObstacleState。整条判定链，纯函数。"""
-    pts = transform_points(iter_xyz(data, point_step), matrix)
+    if point_step < MIN_POINT_STEP or not data or len(data) % point_step:
+        return stale_state()
+    raw_points = [point for point in iter_xyz(data, point_step)
+                  if any(abs(value) > 1e-8 for value in point)]
+    pts = list(transform_points(raw_points, matrix))
+    if not pts or not all(math.isfinite(value) for point in pts for value in point):
+        return stale_state()
     nearest, n = nearest_in_corridor(
         pts, slow_distance, half_width, min_height, max_height)
     slow, stop = classify(nearest, slow_distance, stop_distance)

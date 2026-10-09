@@ -179,9 +179,20 @@ def test_freshness_judgement():
 
 
 def test_an_empty_frame_is_not_the_same_as_no_frame():
-    """空帧（雷达在发但没回波）算"看得见且很干净"，和掉线不是一回事。"""
+    """没有有效回波时，不能证明前方畅通。"""
     st = ob.evaluate(b'', 32)
-    assert not st.stop and not st.slow and not st.stale
+    assert st.stop and st.slow and st.stale
+
+
+@pytest.mark.parametrize('data,step', [
+    (b'\x00' * 32, 8),
+    (cloud([(5.0, 0.0, 0.5)]) + b'\x00', 32),
+    (cloud([(float('nan'), 0.0, 0.5)]), 32),
+    (cloud([(0.0, 0.0, 0.0)]), 32),
+])
+def test_invalid_scan_fails_closed(data, step):
+    state = ob.evaluate(data, step)
+    assert state.stop and state.stale
 
 
 # --------------------------------------------------------------- 端到端

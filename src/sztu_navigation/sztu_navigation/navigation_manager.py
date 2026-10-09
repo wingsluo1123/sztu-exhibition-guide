@@ -17,6 +17,9 @@ from rclpy.qos import (
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 import tf2_ros
+from sztu_slam.message_validation import (
+    MessageFreshness, stamp_nanoseconds, valid_pose,
+)
 
 from . import obstacle as obstacle_mod
 
@@ -98,6 +101,9 @@ class NavigationManager(Node):
         self.declare_parameter('obstacle_enabled', True)
         self.declare_parameter('cmd_vel_topic', '/aima/mc/locomotion/velocity')
         self.declare_parameter('odom_topic', '/slam/lidar_odom')
+        self.declare_parameter('odom_frame', 'odom')
+        self.declare_parameter('stamp_future_tolerance', 0.05)
+        self.declare_parameter('obstacle_tf_max_age', 0.15)
         # 走跑输入源（AimDK 5.1.3）。优先级 45 的取法：高于 pnc(40) 好让我们的
         # 导航压住官方规划器，低于 interaction(50) / bridge 遥控(55) /
         # app_proxy(60) / rc(80) —— 人拿遥控器或手机随时能接管自主导航。
@@ -262,6 +268,17 @@ class NavigationManager(Node):
         self.last_result = None
         self._goal_start_time = None
         self._last_odom_time = None
+        self.odom_frame = str(self.get_parameter('odom_frame').value)
+        future_tolerance = float(self.get_parameter('stamp_future_tolerance').value)
+        self._odom_freshness = MessageFreshness(
+            self.odom_stale_timeout, future_tolerance)
+        self._lidar_freshness = MessageFreshness(
+            self.obstacle_max_age, future_tolerance)
+        self.obstacle_tf_max_age = float(
+            self.get_parameter('obstacle_tf_max_age').value)
+        if (not math.isfinite(self.obstacle_tf_max_age)
+                or self.obstacle_tf_max_age <= 0):
+            raise ValueError('obstacle_tf_max_age must be finite and positive')
 
         # 控制循环
         self.control_timer = self.create_timer(0.1, self.control_loop)  # 10Hz
@@ -270,16 +287,21 @@ class NavigationManager(Node):
 
     def odom_callback(self, msg: Odometry):
         """位姿回调"""
+        if (msg.header.frame_id != self.odom_frame
+                or msg.child_frame_id != self.base_frame
+                or not valid_pose(msg.pose.pose)
+                or not self._odom_freshness.accept(
+                    msg.header.stamp, self.get_clock().now().nanoseconds,
+                    time.monotonic())):
+            self.get_logger().warn('丢弃无效、过期或乱序位姿', throttle_duration_sec=5.0)
+            return
         self.current_pose = msg.pose.pose
-        # 记到达时刻，不用消息里的 header.stamp：这里要判的是"这条链还活着吗"，
-        # 而 stamp 是发布端自己写的，发布端卡住的时候它不会告诉你它卡住了。
         self._last_odom_time = time.monotonic()
 
     def pose_age(self):
         """最后一帧位姿到现在多久了（秒）。一帧都没收到过返回 None。"""
-        if self._last_odom_time is None:
-            return None
-        return time.monotonic() - self._last_odom_time
+        return self._odom_freshness.age(
+            self.get_clock().now().nanoseconds, time.monotonic())
 
     def _lookup_base_from(self, frame_id, stamp):
         """查 base_link <- frame_id 的 4x4 齐次矩阵。查不到返回 None。
@@ -316,14 +338,18 @@ class NavigationManager(Node):
             # 动态的是 base_link -> ... -> torso_link 那段关节链（41 Hz）。
             #
             # 退路本身是有风险的 —— 拿一个时刻不对的变换去过滤高度。
-            # 所以**限定条件**：只在能拿到最新变换时退，而且退了之后
-            # 仍然要求点云本身是新鲜的（新鲜度在 obstacle_state() 里判，
-            # 和这里是两道独立的闸）。腰关节转得再快，几十毫秒内的
-            # 姿态变化对 0.05~1.8 m 这个高度窗口来说是小量。
+            # 退用的 TF 必须在 obstacle_tf_max_age 内；点云另做新鲜度检查。
             try:
                 tf = self._tf_buffer.lookup_transform(
                     self.base_frame, frame_id, Time(),
                     timeout=Duration(seconds=0.0))
+                difference = abs(stamp_nanoseconds(stamp)
+                                 - stamp_nanoseconds(tf.header.stamp)) / 1e9
+                if difference > self.obstacle_tf_max_age:
+                    self.get_logger().warn(
+                        f'避障 TF 与点云相差 {difference:.3f} 秒，拒绝使用',
+                        throttle_duration_sec=5.0)
+                    return None
                 # 这条退路是**常态**，不是只在启动时出现：实测约 10% 的帧
                 # 点云 stamp 落在最新 TF 之后（p95 +38 ms，最大 +166 ms）。
                 # 所以不打 warn，也不只打一次 —— 打一次的话没人知道它到底
@@ -353,7 +379,13 @@ class NavigationManager(Node):
             self._tf_ok_count += 1
         t = tf.transform.translation
         q = tf.transform.rotation
-        x, y, z, w = q.x, q.y, q.z, q.w
+        if not all(math.isfinite(value) for value in (
+                t.x, t.y, t.z, q.x, q.y, q.z, q.w)):
+            return None
+        norm = math.sqrt(q.x ** 2 + q.y ** 2 + q.z ** 2 + q.w ** 2)
+        if norm < 1e-8:
+            return None
+        x, y, z, w = q.x / norm, q.y / norm, q.z / norm, q.w / norm
         return (
             (1 - 2 * (y * y + z * z), 2 * (x * y - z * w),
              2 * (x * z + y * w), t.x),
@@ -368,7 +400,20 @@ class NavigationManager(Node):
         """一帧点云 -> 避障状态。判定逻辑全在 obstacle.py（纯函数，可合成测）。"""
         if not self.obstacle_enabled:
             return
-        frame_id = msg.header.frame_id or self.base_frame
+        if (not msg.header.frame_id or msg.is_bigendian or msg.height != 1
+                or not all(any(field.name == name and field.offset == offset
+                               and field.datatype == 7 and field.count == 1
+                               for field in msg.fields)
+                           for name, offset in (('x', 0), ('y', 4), ('z', 8)))
+                or msg.width * msg.point_step != len(msg.data)
+                or msg.row_step != len(msg.data)
+                or not self._lidar_freshness.accept(
+                    msg.header.stamp, self.get_clock().now().nanoseconds,
+                    time.monotonic())):
+            self._obstacle = obstacle_mod.stale_state()
+            self._last_lidar_time = None
+            return
+        frame_id = msg.header.frame_id
         if frame_id == self.base_frame:
             matrix = None            # 调用方声明点云已在机体系
         else:
@@ -386,13 +431,14 @@ class NavigationManager(Node):
             min_height=self.obstacle_min_height,
             max_height=self.obstacle_max_height,
         )
-        self._last_lidar_time = time.monotonic()
+        self._last_lidar_time = None if self._obstacle.stale else time.monotonic()
 
     def lidar_age(self):
         """最后一帧点云到现在多久（秒）。一帧都没收到返回 None。"""
         if self._last_lidar_time is None:
             return None
-        return time.monotonic() - self._last_lidar_time
+        return self._lidar_freshness.age(
+            self.get_clock().now().nanoseconds, time.monotonic())
 
     def obstacle_state(self):
         """当前避障状态，**已经把"点云过期"算进去**。

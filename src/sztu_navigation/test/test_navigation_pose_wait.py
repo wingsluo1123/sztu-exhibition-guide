@@ -92,7 +92,8 @@ if _HAVE:
 
         def publish_once(self):
             msg = Odometry()
-            msg.header.frame_id = 'map'
+            msg.header.frame_id = 'odom'
+            msg.header.stamp = self.get_clock().now().to_msg()
             msg.child_frame_id = 'base_link'
             msg.pose.pose.position.x = 2.5
             msg.pose.pose.orientation.w = 1.0
@@ -206,3 +207,37 @@ def test_set_goal_alone_still_refuses_when_nobody_spins(nav, source):
     assert nav.current_pose is None
     assert nav.set_goal(1.0, 0.0) is False
     assert nav.is_navigating is False
+
+
+@pytest.mark.parametrize('kind', ['old', 'future', 'frame', 'nan'])
+def test_invalid_odometry_never_allows_a_goal(nav, kind):
+    msg = Odometry()
+    msg.header.frame_id = 'odom'
+    msg.child_frame_id = 'base_link'
+    msg.header.stamp = nav.get_clock().now().to_msg()
+    msg.pose.pose.orientation.w = 1.0
+    if kind == 'old':
+        msg.header.stamp.sec -= 10
+    elif kind == 'future':
+        msg.header.stamp.sec += 10
+    elif kind == 'frame':
+        msg.header.frame_id = 'map'
+    else:
+        msg.pose.pose.position.x = float('nan')
+    nav.odom_callback(msg)
+    assert nav.current_pose is None
+    assert not nav.set_goal(1.0, 0.0)
+
+
+def test_duplicate_odometry_does_not_extend_pose_lifetime(nav, monkeypatch):
+    msg = Odometry()
+    msg.header.frame_id = 'odom'
+    msg.child_frame_id = 'base_link'
+    msg.header.stamp = nav.get_clock().now().to_msg()
+    msg.pose.pose.orientation.w = 1.0
+    nav.odom_callback(msg)
+    real = time.monotonic
+    monkeypatch.setattr(time, 'monotonic', lambda: real() + 10.0)
+    nav.odom_callback(msg)
+    assert nav.pose_age() > nav.odom_stale_timeout
+    assert not nav.set_goal(1.0, 0.0)

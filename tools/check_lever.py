@@ -119,6 +119,7 @@
 的 bridge.log 里读（那是节点当时真用的那个），读不到就拿 IMU 静止段现算。
 """
 
+import ast
 import math
 import os
 import re
@@ -245,7 +246,7 @@ def read_topics(db3, wanted):
 
 
 def gravity_from_log(run_dir):
-    """从 bridge.log 里抠出节点当时实测的重力方向。
+    """从 bridge.log 里读节点实际使用的参数或实测重力方向。
 
     优先用它而不是自己现算：要验的是节点做得对不对，重力这一步得用**它用过的
     那个值**，不然残差里会混进重力估计的差异，分不清是谁的锅。
@@ -253,15 +254,26 @@ def gravity_from_log(run_dir):
     返回 (up, δ 的上界（度）)。日志里那个向量是 `%+.3f` 打的，所以每个分量
     最多差半个最低位 = 5e-4，方向角误差 ≤ |(5e-4,5e-4,5e-4)| = 8.66e-4 rad
     = 0.0496°。这个界是**算出来的**，不是从数据里估的 —— 见文件头为什么这一
-    点重要。
+    点重要。参数列表保留完整浮点值，计算余量沿用 IMU_DELTA_DEG。
     """
     path = os.path.join(run_dir, 'bridge.log')
     if not os.path.isfile(path):
         return None
-    with open(path, encoding='utf-8', errors='replace') as f:
+    with open(path, encoding='utf-8', errors='replace') as log_file:
+        text = log_file.read()
+        parameter = re.search(r'重力方向由参数给定：(\[[^\]\r\n]*\])', text)
+        if parameter:
+            try:
+                up = np.array(ast.literal_eval(parameter.group(1)), dtype=float)
+            except (ValueError, SyntaxError, TypeError) as exc:
+                raise SystemExit('bridge.log 里的重力参数无效') from exc
+            if up.shape != (3,) or not np.isfinite(up).all() \
+                    or np.linalg.norm(up) < 1e-6:
+                raise SystemExit('bridge.log 里的重力参数无效')
+            return up, IMU_DELTA_DEG
         m = re.search(r'重力方向实测完成：上 = \['
                       r'\s*([-+0-9.]+),\s*([-+0-9.]+),\s*([-+0-9.]+)\]',
-                      f.read())
+                      text)
     if not m:
         return None
     # 从字面量本身读小数位数，别假设它一直是 3 位 —— 哪天日志格式改了，
@@ -450,7 +462,7 @@ def main():
     db3 = find_bag(target)
 
     got = gravity_from_log(target)
-    src = 'bridge.log（节点当时实测的）'
+    src = 'bridge.log（节点实际使用的）'
     topics = ['/Odometry', NAV_TOPIC, '/tf', '/tf_static']
     msgs = read_topics(db3, topics + ([] if got is not None else [IMU_TOPIC]))
     if got is None:

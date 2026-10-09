@@ -45,8 +45,9 @@ if _HAVE:
     from rclpy.qos import (                                      # noqa: E402
         QoSDurabilityPolicy, QoSReliabilityPolicy,
     )
-    from sensor_msgs.msg import PointCloud2                      # noqa: E402
+    from sensor_msgs.msg import PointCloud2, PointField          # noqa: E402
     from std_msgs.msg import Header                              # noqa: E402
+    from rclpy.clock import Clock                                # noqa: E402
 
 # 不要用真话题名：真机上会收到现场数据。
 FAKE_LIDAR = '/test_only/obstacle_wiring/points'
@@ -83,9 +84,15 @@ def _msg(points, frame=BASE, step=32):
     m = PointCloud2()
     m.header = Header()
     m.header.frame_id = frame
+    m.header.stamp = Clock().now().to_msg()
     m.point_step = step
     pad = b'\x00' * (step - 12)
     m.data = b''.join(struct.pack('<fff', *p) + pad for p in points)
+    m.height = 1
+    m.width = len(points)
+    m.row_step = len(m.data)
+    m.fields = [PointField(name=name, offset=offset, datatype=7, count=1)
+                for name, offset in (('x', 0), ('y', 4), ('z', 8))]
     return m
 
 
@@ -118,6 +125,53 @@ def test_a_fresh_clear_frame_says_go(node):
     node.lidar_callback(_msg([(5.0, 0.0, 0.5)]))
     st = node.obstacle_state()
     assert not st.stop and not st.slow and not st.stale
+
+
+@pytest.mark.parametrize('kind', ['old', 'future', 'empty', 'nan', 'layout'])
+def test_invalid_pointclouds_stop_navigation(node, kind):
+    msg = _msg([(5.0, 0.0, 0.5)])
+    if kind == 'old':
+        msg.header.stamp.sec -= 10
+    elif kind == 'future':
+        msg.header.stamp.sec += 10
+    elif kind == 'empty':
+        msg = _msg([])
+    elif kind == 'nan':
+        msg = _msg([(float('nan'), 0.0, 0.5)])
+    else:
+        msg.fields[0].offset = 4
+    node.lidar_callback(msg)
+    assert node.obstacle_state().stale
+    assert node.obstacle_state().stop
+
+
+def test_duplicate_pointcloud_cannot_refresh_clearance(node):
+    msg = _msg([(5.0, 0.0, 0.5)])
+    node.lidar_callback(msg)
+    assert not node.obstacle_state().stop
+    node.lidar_callback(msg)
+    assert node.obstacle_state().stop
+
+
+@pytest.mark.parametrize('delta', [-10.0, -0.2, 0.2, 10.0])
+def test_tf_fallback_rejects_excessive_time_difference(node, monkeypatch, delta):
+    from geometry_msgs.msg import TransformStamped
+    from rclpy.time import Time
+    from tf2_ros import ExtrapolationException
+    stamp = node.get_clock().now().to_msg()
+    transform = TransformStamped()
+    transform.header.stamp = Time(
+        nanoseconds=Time.from_msg(stamp).nanoseconds + int(delta * 1e9)).to_msg()
+    transform.transform.rotation.w = 1.0
+
+    def lookup(target, source, when, timeout=None):
+        if not isinstance(when, Time):
+            raise ExtrapolationException('forced')
+        return transform
+
+    monkeypatch.setattr(node._tf_buffer, 'lookup_transform', lookup)
+    assert node._lookup_base_from('lidar', stamp) is None
+    assert node._tf_fallback_count == 0
 
 
 def test_a_stale_frame_reverts_to_stop(node, monkeypatch):
@@ -240,6 +294,7 @@ def test_the_fallback_is_counted_so_its_rate_is_visible(node, monkeypatch):
     calls = []
 
     class FakeTF:
+        header = Header(stamp=Clock().now().to_msg())
         transform = type('T', (), {
             'translation': type('V', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})(),
             'rotation': type('Q', (), {

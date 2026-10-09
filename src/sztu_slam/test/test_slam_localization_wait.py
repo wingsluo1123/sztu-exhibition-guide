@@ -101,7 +101,8 @@ if _HAVE:
         def _loop(self):
             while not self._stop.is_set():
                 msg = Odometry()
-                msg.header.frame_id = 'map'
+                msg.header.frame_id = 'odom'
+                msg.header.stamp = self.get_clock().now().to_msg()
                 msg.child_frame_id = 'base_link'
                 msg.pose.pose.position.x = 1.25
                 msg.pose.pose.orientation.w = 1.0
@@ -167,6 +168,36 @@ def test_wait_returns_immediately_when_already_localized(slam, source):
     started = time.monotonic()
     assert slam.wait_until_localized(5.0) is True
     assert time.monotonic() - started < 0.2, '已经定位了还在等，白耗时间'
+
+
+def test_localization_expires_after_source_stops(slam, source):
+    assert slam.wait_until_localized(5.0)
+    source.stop()
+    time.sleep(slam._freshness.max_age + 0.1)
+    assert not slam.is_localized
+    assert not slam.is_ready()
+    assert slam.get_current_pose() is None
+    assert not slam.wait_until_localized(0.1)
+
+
+def test_old_invalid_and_repeated_poses_do_not_localize(slam):
+    msg = Odometry()
+    msg.header.frame_id = 'odom'
+    msg.child_frame_id = 'base_link'
+    msg.header.stamp = slam.get_clock().now().to_msg()
+    msg.pose.pose.orientation.w = 0.0
+    slam.odom_callback(msg)
+    assert not slam.is_ready()
+    msg.pose.pose.orientation.w = 1.0
+    msg.header.stamp.sec -= 10
+    slam.odom_callback(msg)
+    assert not slam.is_ready()
+    msg.header.stamp = slam.get_clock().now().to_msg()
+    slam.odom_callback(msg)
+    assert slam.is_ready()
+    received_at = slam._freshness.received_at
+    slam.odom_callback(msg)
+    assert slam._freshness.received_at == received_at
 
 
 # --- 2. 负对照：这条复现的就是真机上的那个 bug ------------------------------

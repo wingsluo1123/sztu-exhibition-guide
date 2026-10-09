@@ -16,6 +16,7 @@
 #   tools/run_lio_live.sh --no-record    # 连 /Odometry 都不录，只看实时频率
 #   tools/run_lio_live.sh --rviz         # 顺便开 rviz
 #   tools/run_lio_live.sh -t 120         # 跑 120 秒自动收尾（默认一直跑）
+#   tools/run_lio_live.sh --check-only   # 只做启动前检查，不启动 SLAM 或发布位姿
 #   tools/run_lio_live.sh --bridge --map-frame /tmp/regen.yaml
 #                                        # 走已有的图时**必须**加这个：把重力方向
 #                                        # 钉成建图时那个值，否则转接层自测一个
@@ -71,6 +72,7 @@ RVIZ=0
 MAP=0
 RECORD=1
 BRIDGE=0
+CHECK_ONLY=0
 DURATION=0
 RAW_TOPIC="/aima/hal/sensor/lidar_chest_front/lidar_pointcloud"
 IMU_TOPIC="/aima/hal/sensor/lidar_chest_front/imu"
@@ -82,6 +84,7 @@ while [ "$#" -gt 0 ]; do
         --rviz)      RVIZ=1 ;;
         --map)       MAP=1 ;;
         --bridge)    BRIDGE=1 ;;
+        --check-only) CHECK_ONLY=1 ;;
         --up)        UP="$2"; shift ;;
         --map-frame) UP="$(awk -F'[][, ]+' '/^sztu_up:/{print $2","$3","$4}' \
                           "${2%.yaml}.yaml")"
@@ -119,6 +122,46 @@ if [ -f "$WS/install/setup.bash" ]; then
 else
     bad "workspace 没编译过（没有 install/setup.bash）"; fatal=1
 fi
+
+for vendor_env in "$HOME/.aima/env/bashrc" /agibot/data/home/*/.aima/env/bashrc; do
+    if [ -f "$vendor_env" ]; then
+        ros_source "$vendor_env"
+        ok "厂商 ROS/DDS 环境: $vendor_env"
+        break
+    fi
+done
+
+say "  ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}  RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
+if [ "${ROS_DOMAIN_ID:-0}" != "0" ]; then
+    bad "真机在 domain 0，当前 ROS_DOMAIN_ID=${ROS_DOMAIN_ID}"
+    say "   在当前终端执行 unset ROS_DOMAIN_ID 后重跑。"
+    exit 1
+fi
+case "${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}" in
+    rmw_fastrtps_cpp|rmw_fastrtps_dynamic_cpp) ;;
+    *) bad "当前 RMW 不使用 Fast DDS，64 MB 点云传输配置不会生效"
+       say "   在当前终端执行 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp 后重跑。"
+       exit 1 ;;
+esac
+
+publisher_count() {
+    local topic="$1" probe_output probe_status
+    PUBLISHERS=""
+    probe_output="$(timeout 15 ros2 topic info --no-daemon --spin-time 5 "$topic" 2>&1)"
+    probe_status=$?
+    if [ "$probe_status" -eq 0 ]; then
+        PUBLISHERS="$(printf '%s\n' "$probe_output" \
+            | sed -n 's/^Publisher count: \([0-9]*\)$/\1/p' | head -1)"
+        [ -n "$PUBLISHERS" ] && return 0
+    elif [ "$probe_status" -eq 1 ] && printf '%s\n' "$probe_output" \
+            | grep -q '^Unknown topic '; then
+        PUBLISHERS=0
+        return 0
+    fi
+    bad "$topic 的 ROS 图检查失败（退出码 $probe_status）"
+    printf '%s\n' "$probe_output" | tail -5
+    return 1
+}
 
 FL_EXE="$WS/install/fast_lio/lib/fast_lio/fastlio_mapping"
 if [ -x "$FL_EXE" ]; then
@@ -163,21 +206,27 @@ fi
 
 # 真机上这两个话题**必须**有发布者 —— 和回放脚本正好相反。
 for t in "$RAW_TOPIC" "$IMU_TOPIC"; do
-    n="$(ros2 topic info "$t" 2>/dev/null \
-         | sed -n 's/.*Publisher count: \([0-9]*\).*/\1/p' | head -1)"
+    if ! publisher_count "$t"; then
+        fatal=1
+        continue
+    fi
+    n="$PUBLISHERS"
     if [ -n "${n:-}" ] && [ "$n" -gt 0 ]; then
         ok "$t（$n 个发布者）"
     else
-        bad "$t 没有发布者 —— 雷达没起来，或者 ROS_DOMAIN_ID 不对"
-        say "   先确认: ros2 topic list | grep lidar_chest_front"
+        bad "$t 没有发布者（domain 0，已独立发现 5 秒）"
+        say "   先确认: ros2 topic list --no-daemon --spin-time 5 | grep lidar_chest_front"
         fatal=1
     fi
 done
 
 # 坑 3 的后果：上一趟残留的节点会和这一趟的一起发。
 for t in /lio/points /Odometry; do
-    n="$(ros2 topic info "$t" 2>/dev/null \
-         | sed -n 's/.*Publisher count: \([0-9]*\).*/\1/p' | head -1)"
+    if ! publisher_count "$t"; then
+        fatal=1
+        continue
+    fi
+    n="$PUBLISHERS"
     if [ -n "${n:-}" ] && [ "$n" -gt 0 ]; then
         bad "$t 已经有 $n 个发布者 —— 上一趟没收干净"
         say "   清掉再来:  pkill -INT -f cloud_to_velodyne; pkill -INT -f fastlio_mapping"
@@ -186,18 +235,17 @@ for t in /lio/points /Odometry; do
 done
 
 if [ "$BRIDGE" -eq 1 ]; then
-    # 这个话题和上面两个不一样：有别人在发的话，不一定是我们上一趟的残留，
-    # 也可能是厂商的 LocalizationModule 真起来了（授权开通之后就会）。
-    # 两个都发同一个话题，导航会收到两套互相矛盾的位姿，而且不报错。
-    n="$(ros2 topic info "$NAV_TOPIC" 2>/dev/null \
-         | sed -n 's/.*Publisher count: \([0-9]*\).*/\1/p' | head -1)"
+    if publisher_count "$NAV_TOPIC"; then
+        n="$PUBLISHERS"
+    else
+        fatal=1
+        n=0
+    fi
     if [ -n "${n:-}" ] && [ "$n" -gt 0 ]; then
         bad "$NAV_TOPIC 已经有 $n 个发布者"
-        say "   要么是上一趟的 lio_odom_bridge 没收干净:"
-        say "     pkill -INT -f lio_odom_bridge"
-        say "   要么是厂商的 LocalizationModule 起来了（授权开通了？）——"
-        say "   那就别用 --bridge，厂商自己的实现优先，我们这层只是替代品。"
-        say "     aima em list-apps | grep slam"
+        say "   先确认发布者身份，避免两套位姿同时进入导航:"
+        say "     ros2 topic info --no-daemon --spin-time 5 -v $NAV_TOPIC"
+        say "   若是上一趟的 lio_odom_bridge，先停止该进程再重跑。"
         fatal=1
     fi
 
@@ -222,6 +270,11 @@ if [ "$fatal" -ne 0 ]; then
     say ""
     bad "上面的问题先解决。"
     exit 1
+fi
+
+if [ "$CHECK_ONLY" -eq 1 ]; then
+    ok "启动前检查通过（未启动 SLAM 或发布位姿）"
+    exit 0
 fi
 
 RUN_DIR="$HOME/sztu_lio_runs/$(date +%Y%m%d_%H%M%S)_live"
@@ -337,7 +390,9 @@ finish() {
 }
 
 # FAST-LIO 先起，让它在数据到来之前订阅好。实时跑**不要** use_sim_time。
-"$FL_EXE" --ros-args --params-file "$CFG" \
+FL_PARAMS=(--ros-args --params-file "$CFG")
+[ "$MAP" -eq 0 ] && FL_PARAMS+=( -p publish.scan_publish_en:=false )
+"$FL_EXE" "${FL_PARAMS[@]}" \
     > "$RUN_DIR/fastlio.log" 2>&1 &
 pids+=($!)
 ok "fastlio_mapping (pid ${pids[-1]}) -> fastlio.log"
@@ -400,11 +455,29 @@ else
 fi
 
 if [ "$RVIZ" -eq 1 ]; then
-    RVIZ_CFG="$WS/src/fast_lio/rviz_cfg/loam_livox.rviz"
-    if [ -f "$RVIZ_CFG" ]; then
+    # 用我们自己那份配置，**不要**再指 src/fast_lio/rviz_cfg/loam_livox.rviz：
+    # 那个是 ROS 1 格式（`Class: rviz/PointCloud2`），rviz2 加载它会把每个
+    # 图层都报一遍 "PluginlibFactory: ... failed to load"，然后开出一个
+    # 什么都没有的**空窗口** —— 窗口在、这里照样打印 ✓，里面是空的。
+    # 差别和理由都写在 live_mapping.rviz 的头注释里。
+    RVIZ_CFG="$WS/src/sztu_slam/rviz/live_mapping.rviz"
+    if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+        # 机器人上一般没有图形界面。rviz2 在这种环境里不是"起不来"，是
+        # **core dump**：Qt 找不到 platform plugin，实测退出码 134。而下面
+        # 等 IMU 那段的存活检查只盯 pids[0]（fastlio_mapping），所以它死了
+        # 不影响建图 —— 但也没人会告诉你，于是你对着一个不存在的窗口等。
+        hmm "没有 DISPLAY —— 这台机器没有图形界面，跳过 rviz"
+        say "   这是常态：机器人上没屏幕，rviz 要开在开发机上。"
+        say "   在开发机那边跑这一条，它会把链路该查的都查掉再开 rviz："
+        say "     ${BOLD}tools/watch_lio.sh${NC}"
+        say "   （跨机器收点云有两道坎：内核 rmem_max 默认 208 KB 装不下一帧"
+        say "   801 KB 的点云，以及 WiFi 带宽。那个脚本会逐条告诉你。）"
+    elif [ -f "$RVIZ_CFG" ]; then
         rviz2 -d "$RVIZ_CFG" > "$RUN_DIR/rviz.log" 2>&1 &
         pids+=($!)
         ok "rviz2 (pid ${pids[-1]})"
+        say "   默认只画当前帧。想看点云攒成一个房间，在左边把 CloudAccum"
+        say "   勾上（它留 120 秒，约一千万点，卡就把 Decay Time 调小）。"
     else
         hmm "没找到 $RVIZ_CFG，跳过 rviz"
     fi
@@ -427,8 +500,11 @@ say ""
 imu_ok=0
 for i in $(seq 1 30); do
     if grep -q "IMU Initial Done" "$RUN_DIR/fastlio.log" 2>/dev/null; then
-        imu_ok=1
-        break
+        if [ "$BRIDGE" -eq 0 ] || [ -n "$UP" ] \
+           || grep -q '重力方向实测完成' "$RUN_DIR/bridge.log" 2>/dev/null; then
+            imu_ok=1
+            break
+        fi
     fi
     # 节点自己死了就别傻等
     if ! kill -0 "${pids[0]}" 2>/dev/null; then
@@ -436,14 +512,21 @@ for i in $(seq 1 30); do
         tail -20 "$RUN_DIR/fastlio.log" | sed 's/^/     /'
         exit 1
     fi
+    if ! kill -0 "${pids[1]}" 2>/dev/null \
+       || { [ "$BRIDGE" -eq 1 ] && ! kill -0 "${pids[2]}" 2>/dev/null; }; then
+        bad "点云转换或位姿转接节点退出，初始化失败"
+        exit 1
+    fi
     sleep 1
 done
 
 if [ "$imu_ok" -eq 1 ]; then
-    ok "IMU Initial Done —— ${BOLD}可以开始走了${NC}"
+    ok "IMU 初始化与重力方向就绪 —— ${BOLD}可以开始走了${NC}"
 else
     hmm "30 秒还没看到 IMU Initial Done"
     say "   点云或 IMU 没喂进去。看 $RUN_DIR/fastlio.log 和 adapter.log。"
+    [ "$BRIDGE" -eq 1 ] && say "   转接层需要连续两秒静止 IMU，另查 bridge.log。"
+    exit 1
 fi
 
 if [ "$BRIDGE" -eq 1 ]; then

@@ -49,6 +49,8 @@ class GuideManager(Node):
         # 开走前等定位的上限。10 秒是给位姿源留的启动余量：lio_odom_bridge 正常
         # 是 10 Hz，第一帧通常 1 秒内就到，等到 10 秒还没有就是它没在跑。
         self.declare_parameter('localization_timeout', 10.0)
+        self.declare_parameter('navigation_backend', 'nav2')
+        self.navigation_backend = self.get_parameter('navigation_backend').value
         self.localization_timeout = float(
             self.get_parameter('localization_timeout').value)
 
@@ -64,7 +66,13 @@ class GuideManager(Node):
         self.slam = SlamManager()
         self.get_logger().info('  + SLAM system')
 
-        self.navigation = NavigationManager()
+        if self.navigation_backend == 'nav2':
+            from sztu_navigation.nav2_navigator import Nav2Navigator
+            self.navigation = Nav2Navigator()
+        elif self.navigation_backend == 'legacy':
+            self.navigation = NavigationManager()
+        else:
+            raise ValueError(f'Unknown navigation_backend: {self.navigation_backend}')
         self.get_logger().info('  + Navigation system')
 
         self.tts = TtsController()
@@ -147,7 +155,10 @@ class GuideManager(Node):
         # 不把 node.executor 清回 None。第一版的等待循环照 `executor is None`
         # 决定要不要 spin，于是从第二圈起只剩 sleep。判据现在看的是
         # get_nodes()，见 slam_manager.spin_node_once()。
-        if not self.slam.wait_until_localized(self.localization_timeout):
+        localized = (self.navigation.wait_for_pose(self.localization_timeout)
+                     if self.navigation_backend == 'nav2'
+                     else self.slam.wait_until_localized(self.localization_timeout))
+        if not localized:
             self.get_logger().error(
                 f'定位未就绪：等了 {self.localization_timeout:.0f} 秒没收到位姿。'
                 f'检查位姿源是否在发：ros2 topic hz {self.slam.odom_topic}')
@@ -287,7 +298,8 @@ def main(args=None):
         guide.navigation.stop()
         # navigation 自己是一个节点，它名下的 locomotion 又是一个独立节点
         # （不交给 executor spin），两个都要销毁，否则留下悬挂节点。
-        guide.navigation.locomotion.destroy_node()
+        if getattr(guide.navigation, 'locomotion', None) is not None:
+            guide.navigation.locomotion.destroy_node()
         guide.navigation.destroy_node()
         guide.destroy_node()
         if rclpy.ok():

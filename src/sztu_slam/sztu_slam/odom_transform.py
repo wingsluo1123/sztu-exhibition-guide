@@ -72,6 +72,8 @@ def _unit(v, what):
 def quat_to_matrix(q):
     """ROS 四元数 (x, y, z, w) -> 3x3 旋转矩阵。"""
     x, y, z, w = (float(c) for c in q)
+    if not np.all(np.isfinite([x, y, z, w])):
+        raise OdomTransformError('四元数含非有限值')
     n = x * x + y * y + z * z + w * w
     if n < _PARALLEL_EPS:
         raise OdomTransformError('四元数模长为 0')
@@ -207,6 +209,28 @@ def odom_pose_to_base(R_grav, pose_cam_body, tf_base_body):
     R_cam_base, t_cam_base = compose(R_cb, t_cb, R_body_base, t_body_base)
     # 再把整个世界系拧成 z 朝上。纯旋转，所以平移也要跟着转。
     return compose(R_grav, np.zeros(3), R_cam_base, t_cam_base)
+
+
+def transform_pose_covariance(covariance, R_grav, R_cam_body, tf_base_body):
+    """Propagate world-axis pose errors through rotation and the base lever arm.
+
+    Input orientation errors must already be expressed in camera_init axes.
+    The dynamic TF is treated as exact; joint and calibration uncertainty are
+    additional error sources that this covariance does not model.
+    """
+    R_base_body, t_base_body = tf_base_body
+    _, t_body_base = invert(R_base_body, t_base_body)
+    offset = np.asarray(R_cam_body) @ t_body_base
+    offset_x, offset_y, offset_z = offset
+    skew = np.array([[0.0, -offset_z, offset_y],
+                     [offset_z, 0.0, -offset_x],
+                     [-offset_y, offset_x, 0.0]])
+    jacobian = np.zeros((6, 6))
+    jacobian[:3, :3] = R_grav
+    jacobian[:3, 3:] = -np.asarray(R_grav) @ skew
+    jacobian[3:, 3:] = R_grav
+    source = np.asarray(covariance, dtype=float).reshape(6, 6)
+    return jacobian @ source @ jacobian.T
 
 
 def is_bogus_stamp(stamp_sec, min_epoch=MIN_VALID_EPOCH):
