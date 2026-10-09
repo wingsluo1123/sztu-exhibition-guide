@@ -18,10 +18,47 @@ Visualization Manager:
         Durability Policy: Transient Local
         History Policy: Keep Last
         Depth: 1
+    - Class: rviz_default_plugins/Map
+      Name: Local Obstacles
+      Enabled: true
+      Alpha: 0.45
+      Color Scheme: costmap
+      Draw Behind: false
+      Topic:
+        Value: /local_costmap/costmap
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Depth: 1
+    - Class: rviz_default_plugins/Map
+      Name: Global Costmap
+      Enabled: false
+      Alpha: 0.4
+      Color Scheme: costmap
+      Topic:
+        Value: /global_costmap/costmap
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Depth: 1
+    - Class: rviz_default_plugins/Polygon
+      Name: Planning Footprint
+      Enabled: true
+      Color: 80; 220; 255
+      Topic:
+        Value: /local_costmap/published_footprint
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 1
     - Class: rviz_default_plugins/LaserScan
       Name: Localization Scan
       Enabled: true
+      Color Transformer: FlatColor
+      Style: Points
+      Size (Pixels): 4
       Size (m): 0.04
+      Decay Time: 0.5
       Color: 255; 80; 80
       Topic:
         Value: /sztu/scan
@@ -32,8 +69,25 @@ Visualization Manager:
     - Class: rviz_default_plugins/PoseWithCovariance
       Name: AMCL Pose
       Enabled: true
+      Shape: Arrow
+      Color: 255; 25; 0
       Topic:
         Value: /amcl_pose
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Depth: 5
+    - Class: rviz_default_plugins/LaserScan
+      Name: Safety Scan
+      Enabled: true
+      Color Transformer: FlatColor
+      Style: Points
+      Size (Pixels): 3
+      Size (m): 0.03
+      Decay Time: 0.5
+      Color: 255; 170; 0
+      Topic:
+        Value: /sztu/safety_scan
         Reliability Policy: Best Effort
         Durability Policy: Volatile
         History Policy: Keep Last

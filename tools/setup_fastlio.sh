@@ -330,17 +330,30 @@ else
     exit 1
 fi
 
+head2 "3e. FAST-LIO 实时积压修复"
+REALTIME_PATCH="$WS/tools/patches/fastlio_realtime.patch"
+if git -C "$DEST" apply --reverse --check "$REALTIME_PATCH" 2>/dev/null; then
+    ok "实时积压补丁已应用"
+elif git -C "$DEST" apply --check "$REALTIME_PATCH"; then
+    git -C "$DEST" apply "$REALTIME_PATCH" || exit 1
+    ok "已添加实时过期点云丢弃，保留 IMU 历史"
+else
+    bad "实时积压补丁与当前 FAST-LIO 源码冲突，请核对本地改动"
+    exit 1
+fi
+cp "$WS/tools/patches/fastlio_scan_backlog.h" "$DEST/include/scan_backlog.h" || exit 1
+
 if [ -d "$DEST/.git" ]; then
     unexpected="$(git -C "$DEST" status --porcelain 2>/dev/null \
-                  | awk '{print $2}' | grep -v -E '^(CMakeLists\.txt|src/laserMapping\.cpp)$' || true)"
+                  | awk '{print $2}' | grep -v -E '^(CMakeLists\.txt|src/laserMapping\.cpp|include/scan_backlog\.h)$' || true)"
     if [ -n "$unexpected" ]; then
         hmm "$DEST 里有计划外的改动："
         echo "$unexpected" | while read -r f; do say "     $f"; done
-        say "   预期改动是 C++17（3c）和运行时补丁（3d），别的配置全在"
+        say "   预期改动是 C++17（3c）、运行时补丁（3d）和实时补丁（3e），别的配置全在"
         say "   src/sztu_slam/config/fastlio_x2_chest.yaml。改了源码的话，"
         say "   换机器就复现不出来 —— 这些改动不在 git 里。"
     else
-        ok "源码干净（只有 3c 那一处改动）"
+        ok "源码只包含已记录的 3c/3d/3e 修改"
     fi
 fi
 

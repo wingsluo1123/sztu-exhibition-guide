@@ -5,6 +5,15 @@ import math
 import numpy as np
 
 
+def xyz_points(data, point_step):
+    """Read finite little-endian XYZ fields at offsets 0/4/8 with record padding."""
+    if point_step < 12 or len(data) % point_step:
+        raise ValueError('invalid XYZ record layout')
+    points = np.ndarray((len(data) // point_step, 3), dtype='<f4', buffer=data,
+                        strides=(point_step, 4))
+    return points[np.all(np.isfinite(points), axis=1)]
+
+
 def rotation_matrix(quaternion):
     values = np.asarray(quaternion, dtype=float)
     if values.shape != (4,) or not np.all(np.isfinite(values)):

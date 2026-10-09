@@ -1,0 +1,73 @@
+diff --git a/src/laserMapping.cpp b/src/laserMapping.cpp
+--- a/src/laserMapping.cpp
++++ b/src/laserMapping.cpp
+@@ -61,6 +61,8 @@
+ #include <geometry_msgs/msg/vector3.hpp>
+ #include <livox_ros_driver2/msg/custom_msg.hpp>
+ #include "preprocess.h"
++#include "scan_backlog.h"
++#include <stdexcept>
+ #include <ikd-Tree/ikd_Tree.h>
+ 
+ #define INIT_TIME           (0.1)
+@@ -80,6 +82,7 @@
+ float DET_RANGE = 300.0f;
+ const float MOV_THRESHOLD = 1.5f;
+ double time_diff_lidar_to_imu = 0.0;
++double max_input_age_sec = 0.0;
+ 
+ mutex mtx_buffer;
+ condition_variable sig_buffer;
+@@ -289,6 +292,8 @@
+     {
+         std::cerr << "lidar loop back, clear buffer" << std::endl;
+         lidar_buffer.clear();
++        time_buffer.clear();
++        lidar_pushed = false;
+     }
+     if (is_first_lidar)
+     {
+@@ -318,6 +323,8 @@
+     {
+         std::cerr << "lidar loop back, clear buffer" << std::endl;
+         lidar_buffer.clear();
++        time_buffer.clear();
++        lidar_pushed = false;
+     }
+     if(is_first_lidar)
+     {
+@@ -820,6 +827,7 @@
+         this->declare_parameter<string>("common.imu_topic", "/livox/imu");
+         this->declare_parameter<bool>("common.time_sync_en", false);
+         this->declare_parameter<double>("common.time_offset_lidar_to_imu", 0.0);
++        this->declare_parameter<double>("common.max_input_age_sec", 0.0);
+         this->declare_parameter<double>("filter_size_corner", 0.5);
+         this->declare_parameter<double>("filter_size_surf", 0.5);
+         this->declare_parameter<double>("filter_size_map", 0.5);
+@@ -854,6 +862,11 @@
+         this->get_parameter_or<string>("common.imu_topic", imu_topic,"/livox/imu");
+         this->get_parameter_or<bool>("common.time_sync_en", time_sync_en, false);
+         this->get_parameter_or<double>("common.time_offset_lidar_to_imu", time_diff_lidar_to_imu, 0.0);
++        this->get_parameter_or<double>("common.max_input_age_sec", max_input_age_sec, 0.0);
++        if (!std::isfinite(max_input_age_sec) || max_input_age_sec < 0.0)
++        {
++            throw std::invalid_argument("common.max_input_age_sec must be finite and nonnegative");
++        }
+         this->get_parameter_or<double>("filter_size_corner",filter_size_corner_min,0.5);
+         this->get_parameter_or<double>("filter_size_surf",filter_size_surf_min,0.5);
+         this->get_parameter_or<double>("filter_size_map",filter_size_map_min,0.5);
+@@ -967,6 +980,14 @@
+ private:
+     void timer_callback()
+     {
++        const auto discarded = sztu::discard_expired_scans(
++            lidar_buffer, time_buffer, lidar_pushed,
++            this->get_clock()->now().seconds(), max_input_age_sec);
++        if (discarded > 0)
++        {
++            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
++                                "Discarded %zu expired input scans; IMU history retained", discarded);
++        }
+         if(sync_packages(Measures))
+         {
+             if (flg_first_scan)

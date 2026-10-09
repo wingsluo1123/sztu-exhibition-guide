@@ -8,6 +8,7 @@ import struct
 import subprocess
 import tempfile
 import time
+from collections import deque
 from pathlib import Path
 
 import rclpy
@@ -43,6 +44,8 @@ class SyntheticRobot(Node):
         self.localized = False
         self.localization_samples = []
         self.stationary_jitter = True
+        self.source_tf_delay = 0.25
+        self.pending_source_tf = deque()
         self.max_side_distance = 0.0
         self.min_clearance = float('inf')
         self.sensors_enabled = True
@@ -131,7 +134,9 @@ class SyntheticRobot(Node):
         transform.transform.translation.x = self.position_x
         transform.transform.translation.y = self.position_y
         transform.transform.rotation = odom.pose.pose.orientation
-        self.tf.sendTransform(transform)
+        self.pending_source_tf.append((now + self.source_tf_delay, transform))
+        while self.pending_source_tf and self.pending_source_tf[0][0] <= now:
+            self.tf.sendTransform(self.pending_source_tf.popleft()[1])
         self.odom.publish(odom)
         cloud = PointCloud2()
         cloud.header.stamp = stamp
@@ -197,8 +202,9 @@ def run_runtime(robot, navigator):
                            and sample.pose.covariance[7] <= 0.09
                            and sample.pose.covariance[35] <= 0.07 for sample in samples)
                 robot.stationary_jitter = False
+                robot.source_tf_delay = 0.0
                 time.sleep(0.5)
-                print(f'PASS: static localization with 2 cm odometry jitter, '
+                print(f'PASS: static localization with 2 cm odometry jitter and 250 ms TF delay, '
                       f'max position error={max(errors):.3f} m', flush=True)
                 if not navigator.navigate_to(3.0, 0.0, 0.0, timeout=110):
                     raise RuntimeError(f'Navigation failed: {navigator.last_result}; see {log_path}')

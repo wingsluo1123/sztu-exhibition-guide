@@ -390,7 +390,7 @@ finish() {
 }
 
 # FAST-LIO 先起，让它在数据到来之前订阅好。实时跑**不要** use_sim_time。
-FL_PARAMS=(--ros-args --params-file "$CFG")
+FL_PARAMS=(--ros-args --params-file "$CFG" -p common.max_input_age_sec:=0.3)
 [ "$MAP" -eq 0 ] && FL_PARAMS+=( -p publish.scan_publish_en:=false )
 "$FL_EXE" "${FL_PARAMS[@]}" \
     > "$RUN_DIR/fastlio.log" 2>&1 &

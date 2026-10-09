@@ -3,6 +3,7 @@
 import copy
 import math
 import time
+from collections import deque
 
 import numpy as np
 import rclpy
@@ -15,8 +16,7 @@ from sensor_msgs.msg import LaserScan, PointCloud2
 from tf2_ros import Buffer, TransformBroadcaster, TransformListener
 
 from sztu_slam.message_validation import MessageFreshness, valid_pose
-from .nav_geometry import project_scan, rotation_matrix, yaw_of
-from .obstacle import iter_xyz
+from .nav_geometry import project_scan, rotation_matrix, xyz_points, yaw_of
 
 
 class NavSensorAdapter(Node):
@@ -45,6 +45,8 @@ class NavSensorAdapter(Node):
                                  self.odom_callback, qos_profile_sensor_data)
         self.create_subscription(PointCloud2, self.settings['cloud_topic'],
                                  self.cloud_callback, qos_profile_sensor_data)
+        self.pending_clouds = deque(maxlen=8)
+        self.create_timer(0.02, self.process_clouds)
         self.previous = None
 
     def odom_callback(self, message):
@@ -104,6 +106,24 @@ class NavSensorAdapter(Node):
                     message.header.stamp, self.get_clock().now().nanoseconds,
                     time.monotonic())):
             return
+        self.pending_clouds.append((message, time.monotonic(),
+                                    self.cloud_freshness.source_age))
+
+    def process_clouds(self):
+        while self.pending_clouds:
+            message, received_at, source_age = self.pending_clouds[0]
+            stamp_ns = (int(message.header.stamp.sec) * 1_000_000_000
+                        + int(message.header.stamp.nanosec))
+            clock_age = (self.get_clock().now().nanoseconds - stamp_ns) / 1e9
+            age = max(clock_age, source_age + time.monotonic() - received_at)
+            if clock_age < -self.cloud_freshness.future_tolerance or age > self.settings['max_age']:
+                self.pending_clouds.popleft()
+                continue
+            if self._publish_cloud(message, received_at, source_age):
+                self.pending_clouds.popleft()
+            break
+
+    def _publish_cloud(self, message, received_at, source_age):
         try:
             stamp = Time.from_msg(message.header.stamp)
             cloud_to_base = self._lookup_with_bounded_latest(
@@ -122,17 +142,18 @@ class NavSensorAdapter(Node):
             planar_rotation = rotation_matrix((0, 0, math.sin(yaw / 2), math.cos(yaw / 2)))
             leveling = planar_rotation.T @ base_rotation
             translation = cloud_to_base.transform.translation
-            points = np.array(list(iter_xyz(message.data, message.point_step)))
+            points = xyz_points(message.data, message.point_step)
             if points.size == 0:
-                return
+                return True
             points = points[np.linalg.norm(points, axis=1) > 1e-6]
             points = (points @ cloud_rotation.T
                       + np.array([translation.x, translation.y, translation.z])) @ leveling.T
             if not np.all(np.isfinite(points)) or len(points) == 0:
-                return
+                return True
         except Exception as error:
             self.get_logger().warn(f'Scan TF unavailable: {error}', throttle_duration_sec=5.0)
-            return
+            return False
+        prepared = []
         for publisher, minimum in ((self.scan_pub, self.settings['localization_min_height']),
                                    (self.safety_pub, self.settings['safety_min_height'])):
             scan = LaserScan()
@@ -145,7 +166,15 @@ class NavSensorAdapter(Node):
             scan.scan_time = 0.1
             scan.ranges, scan.angle_increment = project_scan(
                 points, minimum, self.settings['max_height'])
+            prepared.append((publisher, scan))
+        stamp_ns = int(message.header.stamp.sec) * 1_000_000_000 + int(message.header.stamp.nanosec)
+        clock_age = (self.get_clock().now().nanoseconds - stamp_ns) / 1e9
+        age = max(clock_age, source_age + time.monotonic() - received_at)
+        if clock_age < -self.cloud_freshness.future_tolerance or age > self.settings['max_age']:
+            return True
+        for publisher, scan in prepared:
             publisher.publish(scan)
+        return True
 
     def _lookup_with_bounded_latest(self, target, source, stamp, source_stamp):
         """Use exact sensor-time TF, then only a recent latest TF as a safe fallback."""
