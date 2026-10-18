@@ -17,10 +17,13 @@
 #   tools/run_lio_live.sh --rviz         # 顺便开 rviz
 #   tools/run_lio_live.sh -t 120         # 跑 120 秒自动收尾（默认一直跑）
 #   tools/run_lio_live.sh --check-only   # 只做启动前检查，不启动 SLAM 或发布位姿
+#   tools/run_lio_live.sh --bridge --local-odom
+#                                        # Nav2/AMCL：每趟静止测重力，map 对齐交给 AMCL
+#   tools/run_lio_live.sh --dds-profile /absolute/path/profile.xml --bridge --local-odom
+#                                        # 使用已验证的替代 DDS 传输配置
 #   tools/run_lio_live.sh --bridge --map-frame /tmp/regen.yaml
-#                                        # 走已有的图时**必须**加这个：把重力方向
-#                                        # 钉成建图时那个值，否则转接层自测一个
-#                                        # 不同的，位姿和图整体错开，还不报错
+#                                        # 固定指定重力轴；仅在已验证坐标基准一致时用
+#                                        # Nav2/AMCL 启动请用 --local-odom
 #
 # 坑 1：FASTRTPS_DEFAULT_PROFILES_FILE 不设，点云静默丢 92%。
 #     一帧 801 KB，Fast DDS 的 SHM 默认段只有 512 KB，塞不进去就悄悄回落
@@ -78,6 +81,8 @@ RAW_TOPIC="/aima/hal/sensor/lidar_chest_front/lidar_pointcloud"
 IMU_TOPIC="/aima/hal/sensor/lidar_chest_front/imu"
 NAV_TOPIC="/slam/lidar_odom"
 UP=""            # --up：把重力方向钉给转接层，见下面 --up 的处理
+LOCAL_ODOM=0
+DDS_OVERRIDE=""
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -85,6 +90,12 @@ while [ "$#" -gt 0 ]; do
         --map)       MAP=1 ;;
         --bridge)    BRIDGE=1 ;;
         --check-only) CHECK_ONLY=1 ;;
+        --local-odom) LOCAL_ODOM=1 ;;
+        --dds-profile)
+                     if [ "$#" -lt 2 ] || [ -z "$2" ] || [[ "$2" == --* ]]; then
+                         bad "--dds-profile 需要 XML 文件路径"; exit 2
+                     fi
+                     DDS_OVERRIDE="$(realpath -m -- "$2")"; shift ;;
         --up)        UP="$2"; shift ;;
         --map-frame) UP="$(awk -F'[][, ]+' '/^sztu_up:/{print $2","$3","$4}' \
                           "${2%.yaml}.yaml")"
@@ -103,6 +114,11 @@ while [ "$#" -gt 0 ]; do
     esac
     shift
 done
+
+if [ "$LOCAL_ODOM" -eq 1 ] && { [ "$BRIDGE" -eq 0 ] || [ -n "$UP" ]; }; then
+    bad "--local-odom 必须配合 --bridge，不能同时指定 --up 或 --map-frame"
+    exit 2
+fi
 
 ros_source() { set +u; . "$1"; set -u; }
 
@@ -197,11 +213,17 @@ fi
 
 # 坑 1
 DDS_XML="$WS/install/sztu_slam/share/sztu_slam/config/fastdds_large_cloud.xml"
+[ -n "$DDS_OVERRIDE" ] && DDS_XML="$DDS_OVERRIDE"
 if [ -f "$DDS_XML" ]; then
+    export FASTDDS_DEFAULT_PROFILES_FILE="$DDS_XML"
     export FASTRTPS_DEFAULT_PROFILES_FILE="$DDS_XML"
-    ok "Fast DDS 传输配置（SHM 段 64 MB）"
+    if [ -n "$DDS_OVERRIDE" ]; then
+        ok "Fast DDS 自定义传输配置: $DDS_XML"
+    else
+        ok "Fast DDS 传输配置（SHM 段 64 MB）"
+    fi
 else
-    bad "没有 $DDS_XML —— 缺了它点云会丢 92%（见脚本头部坑 1）"; fatal=1
+    bad "没有 Fast DDS 传输配置: $DDS_XML"; fatal=1
 fi
 
 # 真机上这两个话题**必须**有发布者 —— 和回放脚本正好相反。
@@ -408,10 +430,7 @@ if [ "$BRIDGE" -eq 1 ]; then
     if [ -n "$UP" ]; then
         # 钉死重力方向，不让转接层自己测。
         #
-        # 为什么必须钉：建图时那张图是在某个重力系里摊平的，实走时转接层
-        # 会**重新**从 IMU 静止段测一个。两个数不一样，差多少没人知道，
-        # 而且没有任何东西会报错 —— 位姿和地图整体错开一个转角，机器人
-        # 照着点位信心十足地走进墙里。钉成同一个值，两边就是按构造一个系。
+        # 固定重力轴不保证跨趟坐标一致；Nav2/AMCL 使用本趟局部重力基准。
         "$BR_EXE" --ros-args -p "up_axis:=[${UP//,/, }]" \
             > "$RUN_DIR/bridge.log" 2>&1 &
         pids+=($!)
@@ -420,8 +439,12 @@ if [ "$BRIDGE" -eq 1 ]; then
         "$BR_EXE" > "$RUN_DIR/bridge.log" 2>&1 &
         pids+=($!)
         ok "lio_odom_bridge (pid ${pids[-1]}) -> bridge.log"
-        hmm "重力方向由转接层自测 —— 要照着已有的图走点位的话，"
-        say "     加 --map-frame <图>.yaml 把它钉成建图时那个值，否则两边错开"
+        if [ "$LOCAL_ODOM" -eq 1 ]; then
+            ok "本趟局部里程计：静止测重力，地图位置与朝向由 AMCL 初始化"
+        else
+            hmm "本趟局部里程计未与已有地图对齐，不能直接按地图点位行走"
+            say "     Nav2/AMCL 使用 --local-odom；旧直达模式需独立验证跨趟对齐"
+        fi
     fi
     hmm "${BOLD}正在往 $NAV_TOPIC 发位姿 —— 导航栈读的就是这个话题${NC}"
     say "     确认周围有空间、有人能按急停（见脚本头部坑 6）"
@@ -521,7 +544,7 @@ for i in $(seq 1 30); do
 done
 
 if [ "$imu_ok" -eq 1 ]; then
-    ok "IMU 初始化与重力方向就绪 —— ${BOLD}可以开始走了${NC}"
+    ok "IMU 初始化与重力方向就绪；运动测试仍按现场安排执行"
 else
     hmm "30 秒还没看到 IMU Initial Done"
     say "   点云或 IMU 没喂进去。看 $RUN_DIR/fastlio.log 和 adapter.log。"
@@ -529,7 +552,7 @@ else
     exit 1
 fi
 
-if [ "$BRIDGE" -eq 1 ]; then
+if [ "$BRIDGE" -eq 1 ] && [ "$LOCAL_ODOM" -eq 0 ]; then
     say ""
     say "${BOLD}--bridge 这一趟要特意做一件事：动一下腰${NC}（弯腰或转腰都行）。"
     say "  要验的是杠杆臂每帧都重查了 TF，而那条链上唯一的动关节就是腰。"
@@ -548,6 +571,10 @@ say ""
 
 t_start="$(date +%s)"
 last_mb=0
+python3 "$WS/tools/monitor_odometry.py" "$RUN_DIR/odometry_status.json" \
+    > "$RUN_DIR/monitor.log" 2>&1 &
+monitor_pid=$!
+pids+=("$monitor_pid")
 while true; do
     sleep 10
     now="$(date +%s)"
@@ -571,28 +598,12 @@ while true; do
         fi
     fi
 
-    # 录制包还没落盘，数不了条数；直接量话题频率更实在。
-    # PYTHONUNBUFFERED=1 是必须的：ros2 topic hz 是 Python，输出走管道时会
-    # 块缓冲，被 timeout 的 SIGTERM 打断就什么都读不到。
-    # 量不到就**重试一次再报**：ros2 topic hz 每次都要现起一个节点、做发现、
-    # 再攒够 window 条样本，机器人 CPU 忙的时候 5 秒内跑不完是常事。真机实测
-    # 出现过一次"量不到"的假告警，而那一刻里程计完全正常。
-    measure_hz() {
-        PYTHONUNBUFFERED=1 timeout 7 ros2 topic hz /Odometry --window 10 \
-            2>/dev/null | sed -n 's/.*average rate: \([0-9.]*\).*/\1/p' | tail -1
-    }
-    hz="$(measure_hz)"
-    [ -z "${hz:-}" ] && hz="$(measure_hz)"
-    if [ -n "${hz:-}" ]; then
-        # 低于 8 Hz 就明说，别让人事后看报告才发现
-        if awk "BEGIN{exit !($hz < 8)}"; then
-            hmm "${elapsed}s  /Odometry ${hz} Hz —— 偏低，点云可能在丢${bag_note}"
-        else
-            ok "${elapsed}s  /Odometry ${hz} Hz${bag_note}"
-        fi
+    if kill -0 "$monitor_pid" 2>/dev/null; then
+        monitor_report="$(python3 "$WS/tools/monitor_odometry.py" \
+            "$RUN_DIR/odometry_status.json" --report)"
+        say "${elapsed}s  ${monitor_report}${bag_note}"
     else
-        hmm "${elapsed}s  两次都量不到 /Odometry 的频率${bag_note}"
-        say "     （量不到 ≠ 没输出。收尾时的报告才是准的，以它为准。）"
+        hmm "${elapsed}s  里程计监测节点已退出，查看 monitor.log${bag_note}"
     fi
 
     if [ "$DURATION" -gt 0 ] && [ "$elapsed" -ge "$DURATION" ]; then

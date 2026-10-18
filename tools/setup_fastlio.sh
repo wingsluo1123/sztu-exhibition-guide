@@ -319,6 +319,14 @@ else
 fi
 
 head2 "3d. FAST-LIO 运行时修复"
+EXECUTOR_PATCH="$WS/tools/patches/fastlio_executor.patch"
+if git -C "$DEST" apply --reverse --check "$EXECUTOR_PATCH" 2>/dev/null; then
+    git -C "$DEST" apply --reverse "$EXECUTOR_PATCH" || exit 1
+fi
+STAMP_PATCH="$WS/tools/patches/fastlio_input_stamp.patch"
+if git -C "$DEST" apply --reverse --check "$STAMP_PATCH" 2>/dev/null; then
+    git -C "$DEST" apply --reverse "$STAMP_PATCH" || exit 1
+fi
 RUNTIME_PATCH="$WS/tools/patches/fastlio_runtime.patch"
 if git -C "$DEST" apply --reverse --check "$RUNTIME_PATCH" 2>/dev/null; then
     ok "运行时补丁已应用"
@@ -343,17 +351,51 @@ else
 fi
 cp "$WS/tools/patches/fastlio_scan_backlog.h" "$DEST/include/scan_backlog.h" || exit 1
 
+head2 "3f. FAST-LIO 无有效匹配时禁止发布"
+TRACKING_PATCH="$WS/tools/patches/fastlio_tracking_guard.patch"
+if git -C "$DEST" apply --reverse --check "$TRACKING_PATCH" 2>/dev/null; then
+    ok "匹配有效性补丁已应用"
+elif git -C "$DEST" apply --check "$TRACKING_PATCH"; then
+    git -C "$DEST" apply "$TRACKING_PATCH" || exit 1
+    ok "无有效雷达校正时不发布里程计、不更新地图"
+else
+    bad "匹配有效性补丁与当前 FAST-LIO 源码冲突，请核对本地改动"
+    exit 1
+fi
+
+head2 "3g. FAST-LIO 实时输入时间戳校验"
+if git -C "$DEST" apply --reverse --check "$STAMP_PATCH" 2>/dev/null; then
+    ok "输入时间戳补丁已应用"
+elif git -C "$DEST" apply --check "$STAMP_PATCH"; then
+    git -C "$DEST" apply "$STAMP_PATCH" || exit 1
+    ok "实时模式拒绝零值、重复和倒退的点云及 IMU 时间戳"
+else
+    bad "输入时间戳补丁与当前 FAST-LIO 源码冲突，请核对本地改动"
+    exit 1
+fi
+
+head2 "3h. FAST-LIO 实时传感器接收与匹配计算分组"
+if git -C "$DEST" apply --reverse --check "$EXECUTOR_PATCH" 2>/dev/null; then
+    ok "执行器补丁已应用"
+elif git -C "$DEST" apply --check "$EXECUTOR_PATCH"; then
+    git -C "$DEST" apply "$EXECUTOR_PATCH" || exit 1
+    ok "实时输入独立接收，队列同步后释放锁再计算"
+else
+    bad "执行器补丁与当前 FAST-LIO 源码冲突，请核对本地改动"
+    exit 1
+fi
+
 if [ -d "$DEST/.git" ]; then
     unexpected="$(git -C "$DEST" status --porcelain 2>/dev/null \
                   | awk '{print $2}' | grep -v -E '^(CMakeLists\.txt|src/laserMapping\.cpp|include/scan_backlog\.h)$' || true)"
     if [ -n "$unexpected" ]; then
         hmm "$DEST 里有计划外的改动："
         echo "$unexpected" | while read -r f; do say "     $f"; done
-        say "   预期改动是 C++17（3c）、运行时补丁（3d）和实时补丁（3e），别的配置全在"
+        say "   预期改动为 3c 至 3h 中记录的补丁，别的配置全在"
         say "   src/sztu_slam/config/fastlio_x2_chest.yaml。改了源码的话，"
         say "   换机器就复现不出来 —— 这些改动不在 git 里。"
     else
-        ok "源码只包含已记录的 3c/3d/3e 修改"
+        ok "源码只包含已记录的 3c/3d/3e/3f/3g/3h 修改"
     fi
 fi
 

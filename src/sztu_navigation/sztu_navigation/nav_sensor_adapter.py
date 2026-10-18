@@ -10,7 +10,7 @@ import rclpy
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan, PointCloud2
 from tf2_ros import Buffer, TransformBroadcaster, TransformListener
@@ -35,7 +35,9 @@ class NavSensorAdapter(Node):
         self.odom_freshness = MessageFreshness(self.settings['max_age'])
         self.cloud_freshness = MessageFreshness(self.settings['max_age'])
         self.buffer = Buffer()
-        self.listener = TransformListener(self.buffer, self)
+        self.listener = TransformListener(
+            self.buffer, self,
+            qos=QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.broadcaster = TransformBroadcaster(self)
         self.odom_pub = self.create_publisher(Odometry, '/sztu/nav_odom', 10)
         self.scan_pub = self.create_publisher(LaserScan, '/sztu/scan', qos_profile_sensor_data)
@@ -84,6 +86,14 @@ class NavSensorAdapter(Node):
                 result.twist.twist.angular.z = math.atan2(
                     math.sin(delta_yaw), math.cos(delta_yaw)) / delta
         self.previous = current
+        source_transform = TransformStamped()
+        source_transform.header = copy.deepcopy(message.header)
+        source_transform.child_frame_id = message.child_frame_id
+        source_transform.transform.translation.x = original.position.x
+        source_transform.transform.translation.y = original.position.y
+        source_transform.transform.translation.z = original.position.z
+        source_transform.transform.rotation = copy.deepcopy(original.orientation)
+        self.buffer.set_transform(source_transform, 'nav_sensor_adapter_odometry')
         self.odom_pub.publish(result)
         transform = TransformStamped()
         transform.header = result.header
@@ -91,6 +101,7 @@ class NavSensorAdapter(Node):
         transform.transform.translation.x = result.pose.pose.position.x
         transform.transform.translation.y = result.pose.pose.position.y
         transform.transform.rotation = result.pose.pose.orientation
+        self.buffer.set_transform(transform, 'nav_sensor_adapter')
         self.broadcaster.sendTransform(transform)
 
     def cloud_callback(self, message):
@@ -126,6 +137,7 @@ class NavSensorAdapter(Node):
     def _publish_cloud(self, message, received_at, source_age):
         try:
             stamp = Time.from_msg(message.header.stamp)
+            self.buffer.lookup_transform('sztu_nav_odom', 'sztu_nav_base', stamp)
             cloud_to_base = self._lookup_with_bounded_latest(
                 self.settings['source_base_frame'], message.header.frame_id, stamp,
                 message.header.stamp)

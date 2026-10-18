@@ -1,0 +1,11 @@
+{
+  "physical_execution": false,
+  "hardware_flags": [
+    false,
+    false
+  ],
+  "service": "/global_costmap/clear_entirely_global_costmap",
+  "service_response_received": true,
+  "robot_time_ns": 1791967074523993450,
+  "reason": "Single diagnostic reset to distinguish retained obstacle cells from current returns; no free-space verification outside sensor coverage."
+}

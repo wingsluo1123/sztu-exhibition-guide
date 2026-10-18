@@ -76,12 +76,13 @@ done
 
 say "  RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-未设置}"
 say "  ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-未设置(默认0)}"
+say "  FASTDDS_DEFAULT_PROFILES_FILE=${FASTDDS_DEFAULT_PROFILES_FILE:-未设置}"
 say "  FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-未设置}"
 say "  CYCLONEDDS_URI=${CYCLONEDDS_URI:-未设置}"
 
 if [ -n "$agi_bashrc" ]; then
     ok "找到智元环境脚本: $agi_bashrc"
-    if [ -z "${FASTRTPS_DEFAULT_PROFILES_FILE}${CYCLONEDDS_URI}" ]; then
+    if [ -z "${FASTDDS_DEFAULT_PROFILES_FILE}${FASTRTPS_DEFAULT_PROFILES_FILE}${CYCLONEDDS_URI}" ]; then
         hmm "但 DDS 配置文件变量一个都没设 —— 很可能没 source 过它"
         say "   ${BOLD}下面所有「不存在/没有发布者」都可能是假阴性。${NC}"
         say "   先执行：  source $agi_bashrc"

@@ -4,6 +4,11 @@
 本次修复不提供回环、地图匹配或重定位；从固定点启动和设置 sztu_up
 不能证明跨趟地图对齐，也不能把闭合误差比例作为局部误差上界。
 
+Nav2/AMCL 的启动流程以 `docs/autonomous_navigation.md` 为准，使用
+`--bridge --local-odom`。下文固定 `--map-frame` 的历史测试结果只描述对应
+录制；复用旧地图重力轴不能保证新一趟 FAST-LIO 坐标正确，不能用作
+Nav2/AMCL 的通用启动方式。
+
 ## SSH 真机启动前检查
 
 在机器人 SSH 终端、启动 FAST-LIO 前执行：

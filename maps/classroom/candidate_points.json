@@ -1,0 +1,35 @@
+{
+  "map_yaml": "maps/classroom/map.yaml",
+  "map_pgm_sha256": "8f743962d34a4b32276c28d2a7b2f5cc600b708679ee1ecf6c1d9054eb47a5cb",
+  "source_run": "/home/agi/sztu_lio_runs/20261014_153232_live",
+  "track_source": "base_link（包里有 /tf），2805 帧",
+  "dwell_min_seconds": 10.0,
+  "stop_clearance_m": 0.95,
+  "planning_radius_m": 0.85,
+  "candidate_count": 2,
+  "passed_count": 0,
+  "candidates": [
+    {
+      "id": "classroom_01",
+      "start_seconds": 0.0,
+      "end_seconds": 147.1957459449768,
+      "x": -0.137177645900304,
+      "y": -0.03884697162557982,
+      "yaw": -0.0027765292974903113,
+      "clearance_m": 0.7905694150420949,
+      "clearance_passed": false,
+      "operator_confirmed": false
+    },
+    {
+      "id": "classroom_02",
+      "start_seconds": 234.5979118347168,
+      "end_seconds": 280.39606499671936,
+      "x": 0.7805451176157877,
+      "y": -0.3011144636697652,
+      "yaw": -0.2834274338075665,
+      "clearance_m": 0.6264982043070835,
+      "clearance_passed": false,
+      "operator_confirmed": false
+    }
+  ]
+}

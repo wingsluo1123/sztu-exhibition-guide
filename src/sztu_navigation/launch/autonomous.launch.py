@@ -28,6 +28,9 @@ def build_nodes(context):
     map_path = os.path.abspath(LaunchConfiguration('map').perform(context))
     if not os.path.isfile(map_path):
         raise RuntimeError(f'Map YAML missing: {map_path}')
+    dds_profile = LaunchConfiguration('dds_profile').perform(context)
+    if not os.path.isfile(dds_profile):
+        raise RuntimeError(f'DDS profile missing: {dds_profile}')
     with open(os.path.join(nav2_share, 'params', 'nav2_params.yaml')) as stream:
         parameters = yaml.safe_load(stream)
     with open(os.path.join(package_share, 'config', 'nav2_params.yaml')) as stream:
@@ -61,7 +64,7 @@ def build_nodes(context):
     simulation = ParameterValue(LaunchConfiguration('use_sim_time'), value_type=bool)
     common = [params_path, {'use_sim_time': simulation}]
     processes = []
-    lifecycle_names = []
+    lifecycle_groups = {'sztu_localization_lifecycle': [], 'sztu_nav_lifecycle': []}
     for name, package, executable in (
         ('map_server', 'nav2_map_server', 'map_server'),
         ('amcl', 'nav2_amcl', 'amcl'),
@@ -77,15 +80,24 @@ def build_nodes(context):
                           ('cmd_vel_smoothed', '/cmd_vel_nav')]
         if name == 'amcl':
             remappings.append(('initialpose', '/sztu/initialpose_retimed'))
+        environment = {}
+        if name == 'map_server':
+            map_dds_profile = os.path.join(
+                package_share, 'config', 'fastdds_map_wifi.xml')
+            environment['FASTDDS_DEFAULT_PROFILES_FILE'] = map_dds_profile
+            environment['FASTRTPS_DEFAULT_PROFILES_FILE'] = map_dds_profile
         processes.append(Node(package=package, executable=executable, name=name,
                               parameters=common, output='screen',
-                              remappings=remappings))
-        lifecycle_names.append(name)
-    processes.append(Node(
-        package='nav2_lifecycle_manager', executable='lifecycle_manager',
-        name='sztu_nav_lifecycle', output='screen',
-        parameters=[{'use_sim_time': simulation, 'autostart': True,
-                     'node_names': lifecycle_names}]))
+                              remappings=remappings, additional_env=environment))
+        manager = ('sztu_localization_lifecycle' if name in ('map_server', 'amcl')
+                   else 'sztu_nav_lifecycle')
+        lifecycle_groups[manager].append(name)
+    for manager, names in lifecycle_groups.items():
+        processes.append(Node(
+            package='nav2_lifecycle_manager', executable='lifecycle_manager',
+            name=manager, output='screen',
+            parameters=[{'use_sim_time': simulation, 'autostart': True,
+                         'node_names': names}]))
     processes.append(Node(
         package='sztu_navigation', executable='nav_sensor_adapter',
         parameters=[{'use_sim_time': simulation,
@@ -98,7 +110,11 @@ def build_nodes(context):
         parameters=[{'use_sim_time': simulation,
                      'live': ParameterValue(LaunchConfiguration('live'), value_type=bool),
                      'surround_coverage_verified': ParameterValue(
-                         LaunchConfiguration('surround_coverage_verified'), value_type=bool)}]))
+                         LaunchConfiguration('surround_coverage_verified'), value_type=bool),
+                     'front_only_coverage': ParameterValue(
+                         LaunchConfiguration('front_only_coverage'), value_type=bool),
+                     'front_arc_coverage': ParameterValue(
+                         LaunchConfiguration('front_arc_coverage'), value_type=bool)}]))
     processes.append(RegisterEventHandler(OnShutdown(on_shutdown=[
         OpaqueFunction(function=lambda unused: remove_parameters(params_path))])))
     return processes
@@ -112,10 +128,17 @@ def remove_parameters(path):
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'dds_profile',
+            default_value=os.path.join(get_package_share_directory('sztu_slam'),
+                                       'config', 'fastdds_large_cloud.xml'),
+            description='Validated Fast DDS transport profile for navigation nodes'),
+        SetEnvironmentVariable(
+            'FASTDDS_DEFAULT_PROFILES_FILE',
+            LaunchConfiguration('dds_profile')),
         SetEnvironmentVariable(
             'FASTRTPS_DEFAULT_PROFILES_FILE',
-            os.path.join(get_package_share_directory('sztu_slam'), 'config',
-                         'fastdds_large_cloud.xml')),
+            LaunchConfiguration('dds_profile')),
         SetEnvironmentVariable('RMW_IMPLEMENTATION', 'rmw_fastrtps_cpp'),
         SetEnvironmentVariable('OPENBLAS_NUM_THREADS', '1'),
         SetEnvironmentVariable('OMP_NUM_THREADS', '1'),
@@ -127,6 +150,11 @@ def generate_launch_description():
                               description='Enable AimDK hardware output after commissioning'),
         DeclareLaunchArgument('surround_coverage_verified', default_value='false',
                               description='Requires validated sensors covering the whole footprint'),
+        DeclareLaunchArgument('front_only_coverage', default_value='false',
+                              description='Use a validated 120-degree front sensor; straight motion only'),
+        DeclareLaunchArgument('front_arc_coverage', default_value='false',
+                              description='Use a validated 120-degree front sensor; '
+                                          'rotation and clamped arcs allowed'),
         DeclareLaunchArgument('use_sim_time', default_value='false',
                               description='Use a published simulation clock'),
         OpaqueFunction(function=build_nodes),

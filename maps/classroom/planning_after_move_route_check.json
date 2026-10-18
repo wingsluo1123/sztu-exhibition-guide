@@ -1,0 +1,92 @@
+{
+  "physical_execution": false,
+  "planning_report_robot_time_ns": 1791965303183659015,
+  "checked_at_robot_time_ns": 1791965541658723204,
+  "map_pgm_sha256": "8f743962d34a4b32276c28d2a7b2f5cc600b708679ee1ecf6c1d9054eb47a5cb",
+  "note": "Cell-center static distances; later costmap snapshot, not synchronized with planning and not physical clearance proof.",
+  "paths": [
+    {
+      "goal": {
+        "x": -0.8800999999999988,
+        "y": 1.9150000000000027,
+        "yaw": -0.002905152104402644,
+        "clearance_m": 1.4317821063276355,
+        "operator_confirmed": false
+      },
+      "length_m": 2.4789647765116056,
+      "start": [
+        -0.6550997429549703,
+        -0.10999973177909794
+      ],
+      "endpoint": [
+        -0.8800999999999988,
+        1.9150000000000027
+      ],
+      "endpoint_error_m": 0.0,
+      "sample_spacing_max_m": 0.0125,
+      "all_sampled_static_cells_free": true,
+      "min_static_cell_center_clearance_m": 0.9,
+      "later_costmap_max_cost": 96,
+      "later_costmap_blocked_or_unknown_samples": 0
+    },
+    {
+      "goal": {
+        "x": -1.8301000000000016,
+        "y": -1.6849999999999987,
+        "yaw": -0.002905152104402644,
+        "clearance_m": 0.95524865872714,
+        "operator_confirmed": false
+      },
+      "length_m": 2.672679999616418,
+      "start": [
+        -0.6550997429549703,
+        -0.10999973177909794
+      ],
+      "endpoint": [
+        -1.8301000000000016,
+        -1.6849999999999987
+      ],
+      "endpoint_error_m": 0.0,
+      "sample_spacing_max_m": 0.0125,
+      "all_sampled_static_cells_free": true,
+      "min_static_cell_center_clearance_m": 0.8845903006477066,
+      "later_costmap_max_cost": 86,
+      "later_costmap_blocked_or_unknown_samples": 0
+    },
+    {
+      "goal": {
+        "x": -1.7301000000000002,
+        "y": 1.365000000000002,
+        "yaw": -0.002905152104402644,
+        "clearance_m": 0.982344135219425,
+        "operator_confirmed": false
+      },
+      "length_m": 1.9119671035064754,
+      "start": [
+        -0.6550997429549703,
+        -0.10999973177909794
+      ],
+      "endpoint": [
+        -1.7301000000000002,
+        1.365000000000002
+      ],
+      "endpoint_error_m": 0.0,
+      "sample_spacing_max_m": 0.0125,
+      "all_sampled_static_cells_free": true,
+      "min_static_cell_center_clearance_m": 0.9,
+      "later_costmap_max_cost": 82,
+      "later_costmap_blocked_or_unknown_samples": 0
+    }
+  ],
+  "costmap_snapshot_age_s": 1.4767184219160157,
+  "costmap_geometry": {
+    "frame": "map",
+    "resolution": 0.05000000074505806,
+    "width": 630,
+    "height": 482,
+    "origin": [
+      -17.9051,
+      -18.11
+    ]
+  }
+}

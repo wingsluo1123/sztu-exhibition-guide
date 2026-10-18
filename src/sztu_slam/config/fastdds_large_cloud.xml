@@ -5,7 +5,7 @@
   为什么需要这个文件（实测，不是抄来的）：
     一帧点云 25640 点 × 32 B = 801 KB。同一个发布者、同一趟回放，两个订阅者：
         RELIABLE    收到 1195 / 1195
-        BEST_EFFORT 收到  100 / 1195      <-- 丢 92%
+        BEST_EFFORT 收到  100 / 1195      丢 92%
     FAST-LIO 订阅点云写死用 rclcpp::SensorDataQoS()（BEST_EFFORT，深度 5），
     所以它就是后面那一行。BEST_EFFORT 不重传，UDP 分片丢一片，整帧就没了。
     而且它**不报错**——只表现为里程计频率上不去、位姿跳变。
@@ -65,5 +65,8 @@
   </profiles>
   <log>
     <use_default>false</use_default>
+    <!-- Endpoint discovery warnings are expected when short-lived CLI
+         subscribers start or stop; keep errors visible. -->
+    <verbosity>error</verbosity>
   </log>
 </dds>

@@ -82,28 +82,32 @@ NEGATIVE_STATES = frozenset({
 })
 
 
-def _classify_response(code: int, state: int) -> str:
+def _classify_response(code: int, state: int, *, task_id: int = 0,
+                       stamp_ns: int = 0, request_ns: int = None,
+                       received_ns: int = None) -> str:
     """
     判断 SetMcInputSource 的响应到底算成功、失败，还是根本没法判。
 
-    为什么需要第三种结论：在 x86 仿真运控上实测，这个服务的响应**每个字段
-    都是零** —— header.code=0、state.value=0(UNKNOWN)、task_id=0、stamp=0，
-    也就是 MC 压根没往响应里写东西。于是 code==0 有两种读法：
+    AimDK ResponseHeader.msg 和 set_mc_input_source.py 规定 code=0 表成功，
+    不要求 state=SUCCESS。2026-10-14 真机返回 UNKNOWN，但填写了时间戳和
+    任务编号；这与早期仿真的全零响应不同。
 
-        a) 真的成功了（MC 填了 0 表示无错）
-        b) MC 什么都没写，我们读到的是默认构造出来的空消息
-
-    这两种在字节层面完全一样，分不出来。原来的代码只看 code==0 就返回成功，
-    等于把 (b) 当成了 (a)。
-
-    UNKNOWN(0) 之外的未知 state 也归到 unconfirmed 而不是 fail：真机的响应
-    长什么样我们还没见过，猜错了方向宁可放行加告警，也不要把导航彻底堵死。
+    UNKNOWN 且 code=0 时，用正任务编号及本次请求附近的新鲜响应时间戳
+    排除空响应和旧响应。允许 50 ms 时钟偏差，响应年龄最多 500 ms，覆盖
+    单次 250 ms 请求等待。两端使用同步的 ROS 系统时钟。
+    其他未识别的状态仍保留为未确认；明确失败优先。
     """
     if code != 0:
         return RESP_FAIL
     if state in NEGATIVE_STATES:
         return RESP_FAIL
     if state in (CommonState.SUCCESS, CommonState.RUNNING):
+        return RESP_OK
+    if (state == CommonState.UNKNOWN and task_id > 0 and stamp_ns > 0
+            and request_ns is not None and received_ns is not None
+            and request_ns <= received_ns
+            and request_ns - 50_000_000 <= stamp_ns <= received_ns + 50_000_000
+            and received_ns - stamp_ns <= 500_000_000):
         return RESP_OK
     return RESP_UNCONFIRMED
 
@@ -165,6 +169,7 @@ class LocomotionController(Node):
         # 这两件事必须分开，原因见 register_input_source 的注释。
         self.registration_confirmed = False
         self._unconfirmed = False
+        self.registration_responses = []
 
     # --- 输入源注册 -------------------------------------------------------
     def register_input_source(self) -> bool:
@@ -174,19 +179,15 @@ class LocomotionController(Node):
         返回 True 只意味着"没有收到明确的失败"，**不等于 MC 真的启用了这个
         输入源**。想知道是不是真的确认了，看 ``registration_confirmed``。
 
-        为什么要分成两个标志：仿真运控的响应是全零的，"成功"和"MC 什么都没填"
-        在字节层面分不出来（详见 ``_classify_response``）。原来的代码只看
-        ``code == 0`` 就打印"走跑输入源就绪"并返回 True，属于把后者当成了前者
-        —— 这正是这个类本来要防的那类静默失败，只不过换了个位置重新出现。
-
-        为什么"分不清"的时候还要继续走、还要保持 ``ready = True``：真机上响应
-        是什么形状我们还没见过。如果在这里判失败，而真机也返回全零，
-        ``navigation_manager`` 会因为 ``locomotion_ready`` 为假而拒绝一切导航
-        （见 navigation_manager.py 里的就绪检查），比现在更糟。所以选择放行 +
-        如实告警，而不是替真机下结论。
+        UNKNOWN 不等于失败。code=0 且有新鲜时间戳和正任务编号时，可按
+        官方接口确认本次操作。全零或过期响应仍置未确认标志；传统调用方
+        保留 ready 加告警，受限测试和实走网关另查 registration_confirmed。
+        注册确认不代表该源赢得仲裁，也不证明机器人动作或物理停住。
         """
+        self.ready = False
         self._unconfirmed = False
         self.registration_confirmed = False
+        self.registration_responses = []
 
         if not self.input_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error(
@@ -215,9 +216,8 @@ class LocomotionController(Node):
                 f'(priority={self.priority}, timeout={self.source_timeout_ms}ms)')
         else:
             self.get_logger().warn(
-                f'走跑输入源 {self.source} 已提交，但 MC 没有回一个可判读的'
-                '响应（state=UNKNOWN），无法确认它真的启用了。'
-                '若机器人不动，先去 MC 日志里搜 "Input Source is not enabled"。')
+                f'走跑输入源 {self.source} 已提交，但响应不足以确认启用。'
+                '请检查 registration_responses 中的 code、state、时间戳和任务编号。')
 
         # 订阅者数量是一个便宜且决定性的旁证：一个都没有就说明速度指令
         # 根本没人收（话题名写错、类型不匹配、QoS 不兼容都会这样）。
@@ -243,7 +243,8 @@ class LocomotionController(Node):
         # 5.1.3 明确让开发者自己加重传（"please refer to SDK examples to use
         # open interfaces in a robust way"）。
         for _ in range(8):
-            req.request.header.stamp = self.get_clock().now().to_msg()
+            request_time = self.get_clock().now()
+            req.request.header.stamp = request_time.to_msg()
             future = self.input_client.call_async(req)
             rclpy.spin_until_future_complete(self, future, timeout_sec=0.25)
             if future.done():
@@ -252,7 +253,17 @@ class LocomotionController(Node):
                     return False
                 code = response.response.header.code
                 state = response.response.state.value
-                verdict = _classify_response(code, state)
+                header = response.response.header
+                self.registration_responses.append({
+                    'action': action, 'code': code, 'state': state,
+                    'stamp_sec': header.stamp.sec,
+                    'stamp_nanosec': header.stamp.nanosec,
+                    'task_id': response.response.task_id})
+                verdict = _classify_response(
+                    code, state, task_id=response.response.task_id,
+                    stamp_ns=header.stamp.sec * 1_000_000_000 + header.stamp.nanosec,
+                    request_ns=request_time.nanoseconds,
+                    received_ns=self.get_clock().now().nanoseconds)
                 if verdict == RESP_FAIL:
                     self.get_logger().error(
                         f'SetMcInputSource(action={action}) 返回 code={code}, '

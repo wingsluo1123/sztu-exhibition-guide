@@ -150,6 +150,7 @@ fi
 # 坑 8：Fast DDS 传输配置。不设它点云丢 92%，而且不报错。
 DDS_XML="$WS/install/sztu_slam/share/sztu_slam/config/fastdds_large_cloud.xml"
 if [ -f "$DDS_XML" ]; then
+    export FASTDDS_DEFAULT_PROFILES_FILE="$DDS_XML"
     export FASTRTPS_DEFAULT_PROFILES_FILE="$DDS_XML"
     ok "Fast DDS 传输配置（SHM 段 64 MB）"
 else

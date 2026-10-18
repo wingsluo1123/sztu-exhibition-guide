@@ -1,0 +1,18 @@
+diff --git a/src/laserMapping.cpp b/src/laserMapping.cpp
+--- a/src/laserMapping.cpp
++++ b/src/laserMapping.cpp
+@@ -1080,7 +1080,14 @@
+             /*** iterated state estimation ***/
+             double t_update_start = omp_get_wtime();
+             double solve_H_time = 0;
++            effct_feat_num = 0;
+             kf.update_iterated_dyn_share_modified(LASER_POINT_COV, solve_H_time);
++            if (effct_feat_num < 1)
++            {
++                RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
++                                     "No valid LiDAR correction; odometry and map update suppressed");
++                return;
++            }
+             state_point = kf.get_x();
+             euler_cur = SO3ToEuler(state_point.rot);
+             pos_lid = state_point.pos + state_point.rot * state_point.offset_T_L_I;

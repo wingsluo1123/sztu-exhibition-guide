@@ -2,10 +2,11 @@
 """
 SetMcInputSource 响应判读的单元测试（不依赖 ROS，不需要机器人）。
 
-这些测试锁住一个实测结论：x86 仿真运控回的响应**每个字段都是零**。
-在这种情况下 code==0 不能当成功，因为"MC 说没错"和"MC 什么都没填"
-是同一串字节。详见 locomotion._classify_response 的注释。
+验证官方 code=0 成功契约与 UNKNOWN 真机响应，同时保留空响应、旧响应和
+明确错误的拒绝行为。仅验证协议判据，不证明硬件动作。
 """
+
+import pytest
 
 from aimdk_msgs.msg import CommonState
 
@@ -61,11 +62,38 @@ def test_all_zero_response_is_not_success():
 
 
 def test_unknown_state_is_unconfirmed_not_failure():
-    """没见过的 state 放行加告警，不判失败。
-
-    真机响应长什么样还没验过。猜错方向时，"放行 + 告警"最多是少了一条
-    确认信息；"判失败"会让 navigation_manager 拒绝一切导航，更糟。
-    """
+    """待处理、已创建或未知扩展状态不充当完成的注册确认。"""
     assert _classify_response(0, CommonState.PENDING) == RESP_UNCONFIRMED
     assert _classify_response(0, CommonState.CREATED) == RESP_UNCONFIRMED
     assert _classify_response(0, 12345) == RESP_UNCONFIRMED
+
+
+def test_populated_unknown_ack_matches_official_success_contract():
+    assert _classify_response(
+        0, CommonState.UNKNOWN, task_id=11, stamp_ns=10_010_000_000,
+        request_ns=10_000_000_000, received_ns=10_020_000_000) == RESP_OK
+
+
+@pytest.mark.parametrize('overrides', [
+    {'task_id': 0}, {'task_id': -1}, {'stamp_ns': 0},
+    {'stamp_ns': 9_000_000_000}, {'stamp_ns': 9_940_000_000},
+    {'stamp_ns': 10_080_000_000}, {'request_ns': None}, {'received_ns': None},
+    {'request_ns': 11_000_000_000}, {'received_ns': 10_600_000_000},
+])
+def test_incomplete_stale_or_future_unknown_ack_is_unconfirmed(overrides):
+    fields = dict(task_id=11, stamp_ns=10_010_000_000,
+                  request_ns=10_000_000_000, received_ns=10_020_000_000)
+    fields.update(overrides)
+    assert _classify_response(0, CommonState.UNKNOWN, **fields) == RESP_UNCONFIRMED
+
+
+@pytest.mark.parametrize('code,state', [
+    (1, CommonState.UNKNOWN), (1, CommonState.SUCCESS),
+    (0, CommonState.FAILURE), (0, CommonState.ABORTED),
+    (0, CommonState.TIMEOUT), (0, CommonState.INVALID),
+    (0, CommonState.IN_MANUAL), (0, CommonState.NOT_READY),
+])
+def test_populated_ack_does_not_override_explicit_failure(code, state):
+    assert _classify_response(
+        code, state, task_id=11, stamp_ns=10_010_000_000,
+        request_ns=10_000_000_000, received_ns=10_020_000_000) == RESP_FAIL

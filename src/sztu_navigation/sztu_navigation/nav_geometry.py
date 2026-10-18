@@ -60,15 +60,62 @@ def project_scan(points, minimum_height, maximum_height,
     return ranges.tolist(), increment
 
 
+FRONT_SCAN_MIN = -math.pi / 3
+FRONT_SCAN_MAX = math.pi / 3
+FRONT_SCAN_SECTORS = 5
+FRONT_ARC_MAX_TURN_RATE = 0.35
+FRONT_ARC_MAX_CURVATURE = 1.5
+FRONT_ARC_MAX_HEADING_CHANGE = 0.45
+
+
+def front_scan_sectors(points):
+    """Bucket planar points into the five equal sectors of a 120-degree cone."""
+    span = FRONT_SCAN_MAX - FRONT_SCAN_MIN
+    return {min(FRONT_SCAN_SECTORS - 1,
+                int((angle - FRONT_SCAN_MIN) / span * FRONT_SCAN_SECTORS))
+            for point_x, point_y in points
+            for angle in (math.atan2(point_y, point_x),)
+            if FRONT_SCAN_MIN <= angle <= FRONT_SCAN_MAX}
+
+
+def limit_front_arc_command(forward, angular, horizon=1.0):
+    """Clamp a command to what a single 120-degree forward sensor can justify.
+
+    A circular footprint sweeps no new ground when it rotates about its own
+    centre, so in-place rotation only needs a bounded rate.  Arc motion does
+    move the footprint into unobserved space, so both its curvature and the
+    heading change over one reaction horizon are capped.
+    """
+    if not (math.isfinite(forward) and math.isfinite(angular)):
+        return 0.0, 0.0
+    forward = max(0.0, forward)
+    limit = FRONT_ARC_MAX_TURN_RATE
+    if forward > 1e-6:
+        limit = min(limit, forward * FRONT_ARC_MAX_CURVATURE,
+                    FRONT_ARC_MAX_HEADING_CHANGE / horizon)
+    return forward, max(-limit, min(limit, angular))
+
+
 def collision_reason(ranges, angle_min, angle_increment, forward, angular,
                      radius=0.55, stopping_margin=0.25, horizon=1.0,
-                     surround_verified=False):
-    """Check a swept circular footprint, including arc motion and final coasting."""
+                     surround_verified=False, front_only=False,
+                     front_arc=False, arc_limits=True):
+    """Check a swept footprint and final coasting distance.
+
+    ``front_only`` accepts a validated 120-degree forward sensor but supports
+    straight motion only.  ``front_arc`` accepts the same sensor and also
+    permits in-place rotation and clamped arcs: rotation leaves the circular
+    footprint unchanged, while arc curvature and heading change stay inside
+    :func:`limit_front_arc_command`.
+    """
     if not all(math.isfinite(value) for value in (forward, angular)):
         return 'invalid_command'
     if forward < 0:
         return 'reverse_disabled'
-    if not surround_verified and (forward > 0 or abs(angular) > 0):
+    modes = (bool(surround_verified), bool(front_only), bool(front_arc))
+    if sum(modes) > 1:
+        return 'coverage_mode_conflict'
+    if not any(modes) and (forward > 0 or abs(angular) > 0):
         return 'surround_coverage_unverified'
     points = []
     for index, distance in enumerate(ranges):
@@ -77,11 +124,30 @@ def collision_reason(ranges, angle_min, angle_increment, forward, angular,
             points.append((distance * math.cos(angle), distance * math.sin(angle)))
     if not points:
         return 'no_valid_returns'
-    observed = {min(11, int((math.atan2(point_y, point_x) + math.pi)
-                            / (2 * math.pi) * 12))
-                for point_x, point_y in points}
-    if (forward != 0 or angular != 0) and len(observed) < 12:
-        return 'surround_scan_incomplete'
+    if front_only:
+        # A chest mounted 120-degree lidar can support straight forward motion
+        # only.  Its blind side/rear sectors cannot justify an arc or rotation.
+        if abs(angular) > 1e-6:
+            return 'front_scan_turning_disabled'
+        if forward != 0 and len(front_scan_sectors(points)) < FRONT_SCAN_SECTORS:
+            return 'front_scan_incomplete'
+    elif front_arc:
+        if arc_limits and abs(angular) > 1e-6:
+            if forward <= 1e-6:
+                if abs(angular) > FRONT_ARC_MAX_TURN_RATE:
+                    return 'front_scan_rotation_too_fast'
+            elif (abs(angular) > forward * FRONT_ARC_MAX_CURVATURE
+                  or abs(angular) > FRONT_ARC_MAX_HEADING_CHANGE / horizon):
+                return 'front_scan_arc_too_tight'
+        if ((forward != 0 or abs(angular) > 0)
+                and len(front_scan_sectors(points)) < FRONT_SCAN_SECTORS):
+            return 'front_scan_incomplete'
+    else:
+        observed = {min(11, int((math.atan2(point_y, point_x) + math.pi)
+                                / (2 * math.pi) * 12))
+                    for point_x, point_y in points}
+        if (forward != 0 or angular != 0) and len(observed) < 12:
+            return 'surround_scan_incomplete'
     if forward == 0 and angular == 0:
         return ''
     path_length = forward * horizon + stopping_margin

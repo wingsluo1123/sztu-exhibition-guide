@@ -11,7 +11,7 @@ std::size_t discard_expired_scans(ScanQueue & scans, StampQueue & stamps,
 {
     if (max_age <= 0.0 || !std::isfinite(now)) return 0;
     std::size_t discarded = 0;
-    while (!scans.empty() && now - stamps.front() > max_age)
+    while (scans.size() > 1 && now - stamps.front() > max_age)
     {
         scans.pop_front();
         stamps.pop_front();

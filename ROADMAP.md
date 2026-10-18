@@ -320,6 +320,14 @@ ros2 topic info -v /aima/mc/locomotion/velocity   # ★ MC 订阅端的 QoS
 >
 > 剩下"起步下限"那一行仍然待定，需要机器人真的走起来才能判。
 
+**2026-10-14 真机响应判据更新：** 上述“没有任何字段能确认成功”只适用于
+早期全零响应，不适用于本次真机。官方 `ResponseHeader.msg`、
+`set_mc_input_source.py` 和 C++ 示例明确规定 `header.code=0` 表成功，
+不要求 `state=SUCCESS`。本次 MODIFY、ENABLE 虽仍为 UNKNOWN，但带真实
+时间戳和递增任务编号。`_classify_response` 现接受 code=0、UNKNOWN、
+正任务编号且与本次请求时间相符的新鲜响应；全零、过期及明确失败响应仍不确认。
+注册确认只代表接口操作成功，不等于赢得控制源仲裁、执行动作或物理停住。
+
 把 `locomotion.py` 和 `py_examples/mc_locomotion_velocity.py` 逐行比，有三处实质分歧：
 
 | | 官方示例 | 我们 | 判断 |

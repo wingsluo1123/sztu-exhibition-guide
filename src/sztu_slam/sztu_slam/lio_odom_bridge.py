@@ -140,7 +140,9 @@ class LioOdomBridge(Node):
 
         # --- TF -------------------------------------------------------------
         self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_listener = TransformListener(
+            self.tf_buffer, self,
+            qos=QoSProfile(depth=10, reliability=QoSReliabilityPolicy.BEST_EFFORT))
         self.tf_broadcaster = TransformBroadcaster(self) if self.publish_tf else None
 
         # --- 收发 -----------------------------------------------------------

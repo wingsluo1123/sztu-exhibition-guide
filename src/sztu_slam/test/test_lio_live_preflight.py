@@ -87,6 +87,30 @@ def test_live_preflight_discovers_without_cached_daemon(live_workspace):
     assert '启动前检查通过' in result.stdout
 
 
+@pytest.mark.parametrize('profile_exists', [True, False])
+def test_explicit_dds_profile_is_checked_without_starting_nodes(live_workspace, profile_exists):
+    workspace, environment = live_workspace
+    profile = workspace / 'selected transport.xml'
+    if profile_exists:
+        profile.write_text('<dds/>')
+    result = subprocess.run(
+        ['bash', 'tools/run_lio_live.sh', '--bridge', '--check-only',
+         '--dds-profile', str(profile)], cwd=workspace, env=environment,
+        capture_output=True, text=True, timeout=20)
+    assert (result.returncode == 0) == profile_exists, result.stdout + result.stderr
+    assert str(profile) in result.stdout
+    assert not (Path(environment['HOME']) / 'node_started').exists()
+
+
+def test_dds_profile_requires_a_path(live_workspace):
+    workspace, environment = live_workspace
+    result = subprocess.run(
+        ['bash', 'tools/run_lio_live.sh', '--dds-profile'], cwd=workspace,
+        env=environment, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 2
+    assert '--dds-profile 需要 XML 文件路径' in result.stdout
+
+
 @pytest.mark.parametrize('overrides, expected', [
     ({'ROS_DOMAIN_ID': '42'}, '真机在 domain 0'),
     ({'RMW_IMPLEMENTATION': 'rmw_cyclonedds_cpp'}, '64 MB 点云传输配置不会生效'),
@@ -99,3 +123,21 @@ def test_live_preflight_rejects_unready_graph(live_workspace, overrides, expecte
     result = run_preflight(live_workspace, **overrides)
     assert result.returncode == 1, result.stdout + result.stderr
     assert expected in result.stdout
+
+
+@pytest.mark.parametrize('arguments, expected_code', [
+    (['--bridge', '--local-odom', '--check-only'], 0),
+    (['--local-odom', '--check-only'], 2),
+    (['--bridge', '--local-odom', '--up', '1,0,0', '--check-only'], 2),
+    (['--bridge', '--up', '1,0,0', '--local-odom', '--check-only'], 2),
+    (['--bridge', '--local-odom', '--map-frame', 'map.yaml', '--check-only'], 2),
+    (['--bridge', '--map-frame', 'map.yaml', '--local-odom', '--check-only'], 2),
+])
+def test_local_odom_rejects_pinned_gravity(live_workspace, arguments, expected_code):
+    workspace, environment = live_workspace
+    (workspace / 'map.yaml').write_text('sztu_up: [1.0, 0.0, 0.0]\n')
+    result = subprocess.run(['bash', 'tools/run_lio_live.sh', *arguments],
+                            cwd=workspace, env=environment, capture_output=True,
+                            text=True, timeout=20)
+    assert result.returncode == expected_code, result.stdout + result.stderr
+    assert not (Path(environment['HOME']) / 'node_started').exists()

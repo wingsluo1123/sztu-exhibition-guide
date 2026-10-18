@@ -160,12 +160,13 @@ done
 
 say "  RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-未设置}"
 say "  ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-未设置(默认0)}"
+say "  FASTDDS_DEFAULT_PROFILES_FILE=${FASTDDS_DEFAULT_PROFILES_FILE:-未设置}"
 say "  FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-未设置}"
 say "  CYCLONEDDS_URI=${CYCLONEDDS_URI:-未设置}"
 
 if [ -n "$agi_bashrc" ]; then
     ok "找到智元环境脚本: $agi_bashrc"
-    if [ -z "${FASTRTPS_DEFAULT_PROFILES_FILE}${CYCLONEDDS_URI}" ]; then
+    if [ -z "${FASTDDS_DEFAULT_PROFILES_FILE}${FASTRTPS_DEFAULT_PROFILES_FILE}${CYCLONEDDS_URI}" ]; then
         bad "DDS 配置变量一个都没设 —— 极可能没 source 过它"
         say "   ${BOLD}先执行下面这行，再重跑本脚本：${NC}"
         say "     source $agi_bashrc"
@@ -590,6 +591,7 @@ NOTES="$BAG_DIR/RECORDING_NOTES.md"
     echo "- 时长: ${DURATION}s"
     echo "- ROS_DISTRO=${ROS_DISTRO:-}  ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}"
     echo "- RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-}"
+    echo "- FASTDDS_DEFAULT_PROFILES_FILE=${FASTDDS_DEFAULT_PROFILES_FILE:-}"
     echo "- FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-}"
     echo
     echo "## 机器人当时做了什么（**手填，别偷懒**）"

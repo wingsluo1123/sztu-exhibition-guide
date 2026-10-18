@@ -16,7 +16,8 @@ from tf2_ros import Buffer, TransformListener
 
 from sztu_slam.message_validation import MessageFreshness, valid_pose
 
-from .nav_geometry import collision_reason, localization_valid
+from .nav_geometry import (collision_reason, limit_front_arc_command,
+                           localization_valid)
 
 
 class SafetyGateway(Node):
@@ -24,11 +25,15 @@ class SafetyGateway(Node):
         super().__init__('sztu_safety_gateway', **kwargs)
         self.declare_parameter('live', False)
         self.declare_parameter('surround_coverage_verified', False)
+        self.declare_parameter('front_only_coverage', False)
+        self.declare_parameter('front_arc_coverage', False)
         self.declare_parameter('max_age', 0.5)
         self.declare_parameter('robot_radius', 0.40)
         self.declare_parameter('stopping_margin', 0.25)
         self.live = bool(self.get_parameter('live').value)
         self.coverage_verified = bool(self.get_parameter('surround_coverage_verified').value)
+        self.front_only_coverage = bool(self.get_parameter('front_only_coverage').value)
+        self.front_arc_coverage = bool(self.get_parameter('front_arc_coverage').value)
         self.max_age = float(self.get_parameter('max_age').value)
         self.radius = float(self.get_parameter('robot_radius').value)
         self.stopping_margin = float(self.get_parameter('stopping_margin').value)
@@ -36,8 +41,12 @@ class SafetyGateway(Node):
                 or not math.isfinite(self.radius) or self.radius < 0.40
                 or not math.isfinite(self.stopping_margin) or self.stopping_margin < 0.25):
             raise ValueError('invalid safety geometry or freshness budget')
-        if self.live and not self.coverage_verified:
-            raise RuntimeError('Live navigation requires validated surround sensor coverage')
+        modes = (self.coverage_verified, self.front_only_coverage,
+                 self.front_arc_coverage)
+        if sum(modes) > 1:
+            raise ValueError('only one sensor coverage mode may be enabled')
+        if self.live and not any(modes):
+            raise RuntimeError('Live navigation requires validated sensor coverage')
         self.command = None
         self.scan = None
         self.localization = None
@@ -56,6 +65,7 @@ class SafetyGateway(Node):
         self.create_subscription(Bool, '/sztu/navigation_stop', self.stop_callback, 10)
         self.amcl_update = self.create_client(Empty, '/request_nomotion_update')
         self.update_pending = None
+        self.update_started = 0.0
         self.create_timer(0.5, self.refresh_localization)
         self.output = self.create_publisher(Twist, '/cmd_vel', 10)
         self.create_subscription(Twist, '/cmd_vel_nav', self.command_callback, 10)
@@ -89,9 +99,17 @@ class SafetyGateway(Node):
             self.locomotion.stop()
 
     def refresh_localization(self):
-        if (self.amcl_update.service_is_ready()
-                and (self.update_pending is None or self.update_pending.done())):
+        now = time.monotonic()
+        if self.update_pending is not None:
+            if not self.update_pending.done():
+                if now - self.update_started < 1.0:
+                    return
+                self.amcl_update.remove_pending_request(self.update_pending)
+                self.update_pending.cancel()
+            self.update_pending = None
+        if self.amcl_update.service_is_ready():
             self.update_pending = self.amcl_update.call_async(Empty.Request())
+            self.update_started = now
 
     def scan_callback(self, message):
         self.scan = None
@@ -138,6 +156,8 @@ class SafetyGateway(Node):
         odom_age = self.odom_freshness.age(now_ns, monotonic_now)
         pose_age = self.pose_freshness.age(now_ns, monotonic_now)
         reason = ''
+        forward = 0.0
+        angular = 0.0
         if self.stopped:
             reason = 'navigation_stopped'
         elif command is None or age(self.command_time) > 0.25:
@@ -155,10 +175,14 @@ class SafetyGateway(Node):
             except Exception:
                 reason = 'map_tf_unavailable'
         if not reason:
-            values = (command.linear.x, command.linear.y, command.linear.z,
-                      command.angular.x, command.angular.y, command.angular.z)
+            forward = command.linear.x
+            angular = command.angular.z
+            if self.front_arc_coverage:
+                forward, angular = limit_front_arc_command(forward, angular)
+            values = (forward, command.linear.y, command.linear.z,
+                      command.angular.x, command.angular.y, angular)
             if (not all(math.isfinite(value) for value in values)
-                    or abs(command.linear.x) > 0.250001 or abs(command.angular.z) > 0.700001
+                    or abs(forward) > 0.250001 or abs(angular) > 0.700001
                     or any(abs(value) > 1e-6 for value in
                            (command.linear.y, command.linear.z,
                             command.angular.x, command.angular.y))):
@@ -166,21 +190,24 @@ class SafetyGateway(Node):
         if not reason:
             reason = collision_reason(
                 self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
-                command.linear.x, command.angular.z, self.radius + 0.15,
-                self.stopping_margin, 1.0, self.coverage_verified)
-        if not reason and (command.linear.x != 0 or command.angular.z != 0):
+                forward, angular, self.radius + 0.15,
+                self.stopping_margin, 1.0, self.coverage_verified,
+                self.front_only_coverage, self.front_arc_coverage)
+        if not reason and (forward != 0 or angular != 0):
             reason = collision_reason(
                 self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
                 max(0.0, self.measured_forward), self.measured_angular,
-                self.radius + 0.15, self.stopping_margin, 1.0, self.coverage_verified)
+                self.radius + 0.15, self.stopping_margin, 1.0,
+                self.coverage_verified, self.front_only_coverage,
+                self.front_arc_coverage, arc_limits=False)
         if reason:
             safe = Twist()
             if reason != 'command_stale':
                 self.get_logger().warn(f'速度被安全门拦截: {reason}', throttle_duration_sec=3.0)
         else:
             safe = Twist()
-            safe.linear.x = min(0.25, max(0.0, command.linear.x))
-            safe.angular.z = min(0.7, max(-0.7, command.angular.z))
+            safe.linear.x = min(0.25, max(0.0, forward))
+            safe.angular.z = min(0.7, max(-0.7, angular))
         self.output.publish(safe)
         if self.locomotion is not None:
             self.locomotion.set_velocity(safe.linear.x, safe.linear.y, safe.angular.z)

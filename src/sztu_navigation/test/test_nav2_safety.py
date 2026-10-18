@@ -9,7 +9,8 @@ import rclpy
 from rclpy.parameter import Parameter
 
 from sztu_navigation.nav_geometry import (
-    collision_reason, localization_valid, project_scan, rotation_matrix,
+    collision_reason, limit_front_arc_command, localization_valid, project_scan,
+    rotation_matrix,
 )
 from sztu_navigation.safety_gateway import SafetyGateway
 
@@ -51,6 +52,90 @@ def test_chest_scan_never_counts_as_surround_coverage():
     ranges[240:480] = [5.0] * 240
     assert collision_reason(ranges, -math.pi, 2 * math.pi / 719,
                             0.25, 0.0, surround_verified=True) == 'surround_scan_incomplete'
+
+
+def front_scan(sectors=5):
+    ranges = [math.nan] * 720
+    front_min, front_max = -math.pi / 3, math.pi / 3
+    for sector in range(sectors):
+        angle = front_min + (sector + 0.5) * (front_max - front_min) / 5
+        ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = 5.0
+    return ranges
+
+
+def test_front_only_mode_allows_straight_motion_with_five_front_sectors():
+    assert collision_reason(front_scan(), -math.pi, 2 * math.pi / 719,
+                            0.25, 0.0,
+                            front_only=True) == ''
+
+
+def test_front_only_mode_blocks_missing_sector_and_turning():
+    assert collision_reason(front_scan(4), -math.pi, 2 * math.pi / 719,
+                            0.25, 0.0,
+                            front_only=True) == 'front_scan_incomplete'
+    assert collision_reason(front_scan(), -math.pi, 2 * math.pi / 719,
+                            0.0, 0.7,
+                            front_only=True) == 'front_scan_turning_disabled'
+
+
+def arc_scan(obstacles=()):
+    """A 120-degree chest scan: five populated front sectors, NaN elsewhere."""
+    ranges = [math.nan] * 720
+    front_min, front_max = -math.pi / 3, math.pi / 3
+    for sector in range(5):
+        angle = front_min + (sector + 0.5) * (front_max - front_min) / 5
+        ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = 5.0
+    for angle, distance in obstacles:
+        ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = distance
+    return ranges
+
+
+def arc_check(obstacles=(), forward=0.25, angular=0.0, arc_limits=True):
+    return collision_reason(arc_scan(obstacles), -math.pi, 2 * math.pi / 719,
+                            forward, angular, front_arc=True,
+                            arc_limits=arc_limits)
+
+
+def test_front_arc_allows_in_place_rotation_on_a_clear_footprint():
+    assert arc_check(forward=0.0, angular=0.30) == ''
+
+
+def test_front_arc_still_blocks_an_obstacle_inside_the_footprint():
+    assert arc_check([(0.0, 0.30)], forward=0.0,
+                     angular=0.30) == 'obstacle_in_swept_footprint'
+
+
+def test_front_arc_blocks_rotation_above_the_rate_cap():
+    assert arc_check(forward=0.0,
+                     angular=0.60) == 'front_scan_rotation_too_fast'
+
+
+def test_front_arc_allows_a_shallow_arc_and_rejects_a_tight_one():
+    assert arc_check(forward=0.25, angular=0.30) == ''
+    assert arc_check(forward=0.10, angular=0.40) == 'front_scan_arc_too_tight'
+
+
+def test_front_arc_requires_all_five_front_sectors():
+    ranges = arc_scan()
+    angle = -math.pi / 3 + 0.5 * (math.pi / 3 - -math.pi / 3) / 5
+    ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = math.nan
+    assert collision_reason(ranges, -math.pi, 2 * math.pi / 719, 0.25, 0.0,
+                            front_arc=True) == 'front_scan_incomplete'
+
+
+def test_coverage_modes_are_mutually_exclusive():
+    assert collision_reason(arc_scan(), -math.pi, 2 * math.pi / 719, 0.25, 0.0,
+                            front_only=True,
+                            front_arc=True) == 'coverage_mode_conflict'
+
+
+def test_front_arc_command_limiter_caps_rotation_and_curvature():
+    assert limit_front_arc_command(0.25, 0.70) == (0.25, 0.35)
+    assert limit_front_arc_command(0.0, -0.70) == (0.0, -0.35)
+    forward, angular = limit_front_arc_command(0.10, 0.50)
+    assert forward == pytest.approx(0.10)
+    assert angular == pytest.approx(0.15)
+    assert limit_front_arc_command(-0.2, 0.1) == (0.0, 0.1)
 
 
 def test_projection_does_not_fabricate_clearing_rays():
@@ -147,7 +232,7 @@ def test_gateway_no_map_tf_keeps_output_zero(gateway):
 def test_live_requires_coverage_before_registration():
     rclpy.init()
     try:
-        with pytest.raises(RuntimeError, match='surround'):
+        with pytest.raises(RuntimeError, match='coverage'):
             SafetyGateway(parameter_overrides=[Parameter('live', value=True)])
     finally:
         rclpy.shutdown()

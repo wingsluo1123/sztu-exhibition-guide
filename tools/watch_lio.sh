@@ -104,6 +104,7 @@ fi
 # 坑 1 的另一半：DDS 传输配置。跨机器时 SHM 用不上，但 udp_large 那段会把
 # 收发缓冲提到 8 MB —— 前提是内核允许（见下面 rmem 检查）。
 if [ -f "$DDS_XML" ]; then
+    export FASTDDS_DEFAULT_PROFILES_FILE="$DDS_XML"
     export FASTRTPS_DEFAULT_PROFILES_FILE="$DDS_XML"
     ok "Fast DDS 传输配置已设"
 else
