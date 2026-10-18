@@ -63,10 +63,4 @@
     </participant>
 
   </profiles>
-  <log>
-    <use_default>false</use_default>
-    <!-- Endpoint discovery warnings are expected when short-lived CLI
-         subscribers start or stop; keep errors visible. -->
-    <verbosity>error</verbosity>
-  </log>
 </dds>

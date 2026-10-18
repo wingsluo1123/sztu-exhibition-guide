@@ -29,9 +29,4 @@
       </rtps>
     </participant>
   </profiles>
-  <log>
-    <use_default>false</use_default>
-    <!-- Keep Fast DDS errors visible while hiding routine endpoint warnings. -->
-    <verbosity>error</verbosity>
-  </log>
 </dds>
