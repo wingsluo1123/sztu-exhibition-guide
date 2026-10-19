@@ -340,4 +340,5 @@ ros2 param get /sztu_safety_gateway front_only_coverage
 - FAST-LIO 启动检查：[slam_runtime_checks.md](slam_runtime_checks.md)
 - 悬吊运控测试（不是自主导航）：[restrained_drive_trial.md](restrained_drive_trial.md)
 - 头部深度与雷达离线核对及近身视锥缺口：[2026-10-19 诊断](../maps/classroom/diagnostics/20261019/depth_lidar_assessment.md)。该结果不放行感知覆盖或自主行走。
+- 一次受保护前进测试：[2026-10-19 记录](../maps/classroom/diagnostics/20261019/pulse_handoff_assessment.md)。SDK被选中，操作者确认随后自行停止；未测地面停车距离或验证遥控接管，导航仍为 `live=false`。
 - 人工停止观察：[manual_stop_trial.md](manual_stop_trial.md)

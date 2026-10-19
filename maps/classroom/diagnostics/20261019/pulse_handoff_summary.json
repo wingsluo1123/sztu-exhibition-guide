@@ -1,0 +1,479 @@
+{
+  "scope": "One operator-started protected forward-command trial. Command, queried MC source and qualitative operator observation are separate evidence. No autonomous navigation or measured stopping distance.",
+  "tool_commit": "a92ff88",
+  "operator_observation": {
+    "forward_gait_observed": true,
+    "subsequently_stopped_without_RC_takeover": true,
+    "quoted_confirmation": "随后自行停住，没有遥控接管",
+    "stopping_time_s": null,
+    "stopping_distance_m": null
+  },
+  "attempt_budget": {
+    "authorized": 1,
+    "executed": 1,
+    "remaining": 0
+  },
+  "report": {
+    "physical_execution_requested": true,
+    "hardware_stop_verified": false,
+    "speed_m_s": 0.1,
+    "duration_s": 1.0,
+    "zero_duration_s": 3.0,
+    "commanded_distance_m": 0.1,
+    "zero_only": false,
+    "requested_publish_rate_hz": 50.0,
+    "source": "sdk_sztu_restrained_trial",
+    "note": "Wire readback is not MC acceptance or physical stopping evidence; containment is operator-confirmed.",
+    "input_source_observations": [
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.02075902245898438,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26798.632196635,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.019548416807128932,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26798.892810639,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.01976669818664556,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26799.152065957,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.017910323033691444,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26799.411738545,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.019881344472656257,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26799.672189013,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.020257106015380832,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26799.932742128,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.01740673350292965,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26800.192298908,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.022558237256225633,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero_preflight",
+        "received_phase": "zero_preflight",
+        "received_monotonic_s": 26800.455472217,
+        "current_source_matches": false
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.02017743913745118,
+        "code": 0,
+        "state": 0,
+        "request_phase": "moving",
+        "received_phase": "moving",
+        "received_monotonic_s": 26800.712637889,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.01964358084582518,
+        "code": 0,
+        "state": 0,
+        "request_phase": "moving",
+        "received_phase": "moving",
+        "received_monotonic_s": 26800.972086189,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.02268145364074703,
+        "code": 0,
+        "state": 0,
+        "request_phase": "moving",
+        "received_phase": "moving",
+        "received_monotonic_s": 26801.235082069,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.007980928097900408,
+        "code": 0,
+        "state": 0,
+        "request_phase": "moving",
+        "received_phase": "moving",
+        "received_monotonic_s": 26801.49230046,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.01974550610083009,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26801.772222544,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.01801983147888181,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26802.032153058,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.02731725069885249,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26802.29724135,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.0205976584594727,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26802.553172431,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.021425167965698266,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26802.81450914,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.019596700100341757,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26803.071924958,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.01582275202600103,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26803.333696205,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.020184116047119144,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26803.592820985,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.026347745014770496,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26803.859616645,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.018111696483642525,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26804.111533625,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.01933953426782231,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "zero",
+        "received_monotonic_s": 26804.372229775,
+        "current_source_matches": true
+      },
+      {
+        "name": "sdk_sztu_restrained_trial",
+        "priority": 45,
+        "timeout_ms": 250,
+        "response_age_s": 0.02543881330493164,
+        "code": 0,
+        "state": 0,
+        "request_phase": "zero",
+        "received_phase": "finished",
+        "received_monotonic_s": 26804.632082451,
+        "current_source_matches": true
+      }
+    ],
+    "mc_subscribers": [
+      "mc_ros2_node3341"
+    ],
+    "registration_confirmed": true,
+    "registration_responses": [
+      {
+        "action": 1001,
+        "code": 1,
+        "state": 0,
+        "stamp_sec": 1792418092,
+        "stamp_nanosec": 969943907,
+        "task_id": 7
+      },
+      {
+        "action": 1002,
+        "code": 0,
+        "state": 0,
+        "stamp_sec": 1792418093,
+        "stamp_nanosec": 62247948,
+        "task_id": 8
+      },
+      {
+        "action": 2001,
+        "code": 0,
+        "state": 0,
+        "stamp_sec": 1792418093,
+        "stamp_nanosec": 67693948,
+        "task_id": 9
+      }
+    ],
+    "pulse_wire_frames": 50,
+    "stop_wire_frames": 151,
+    "wire_test_passed": true,
+    "phase": "finished",
+    "reason": ""
+  },
+  "wire_summary": {
+    "source_counts": {
+      "rc": 551,
+      "sdk_sztu_restrained_trial": 454
+    },
+    "own_nonzero": 50,
+    "own_zero": 404,
+    "first_nonzero": [
+      26800.637396299,
+      "sdk_sztu_restrained_trial",
+      0.1,
+      0.0,
+      0.0
+    ],
+    "last_nonzero": [
+      26801.616403888,
+      "sdk_sztu_restrained_trial",
+      0.1,
+      0.0,
+      0.0
+    ],
+    "first_zero_after_nonzero": [
+      26801.634489406,
+      "sdk_sztu_restrained_trial",
+      0.0,
+      0.0,
+      0.0
+    ],
+    "last_own": [
+      26807.651776672,
+      "sdk_sztu_restrained_trial",
+      0.0,
+      0.0,
+      0.0
+    ],
+    "foreign_nonzero": 0
+  },
+  "selection_summary": {
+    "moving": {
+      "count": 4,
+      "matching": 4
+    },
+    "zero": {
+      "count": 12,
+      "matching": 12
+    },
+    "zero_preflight": {
+      "count": 8,
+      "matching": 0
+    }
+  },
+  "postcheck": {
+    "scope": "Read-only after operator-started single pulse; no commands or registration.",
+    "flags": {
+      "live": false,
+      "surround_coverage_verified": false,
+      "front_only_coverage": false,
+      "front_arc_coverage": false
+    },
+    "selected_source": {
+      "name": "sdk_sztu_restrained_trial",
+      "priority": 45,
+      "timeout_ms": 250,
+      "code": 0,
+      "state": 0,
+      "response_age_s": 0.003344464
+    },
+    "duration_s": 6.027286253000057,
+    "traffic_counts": {
+      "rc": 300
+    },
+    "nonzero": 0,
+    "publishers": [
+      {
+        "name": "soc0_rc3339",
+        "namespace": "/"
+      },
+      {
+        "name": "app_proxy",
+        "namespace": "/"
+      },
+      {
+        "name": "soc2_interaction_slave1887",
+        "namespace": "/"
+      },
+      {
+        "name": "aimrt_planning_planning_node4800",
+        "namespace": "/"
+      }
+    ],
+    "bridge_state": "inactive"
+  },
+  "developer_evidence_root": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_handoff",
+  "robot_evidence_root": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_handoff",
+  "artifacts": [
+    {
+      "name": "restrained_pulse_source_20261019_01.json",
+      "bytes": 99820,
+      "sha256": "1c566e7a8d12ddbb58a9946caa3e66661a2a9b8fcaf517f0d1db603833127d99"
+    },
+    {
+      "name": "restrained_pulse_source_20261019_01.log",
+      "bytes": 430651,
+      "sha256": "f3b18c9122cb06ede704bac9b86ccd6d3b61fb8f5911df40a0bdbfb132195a4e"
+    },
+    {
+      "name": "sztu_pulse_handoff_20261019_01.sh",
+      "bytes": 1295,
+      "sha256": "8662a18232197ff57e0bd77b8922d2b4195eddfa959fc4229ef4ef2e08f9bb13"
+    },
+    {
+      "name": "pulse_handoff_postcheck.json",
+      "bytes": 851,
+      "sha256": "92f854cfc8f4cd96295652058471d60d15c7d47e5a28e27c338e34efef82a319"
+    },
+    {
+      "name": "operator_single_pulse_authorization.json",
+      "bytes": 644,
+      "sha256": "b68b94a1fc13c5d4c16620340299c3c1835b235bdf1cb7d901921e3320d987d2"
+    },
+    {
+      "name": "operator_pulse_result.json",
+      "bytes": 213,
+      "sha256": "812924fe77a6cdd74fd06cc91fac945ddbfabdbb9fd0d0807ce7f0403534c4d9"
+    }
+  ]
+}
