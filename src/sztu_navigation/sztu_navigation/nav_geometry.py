@@ -40,6 +40,26 @@ def yaw_of(quaternion):
     return math.atan2(matrix[1, 0], matrix[0, 0])
 
 
+def ground_relative_points(points, normal, offset):
+    """Return XY unchanged and signed floor distance in Z (metres).
+
+    The supplied plane is ``dot(normal, point) = offset`` in the *same*
+    coordinate frame as the points, with a unit upward normal. This function
+    does not estimate or certify a floor reference. A reference obtained at
+    one pelvis pose must be transformed or re-established after that pose
+    changes. Never substitute a fixed pelvis-to-floor distance.
+    """
+    normal = np.asarray(normal, dtype=float)
+    if (normal.shape != (3,) or not np.all(np.isfinite(normal))
+            or not math.isclose(float(np.linalg.norm(normal)), 1.0, abs_tol=1e-6)
+            or normal[2] <= 0 or not np.isscalar(offset)
+            or not math.isfinite(float(offset))):
+        raise ValueError('a finite unit upward ground plane is required')
+    result = np.array(points, dtype=float, copy=True).reshape(-1, 3)
+    result[:, 2] = result @ normal - float(offset)
+    return result
+
+
 def project_scan(points, minimum_height, maximum_height,
                  angle_min=-math.pi, angle_max=math.pi, bins=720,
                  range_min=0.05, range_max=15.0):

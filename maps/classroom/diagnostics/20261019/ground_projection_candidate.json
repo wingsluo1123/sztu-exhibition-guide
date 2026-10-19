@@ -1,0 +1,595 @@
+{
+  "scope": "Offline fixed-stance candidate only; no runtime floor tracking, physical motion, latency validation, or coverage certification.",
+  "reference_file": "open_baseline_ground_fits.json",
+  "reference_sha256": "075a85dff1ec0be5da43e46b36ee694cfc7794e30b643dfebf44750ea5ae38d6",
+  "plane": {
+    "normal": [
+      0.0567893633139002,
+      -0.09983589967687274,
+      0.9933819815912263
+    ],
+    "offset": -0.66354093170415
+  },
+  "geometry_source_sha256": "4f0b1c5673f4d3821c9fd8b91683d82935181e26fa6af42311c95d1df6163443",
+  "height_band_m": [
+    0.05,
+    1.8
+  ],
+  "range_roi_m": [
+    0.7,
+    1.7
+  ],
+  "angular_rois_degrees": {
+    "front": [
+      -20,
+      20
+    ],
+    "left": [
+      15,
+      45
+    ],
+    "right": [
+      -45,
+      -15
+    ]
+  },
+  "stages": {
+    "open_baseline": [
+      {
+        "file": "open_baseline_frame_0.npz",
+        "sha256": "61f39bbbdbea7552b734eaf19a481f0bcb0ffc2036119a896f808d09f41590ba",
+        "stamp": 1792409486.224447,
+        "point_count": 25689,
+        "candidate_projection_seconds": 0.0008892230689525604,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 1,
+            "low_points_recovered": 1,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": 1.126019904937071
+          }
+        }
+      },
+      {
+        "file": "open_baseline_frame_1.npz",
+        "sha256": "e64d02c1e7af11bc9577847e8244574b0b7484463c8b7343f4c0c591b01728a5",
+        "stamp": 1792409490.620432,
+        "point_count": 25691,
+        "candidate_projection_seconds": 0.0007438920438289642,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 1,
+            "low_points_recovered": 1,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": 1.6747987732223977
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 1,
+            "low_points_recovered": 1,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": 0.8678539892152104
+          }
+        }
+      },
+      {
+        "file": "open_baseline_frame_2.npz",
+        "sha256": "22ce47bf22324e8bb5faec75088e0397d22293210bd8c17e53402a03ab1aa22f",
+        "stamp": 1792409495.01558,
+        "point_count": 25692,
+        "candidate_projection_seconds": 0.0007449400145560503,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      }
+    ],
+    "chair_front": [
+      {
+        "file": "chair_front_frame_0.npz",
+        "sha256": "a2f1ebc20ebb62783778258bfd01309c5b4f5b33f58c6e1fc74a3776e4c8a940",
+        "stamp": 1792409601.317674,
+        "point_count": 25604,
+        "candidate_projection_seconds": 0.0008875059429556131,
+        "regions": {
+          "front": {
+            "old_kept_points": 285,
+            "candidate_kept_points": 1302,
+            "low_points_recovered": 547,
+            "old_nearest_projected_range_m": 1.1089643215843048,
+            "candidate_nearest_projected_range_m": 1.1089643215843048
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_front_frame_1.npz",
+        "sha256": "d54d85f0cb8358e47bc53c6424d5ac28a0ddc716445df5ae8215a4a8a39cd8f1",
+        "stamp": 1792409606.616647,
+        "point_count": 25620,
+        "candidate_projection_seconds": 0.0007454052101820707,
+        "regions": {
+          "front": {
+            "old_kept_points": 295,
+            "candidate_kept_points": 1319,
+            "low_points_recovered": 540,
+            "old_nearest_projected_range_m": 1.1087086059126006,
+            "candidate_nearest_projected_range_m": 1.1087086059126006
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 1,
+            "low_points_recovered": 1,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": 1.0889682099786218
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_front_frame_2.npz",
+        "sha256": "c847d2dfef4763ca60459e646b7ea965e6122dc80d8dcd11af90e61e44aaf58d",
+        "stamp": 1792409611.1159,
+        "point_count": 25623,
+        "candidate_projection_seconds": 0.0008477210067212582,
+        "regions": {
+          "front": {
+            "old_kept_points": 292,
+            "candidate_kept_points": 1309,
+            "low_points_recovered": 541,
+            "old_nearest_projected_range_m": 1.1135566007427569,
+            "candidate_nearest_projected_range_m": 1.1135566007427569
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      }
+    ],
+    "chair_removed": [
+      {
+        "file": "chair_removed_frame_0.npz",
+        "sha256": "aeb4d3053178c6c916fefe597eb0ce15b74fae7231c973c4929bead1c61e87e8",
+        "stamp": 1792409702.818847,
+        "point_count": 25699,
+        "candidate_projection_seconds": 0.0007285659667104483,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_removed_frame_1.npz",
+        "sha256": "09705a3086ce36d6e5a74e2cd2c71bf1896c75d643025d2873e85f598e29052d",
+        "stamp": 1792409707.615622,
+        "point_count": 25701,
+        "candidate_projection_seconds": 0.0007088689599186182,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_removed_frame_2.npz",
+        "sha256": "1d6c358747065663b8537db688e677474b360e8836ab14f8889921adbc0b9587",
+        "stamp": 1792409712.014957,
+        "point_count": 25684,
+        "candidate_projection_seconds": 0.0008558400440961123,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      }
+    ],
+    "chair_left": [
+      {
+        "file": "chair_left_frame_0.npz",
+        "sha256": "8b5f3db8c1d12b5b524ac77df71b583bd8976b7e28d0e6b5b4e5da578ce30598",
+        "stamp": 1792409910.724487,
+        "point_count": 25656,
+        "candidate_projection_seconds": 0.0007559678051620722,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 362,
+            "candidate_kept_points": 1079,
+            "low_points_recovered": 479,
+            "old_nearest_projected_range_m": 1.1465555084119416,
+            "candidate_nearest_projected_range_m": 1.1465555084119416
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_left_frame_1.npz",
+        "sha256": "b72378114c5ca7f6efe4e38e8a3dee8828542b754338c6eba529b0c8d29d0d90",
+        "stamp": 1792409916.21496,
+        "point_count": 25647,
+        "candidate_projection_seconds": 0.0008107628673315048,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 361,
+            "candidate_kept_points": 1079,
+            "low_points_recovered": 477,
+            "old_nearest_projected_range_m": 1.1487267595030082,
+            "candidate_nearest_projected_range_m": 1.1487267595030082
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_left_frame_2.npz",
+        "sha256": "fcf59ee4a8417bfd80ec576355f528a1d050f3ca58f2d9d288f8ceaed688a640",
+        "stamp": 1792409920.519907,
+        "point_count": 25651,
+        "candidate_projection_seconds": 0.0008513540960848331,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 358,
+            "candidate_kept_points": 1076,
+            "low_points_recovered": 476,
+            "old_nearest_projected_range_m": 1.1368987931661376,
+            "candidate_nearest_projected_range_m": 1.1368987931661376
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      }
+    ],
+    "chair_right": [
+      {
+        "file": "chair_right_frame_0.npz",
+        "sha256": "af310466a11515dfa808695a0b1f8322f773b9fbf4903b62c3c6f6b9c8fbd607",
+        "stamp": 1792410027.920123,
+        "point_count": 25609,
+        "candidate_projection_seconds": 0.0007783779874444008,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 137,
+            "candidate_kept_points": 1247,
+            "low_points_recovered": 549,
+            "old_nearest_projected_range_m": 1.0913825573444031,
+            "candidate_nearest_projected_range_m": 1.0913825573444031
+          }
+        }
+      },
+      {
+        "file": "chair_right_frame_1.npz",
+        "sha256": "ac02f2374cbf0f0cdec73bbfa9244b45d0621c5b3e105ebc9043b250d7ad7446",
+        "stamp": 1792410032.715278,
+        "point_count": 25613,
+        "candidate_projection_seconds": 0.0009664359968155622,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 135,
+            "candidate_kept_points": 1248,
+            "low_points_recovered": 555,
+            "old_nearest_projected_range_m": 1.0864820510323487,
+            "candidate_nearest_projected_range_m": 1.0864820510323487
+          }
+        }
+      },
+      {
+        "file": "chair_right_frame_2.npz",
+        "sha256": "963f5b61b991acc44fbea2088493bc1255e9e706e1d66ace039580b6ddbc99b6",
+        "stamp": 1792410037.315226,
+        "point_count": 25623,
+        "candidate_projection_seconds": 0.000886174850165844,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 137,
+            "candidate_kept_points": 1246,
+            "low_points_recovered": 550,
+            "old_nearest_projected_range_m": 1.0979925703061133,
+            "candidate_nearest_projected_range_m": 1.0979925703061133
+          }
+        }
+      }
+    ],
+    "chair_sides_removed": [
+      {
+        "file": "chair_sides_removed_frame_0.npz",
+        "sha256": "2fb042f5f4c26f6c3fcf7b71ad73fe925b65ebdf3237c0ba8bc7d4b841fd3493",
+        "stamp": 1792410130.615482,
+        "point_count": 25696,
+        "candidate_projection_seconds": 0.0007039560005068779,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_sides_removed_frame_1.npz",
+        "sha256": "c0cdb703176a75459b31b8415e4c8e708067841b0c92baed39147caa48575cef",
+        "stamp": 1792410135.515219,
+        "point_count": 25698,
+        "candidate_projection_seconds": 0.000717442948371172,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      },
+      {
+        "file": "chair_sides_removed_frame_2.npz",
+        "sha256": "adf6dc7e064055f1ba53201a31126ed7fbdcaf394cd1fa1d95162d16cdf781bc",
+        "stamp": 1792410139.515011,
+        "point_count": 25685,
+        "candidate_projection_seconds": 0.0008155209943652153,
+        "regions": {
+          "front": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "left": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          },
+          "right": {
+            "old_kept_points": 0,
+            "candidate_kept_points": 0,
+            "low_points_recovered": 0,
+            "old_nearest_projected_range_m": null,
+            "candidate_nearest_projected_range_m": null
+          }
+        }
+      }
+    ]
+  },
+  "control_failures": [
+    "open_baseline_frame_0.npz:right",
+    "open_baseline_frame_1.npz:front",
+    "open_baseline_frame_1.npz:right"
+  ]
+}

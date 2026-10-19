@@ -1,0 +1,76 @@
+{
+  "scope": "Read-only single-process depth-1 observer on robot. Callback times are not adapter internal timestamps. Probe load and DDS delivery may affect observations. This followup cannot clear the historical left-chair failure.",
+  "started_utc": "2026-10-19T11:50:53.901285+00:00",
+  "duration": 20.004055106001033,
+  "parameters": {
+    "live": {
+      "type": 1,
+      "bool": false
+    },
+    "surround_coverage_verified": {
+      "type": 1,
+      "bool": false
+    },
+    "front_only_coverage": {
+      "type": 1,
+      "bool": false
+    },
+    "front_arc_coverage": {
+      "type": 1,
+      "bool": false
+    }
+  },
+  "command_count": 902,
+  "maximum_abs_command": 0.0,
+  "summary": {
+    "/lio/points": {
+      "count": 191,
+      "count_after_5s": 149,
+      "max_age_all": 0.201342913,
+      "max_age_after_5s": 0.134153245,
+      "over_0_5_all": 0,
+      "over_0_5_after_5s": 0,
+      "max_receive_gap_after_5s": 0.12494157800028916
+    },
+    "/sztu/safety_scan": {
+      "count": 180,
+      "count_after_5s": 150,
+      "max_age_all": 0.504084614,
+      "max_age_after_5s": 0.285865537,
+      "over_0_5_all": 1,
+      "over_0_5_after_5s": 0,
+      "max_receive_gap_after_5s": 0.18772001800243743
+    },
+    "/sztu/scan": {
+      "count": 179,
+      "count_after_5s": 150,
+      "max_age_all": 0.506438438,
+      "max_age_after_5s": 0.282209445,
+      "over_0_5_all": 1,
+      "over_0_5_after_5s": 0,
+      "max_receive_gap_after_5s": 0.18786274299782235
+    }
+  },
+  "matched_stamp_summary": {
+    "/sztu/safety_scan": {
+      "frames_after_5s": 150,
+      "scan_minus_cloud_callback_seconds_p0_p50_p95_p100": [
+        0.049516615999891656,
+        0.08420457049942343,
+        0.135783006350175,
+        0.1643149869996705
+      ],
+      "negative_deltas": 0
+    },
+    "/sztu/scan": {
+      "frames_after_5s": 150,
+      "scan_minus_cloud_callback_seconds_p0_p50_p95_p100": [
+        0.04836809099651873,
+        0.08298202250080067,
+        0.1333622070489581,
+        0.16718971199952648
+      ],
+      "negative_deltas": 0
+    }
+  }
+}
