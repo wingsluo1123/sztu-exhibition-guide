@@ -64,6 +64,12 @@ def main():
     own_zero_count = 0
     own_pulse_count = 0
     signal_reason = None
+    query = None
+    pending_query = None
+    next_query_at = 0.0
+    query_started_at = 0.0
+    query_phase = None
+    report['input_source_observations'] = []
 
     class ZeroDiagnosticCompleted(Exception):
         pass
@@ -121,6 +127,45 @@ def main():
         if message.data:
             trial.abort(time.monotonic(), 'operator_stop')
 
+    def observe_source(phase):
+        """Record fresh MC arbitration independently from our wire readback."""
+        nonlocal pending_query, next_query_at, query_phase, query_started_at
+        if pending_query is not None and pending_query.done():
+            response = pending_query.result()
+            if response is None:
+                raise RuntimeError('current input source query returned no response')
+            header = response.response.header
+            age = (node.get_clock().now().nanoseconds / 1e9
+                   - header.stamp.sec - header.stamp.nanosec / 1e9)
+            state = response.response.state.value
+            selected = response.input_source
+            report['input_source_observations'].append({
+                'name': selected.name, 'priority': selected.priority,
+                'timeout_ms': selected.timeout, 'response_age_s': age,
+                'code': header.code, 'state': state,
+                'request_phase': query_phase, 'received_phase': phase,
+                'received_monotonic_s': time.monotonic(),
+                'current_source_matches': (
+                    selected.name == controller.source and selected.priority == 45
+                    and selected.timeout == 250 and header.code == 0
+                    and -0.05 <= age <= .5
+                    and state not in (CommonState.FAILURE, CommonState.ABORTED,
+                                      CommonState.TIMEOUT, CommonState.INVALID,
+                                      CommonState.IN_MANUAL, CommonState.NOT_READY))})
+            pending_query = None
+        if pending_query is not None and time.monotonic() - query_started_at > .5:
+            query.remove_pending_request(pending_query)
+            pending_query.cancel()
+            pending_query = None
+            raise RuntimeError('current input source query timed out')
+        if pending_query is None and time.monotonic() >= next_query_at:
+            request = GetCurrentInputSource.Request()
+            request.request.header.stamp = node.get_clock().now().to_msg()
+            pending_query = query.call_async(request)
+            query_phase = phase
+            query_started_at = time.monotonic()
+            next_query_at = query_started_at + .25
+
     node.create_subscription(McLocomotionVelocity,
                              '/aima/mc/locomotion/velocity', readback, qos_profile_sensor_data)
     node.create_subscription(Bool, '/sztu/navigation_stop', operator_stop, 10)
@@ -150,6 +195,10 @@ def main():
         report['mc_subscribers'] = owners
         if len(owners) != 1:
             raise RuntimeError('requires exactly one discovered MC subscriber')
+        query = node.create_client(
+            GetCurrentInputSource, '/aimdk_5Fmsgs/srv/GetCurrentInputSource')
+        if not query.wait_for_service(timeout_sec=5):
+            raise RuntimeError('current input source query unavailable')
         controller = LocomotionController(
             source=report['source'], priority=45,
             source_timeout_ms=250, release_after=None, forward_threshold=0.0,
@@ -161,13 +210,6 @@ def main():
         if not registered or (not controller.registration_confirmed and not args.zero_only):
             raise RuntimeError('input source registration not explicitly confirmed')
         if args.zero_only:
-            query = node.create_client(
-                GetCurrentInputSource, '/aimdk_5Fmsgs/srv/GetCurrentInputSource')
-            if not query.wait_for_service(timeout_sec=5):
-                raise RuntimeError('current input source query unavailable')
-            pending = None
-            next_query_at = 0.0
-            report['input_source_observations'] = []
             end = time.monotonic() + 3
             while time.monotonic() < end:
                 if signal_reason or trial.phase != 'preflight':
@@ -175,36 +217,8 @@ def main():
                 wait_for_publish_slot()
                 controller.set_velocity(0, 0, 0)
                 controller.tick()
-                if pending is None and time.monotonic() >= next_query_at:
-                    request = GetCurrentInputSource.Request()
-                    request.request.header.stamp = node.get_clock().now().to_msg()
-                    pending = query.call_async(request)
-                    next_query_at = time.monotonic() + .25
                 rclpy.spin_once(node, timeout_sec=.02)
-                if pending is not None and pending.done():
-                    response = pending.result()
-                    if response is None:
-                        raise RuntimeError('current input source query returned no response')
-                    header = response.response.header
-                    age = (node.get_clock().now().nanoseconds / 1e9
-                           - header.stamp.sec - header.stamp.nanosec / 1e9)
-                    state = response.response.state.value
-                    selected = response.input_source
-                    report['input_source_observations'].append({
-                        'name': selected.name, 'priority': selected.priority,
-                        'timeout_ms': selected.timeout, 'response_age_s': age,
-                        'code': header.code, 'state': state,
-                        'current_source_matches': (
-                            selected.name == controller.source and selected.priority == 45
-                            and selected.timeout == 250 and header.code == 0
-                            and -0.05 <= age <= .5
-                            and state not in (CommonState.FAILURE, CommonState.ABORTED,
-                                              CommonState.TIMEOUT, CommonState.INVALID,
-                                              CommonState.IN_MANUAL, CommonState.NOT_READY))})
-                    pending = None
-            if pending is not None:
-                query.remove_pending_request(pending)
-                pending.cancel()
+                observe_source('zero_only')
             if (not report['input_source_observations'] or own_zero_count < 10
                     or own_last is None or time.monotonic() - own_last > .25):
                 raise RuntimeError('zero-only diagnostic missing fresh observations')
@@ -218,6 +232,7 @@ def main():
             controller.set_velocity(0, 0, 0)
             controller.tick()
             rclpy.spin_once(node, timeout_sec=.02)
+            observe_source('zero_preflight')
         if (signal_reason or trial.phase != 'preflight' or own_zero_count < 10
                 or own_last is None or time.monotonic() - own_last > .25):
             raise RuntimeError(signal_reason or trial.reason or 'zero wire preflight failed')
@@ -237,6 +252,7 @@ def main():
             controller.set_velocity(trial.tick(now), 0, 0)
             controller.tick()
             rclpy.spin_once(node, timeout_sec=.02)
+            observe_source(trial.phase)
         report['pulse_wire_frames'] = own_pulse_count
         report['stop_wire_frames'] = own_zero_count - zero_before_pulse
         if trial.phase == 'finished' and own_pulse_count >= 5 and report['stop_wire_frames'] >= 20:
@@ -263,6 +279,9 @@ def main():
                     exit_code = 2
                     break
             controller.destroy_node()
+        if pending_query is not None:
+            query.remove_pending_request(pending_query)
+            pending_query.cancel()
         report['phase'] = trial.phase
         report['reason'] = trial.reason
         args.output.write_text(json.dumps(report, indent=2, allow_nan=False))

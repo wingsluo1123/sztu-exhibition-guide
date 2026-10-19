@@ -1,0 +1,222 @@
+{
+  "result": "Registration and zero-only wire observation completed; no handoff established. All-zero commands may not constitute an effective MC input, so RC selection cannot alone prove it blocks a nonzero SDK command.",
+  "operator_reported": "Executed the supplied zero-only script to completion; physical response not yet reported.",
+  "report": {
+    "physical_execution_requested": true,
+    "hardware_stop_verified": false,
+    "speed_m_s": 0.0,
+    "duration_s": 1.0,
+    "zero_duration_s": 3.0,
+    "commanded_distance_m": 0.0,
+    "zero_only": true,
+    "requested_publish_rate_hz": 50.0,
+    "source": "sdk_sztu_restrained_trial",
+    "note": "Wire readback is not MC acceptance or physical stopping evidence; containment is operator-confirmed.",
+    "mc_subscribers": [
+      "mc_ros2_node3341"
+    ],
+    "registration_confirmed": true,
+    "registration_responses": [
+      {
+        "action": 1001,
+        "code": 0,
+        "state": 0,
+        "stamp_sec": 1792417514,
+        "stamp_nanosec": 147676589,
+        "task_id": 5
+      },
+      {
+        "action": 2001,
+        "code": 0,
+        "state": 0,
+        "stamp_sec": 1792417514,
+        "stamp_nanosec": 164108214,
+        "task_id": 6
+      }
+    ],
+    "input_source_observations": [
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.019378806835693374,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.020418404408203084,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.02097703590063471,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.020345556233154302,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.022588162602172834,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.02058543771032717,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.021851160717163087,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.019761018367919908,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.019762813602416995,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.019727392185180714,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.020524080745483397,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      },
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "response_age_s": 0.020059879009033194,
+        "code": 0,
+        "state": 0,
+        "current_source_matches": false
+      }
+    ],
+    "diagnostic_completed": true,
+    "own_zero_wire_frames": 152,
+    "phase": "finished",
+    "reason": ""
+  },
+  "wire_summary": {
+    "source_counts": {
+      "rc": 402,
+      "sdk_sztu_restrained_trial": 301
+    },
+    "nonzero_count": 0
+  },
+  "evidence_root": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_handoff",
+  "artifacts": [
+    {
+      "name": "restrained_zero_source_20261019_01.json",
+      "sha256": "63e735b4176c62a580d0efefb931de396a982a9d409e3a8472146baf3d6012b3",
+      "bytes": 66469
+    },
+    {
+      "name": "restrained_zero_source_20261019_01.log",
+      "sha256": "5ba26490f4b151cb98492f7b66ce5382d248c0c125ee96989288cfd6a35b3fbf",
+      "bytes": 427378
+    },
+    {
+      "name": "sztu_zero_handoff_20261019_01.sh",
+      "sha256": "44cf8d908fe2e57c5ec7c31c8ebe5236b68a394b5a89c2fba271728e47bc1776",
+      "bytes": 1237
+    },
+    {
+      "name": "zero_handoff_postcheck.json",
+      "sha256": "37f495049b91f66b8f86050514225144fcae66749424030f25fd34ef179874ce",
+      "bytes": 795
+    }
+  ],
+  "postcheck": {
+    "scope": "Read-only postcheck; no source registration, configuration or commands.",
+    "flags": {
+      "live": false,
+      "surround_coverage_verified": false,
+      "front_only_coverage": false,
+      "front_arc_coverage": false
+    },
+    "selected_source": {
+      "name": "rc",
+      "priority": 80,
+      "timeout_ms": 1000,
+      "code": 0,
+      "state": 0,
+      "response_age_s": 0.012094769
+    },
+    "duration_s": 6.015754145999381,
+    "traffic_counts": {
+      "rc": 303
+    },
+    "nonzero": 0,
+    "publishers": [
+      {
+        "name": "soc0_rc3339",
+        "namespace": "/"
+      },
+      {
+        "name": "app_proxy",
+        "namespace": "/"
+      },
+      {
+        "name": "soc2_interaction_slave1887",
+        "namespace": "/"
+      },
+      {
+        "name": "aimrt_planning_planning_node4800",
+        "namespace": "/"
+      }
+    ]
+  }
+}

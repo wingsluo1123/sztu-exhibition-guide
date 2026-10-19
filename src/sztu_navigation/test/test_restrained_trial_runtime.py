@@ -18,7 +18,8 @@ from std_msgs.msg import Bool
 
 @pytest.mark.parametrize('mode', ['pulse', 'operator_stop', 'live_nav', 'unconfirmed',
                                   'foreign_source', 'signal_stop', 'zero_own', 'zero_rc',
-                                  'populated_unknown', 'stale_unknown', 'registration_error'])
+                                  'populated_unknown', 'stale_unknown', 'registration_error',
+                                  'pulse_selected', 'stale_selected', 'query_lost'])
 def test_contained_trial_runtime_on_isolated_domain(tmp_path, mode):
     rclpy.init(domain_id=42)
     fixture = rclpy.create_node('mc_ros2_node_restrained_fixture')
@@ -48,17 +49,22 @@ def test_contained_trial_runtime_on_isolated_domain(tmp_path, mode):
 
     def query_response(request, response):
         response.response.header.stamp = fixture.get_clock().now().to_msg()
-        response.input_source.name = 'sdk_sztu_restrained_trial' if mode == 'zero_own' else 'rc'
-        response.input_source.priority = 45 if mode == 'zero_own' else 80
-        response.input_source.timeout = 250 if mode == 'zero_own' else 1000
+        active = any(message.forward_velocity > 0 for _, message in records)
+        selected = mode == 'zero_own' or (mode in ('pulse_selected', 'stale_selected') and active)
+        response.input_source.name = 'sdk_sztu_restrained_trial' if selected else 'rc'
+        response.input_source.priority = 45 if selected else 80
+        response.input_source.timeout = 250 if selected else 1000
+        if mode == 'stale_selected' and selected:
+            response.response.header.stamp.sec -= 1
         return response
 
     fixture.create_service(GetParameters,
                            '/sztu_safety_gateway/get_parameters', parameter_response)
     fixture.create_service(SetMcInputSource,
                            '/aimdk_5Fmsgs/srv/SetMcInputSource', registration_response)
-    fixture.create_service(GetCurrentInputSource,
-                           '/aimdk_5Fmsgs/srv/GetCurrentInputSource', query_response)
+    query_service = fixture.create_service(GetCurrentInputSource,
+                                           '/aimdk_5Fmsgs/srv/GetCurrentInputSource',
+                                           query_response)
     fixture.create_subscription(
         McLocomotionVelocity,
         '/aima/mc/locomotion/velocity', lambda message: records.append((time.monotonic(), message)),
@@ -88,6 +94,10 @@ def test_contained_trial_runtime_on_isolated_domain(tmp_path, mode):
             deadline = time.monotonic() + 20
             while process.poll() is None and time.monotonic() < deadline:
                 rclpy.spin_once(fixture, timeout_sec=.01)
+                if mode == 'query_lost' and not sent_stop and any(
+                        message.forward_velocity > 0 for _, message in records):
+                    fixture.destroy_service(query_service)
+                    sent_stop = True
                 if mode == 'operator_stop' and any(
                         message.forward_velocity > 0 for _, message in records):
                     stop.publish(Bool(data=True))
@@ -130,10 +140,21 @@ def test_contained_trial_runtime_on_isolated_domain(tmp_path, mode):
                        for row in report['input_source_observations'])
             assert 'wire_test_passed' not in report
             assert report['commanded_distance_m'] == 0
-        elif mode in ('pulse', 'populated_unknown'):
+        elif mode in ('pulse', 'populated_unknown', 'pulse_selected', 'stale_selected'):
             assert return_code == 0, (tmp_path / 'log').read_text()
             assert report['registration_confirmed']
             assert report['wire_test_passed']
+            observations = report['input_source_observations']
+            assert any(row['request_phase'] == 'moving' for row in observations)
+            assert any(row['request_phase'] == 'zero' for row in observations)
+            assert any(row['current_source_matches'] for row in observations) == (
+                mode == 'pulse_selected')
+            if mode == 'pulse_selected':
+                assert any(row['current_source_matches'] and row['request_phase'] == 'moving'
+                           for row in observations)
+            if mode == 'stale_selected':
+                assert any(row['name'] == 'sdk_sztu_restrained_trial'
+                           and row['response_age_s'] > .5 for row in observations)
             if mode == 'populated_unknown':
                 assert [request.action.value for request in requests] == [1001, 1002, 2001]
                 assert [row['code'] for row in report['registration_responses']] == [1, 0, 0]
@@ -148,15 +169,17 @@ def test_contained_trial_runtime_on_isolated_domain(tmp_path, mode):
             assert report['stop_wire_frames'] >= 20
             assert all(request.input_source.priority < 80 for request in requests
                        if request.input_source.priority)
-        elif mode in ('operator_stop', 'foreign_source', 'signal_stop'):
+        elif mode in ('operator_stop', 'foreign_source', 'signal_stop', 'query_lost'):
             assert sent_stop and return_code == 2
             assert report['reason'] == {
                 'operator_stop': 'operator_stop',
-                'foreign_source': 'other_source_active', 'signal_stop': 'signal_15'}[mode]
+                'foreign_source': 'other_source_active', 'signal_stop': 'signal_15',
+                'query_lost': 'current input source query timed out'}[mode]
             first_zero = next(index for index, (_, message) in enumerate(records)
                               if index > 0 and message.forward_velocity == 0
                               and records[index - 1][1].forward_velocity > 0)
             assert all(message.forward_velocity == 0 for _, message in records[first_zero:])
+            assert len(records[first_zero:]) >= 20
         else:
             assert return_code == 2
             assert not any(message.forward_velocity > 0 for _, message in records)
