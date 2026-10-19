@@ -1,0 +1,58 @@
+# 深度与雷达运行时影子观测
+
+`tools/depth_obstacle_shadow.py` 在机器人相机所在主机运行，直接订阅原始深度、
+CameraInfo、`/lio/points` 与 TF，默认30 s后退出。只输出本地JSON及最多三组
+NPZ，不创建扫描、TF、速度发布者，不修改导航参数或相机配置。
+原始深度不要跨开发机网络订阅；已有定位与导航服务保持原样。
+
+在机器人已经加载本项目 ROS 2 Humble 环境的终端中执行，输出目录必须未被使用：
+
+```bash
+cd ~/sztu
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 tools/depth_obstacle_shadow.py \
+  --profile src/sztu_navigation/config/depth_shadow_head_front.json \
+  --duration 30 --output-dir /tmp/depth_shadow_new
+```
+
+运行前后从深度发布者的参数服务核对尺度开关、翻转、旋转、分辨率等设置。
+两次快照一致不证明中间没有短暂变更。每个参与观测的CameraInfo须与冻结
+内参、尺寸、frame一致，零畸变、无裁剪/缩放，且距离图像时刻不超过50 ms。
+16UC1支持大小端和行填充；截断或不合法布局拒绝。0.001 m单位及坐标轴沿用
+10月19日同姿态雷达对照假设，不能替代独立标定。
+
+深度和雷达配对时间差不超过50 ms，各输入及处理后的年龄不超过0.5 s，
+拒绝重复、乱序、过期和超过50 ms未来容差的时间戳，同时用单调时钟防止
+排队时间被ROS时钟停滞掩盖。查精确传感器时刻的TF，不回退最新TF。
+雷达在自身时刻变换到odom，再统一至深度时刻的去偏航骨盆参考系，使用
+双踝约束的逐帧地面拟合；没有合格地面就不生成该次观测。
+
+诊断保持原有几何示例：半径0.55 m、前移与停车余量共0.85 m，2.5 cm采样，
+只比较初始圆外新扫过区域，分别查看离地5/20/60/100 cm的目标点。
+每个目标取最近像素，比较深度轴向距离，5 cm容差带只用于诊断。
+结果区分画面外、无效深度、超诊断距离、被近处表面遮挡、表面容差带、
+测距射线到达目标；**最后一类也不等于机器人能通过或完整空间已观测**。
+曲面、像素尺寸、遮挡边缘、反光和尺度误差均未被这个单像素模型消除。
+
+另外以4像素步长反投影0.2–5 m深度，统计前方x=0–1.4 m、y=±0.55 m、
+离地0.05–1.8 m的表面点及5 cm栅格。该范围是诊断ROI，不是厂家量程验收。
+“深度有、雷达同一格没有”的格子只表示回波差异，不能称为雷达盲区；
+未做自身肢体遮罩，孤立反光点保留，细小物体也可能被步长采样漏掉。
+两个传感器间的运动物体未做运动补偿。
+
+`observations_available=true`只表示有观测输出。没有观测或前后驱动配置
+不匹配时退出码为2并保存报告，`hardware_coverage_verified`始终false。
+程序退出后历史行不是当前有效覆盖；本工具尚未接入安全门或代价地图。
+不得因此修改三个覆盖标志或启用 `live=true`。
+
+软件验证使用隔离域42：
+
+```bash
+ROS_DOMAIN_ID=42 tools/run_tests.sh \
+  src/sztu_navigation/test/test_depth_obstacle_shadow.py \
+  src/sztu_navigation/test/test_depth_shadow_runtime.py \
+  src/sztu_navigation/test/test_depth_pair_analysis.py -q
+```
+
+控制包括已知前方物体、同格雷达回波、无效深度、地面下回波、遮挡、画面边界、
+大小端和行填充；ROS集成验证正确数据产出观测，内参变化、驱动设置不匹配、
+过期图像和精确TF缺失时拒绝，同时核对没有控制或安全扫描发布者。

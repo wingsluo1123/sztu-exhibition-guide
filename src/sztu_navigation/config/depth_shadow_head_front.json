@@ -1,0 +1,19 @@
+{
+  "frame": "rgbd_depth_head_front",
+  "width": 1280,
+  "height": 720,
+  "k": [624.4961547851562, 0.0, 638.5, 0.0, 624.4961547851562, 360.5, 0.0, 0.0, 1.0],
+  "depth_scale": 0.001,
+  "driver_parameters": {
+    "rgbd_depth_frame_id": "rgbd_depth_head_front",
+    "depth_width": 1280,
+    "depth_height": 720,
+    "depth_flip": false,
+    "depth_mirror": false,
+    "depth_rotation": -1,
+    "depth_precision": "",
+    "enable_depth_scale": true,
+    "depth_registration": false
+  },
+  "provenance": "20261019 depth_lidar_manifest.json and depth_lidar_pair_0.npz; single-pose scale/axis hypothesis, not independent calibration. Requires unchanged driver scale, mirror, flip and rotation settings."
+}
