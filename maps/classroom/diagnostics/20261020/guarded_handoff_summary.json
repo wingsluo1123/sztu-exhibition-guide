@@ -150,8 +150,14 @@
     "McActionStatus.idl": "39c10376550c31014dc214c6e0fdb66a6db55bf8a486c294cfca5dadeca08fa6",
     "McBodyPoseStatus.idl": "32cadc6277e7cac22f11bdb10d2f64d19c2f7416c694166b60a65da62de7eb27",
     "McFsmState.idl": "01fece566578db137652a2aa92b6b9adf5b6d2b5ec28b5c9780bf426710e4d79",
+    "isolated_healthy_failed.json": "e3e86707213a7d9f12d49b7876d299866ab15fb500e083eacf99d0cbfdadd848",
+    "isolated_healthy_failed.log": "df79a5cb6dfecee7a149c48661c87987dcd24de273b5f4d1a35ec4dfc122f62a",
+    "isolated_healthy_followup.log": "0cd7149da68d0910ece064141164261773468fe4212982c8385efb09a561122d",
+    "isolated_sdk_tests.log": "cd8860029aac3196328ac1ec9b498ce738b92b92057136379edf747fc8895211",
     "post_trial_flags.json": "970637b392547079299749c0345d95690bc649b510effdd92dfcc1a29ec411ad",
+    "post_trial_flags.log": "a3d26ec9259acf9c539fe386edd009b41966964684c4130023d6c9939d7711a5",
     "post_trial_state.json": "b9d4da38937c78794d0167fea8f2c413b7bc72f56f6eeca75249faa30bb3685e",
+    "post_trial_state.log": "2c651ce4101b06b87ab661e95b2a320eb917e1d4b2dbb5ace2174bd7cd23523f",
     "sztu_handoff_guarded_20261020_01.json": "587f8095cf0d7ad57d7825df6d9dd89cdb1f91a6337153cedf2230a13fd543f4",
     "sztu_handoff_guarded_20261020_01.log": "80b607323d0e08c51ba9e95e393511ff7ad23fb5fc6511e06ad1a533e3bdefa1",
     "sztu_handoff_guarded_20261020_01.sh": "15da079c8f8ea932f72dbcbc359ba3a671264fc3f88f44d54bb7f150b5bca934"
@@ -193,7 +199,15 @@
   },
   "verification": {
     "developer_domain_42": "62 passed (MC guard, restrained trial, gateway); navigation package build passed",
-    "robot_actual_sdk_domain_42": "pending, to be recorded after deployment",
-    "fixture_scope": "Actual mode-transition subset replay with synthetic 20ms source age; not a reconstruction of original source freshness."
-  }
+    "robot_actual_sdk_domain_42": {
+      "initial": "22 passed, 1 failed, 15 deselected, 104.90s",
+      "failure": "healthy fixture: own_wire_lost during zero phase; largest observed own-wire receive gap 0.268907s exceeds existing 0.25s watchdog",
+      "followup": "Healthy fixture alone: 1 passed, 21 deselected, 21.07s",
+      "interpretation": "Mode fault/TRANSITION cases passed; scheduling/readback jitter remains unresolved. Failed run retained; no watchdog relaxation."
+    },
+    "fixture_scope": "Actual mode-transition subset replay with synthetic 20ms source age; not a reconstruction of original source freshness.",
+    "deployed_code_commit": "b638e4e",
+    "robot_build": "sztu_navigation success, existing setuptools tests_require warning"
+  },
+  "archives_match_on_both_hosts": true
 }
