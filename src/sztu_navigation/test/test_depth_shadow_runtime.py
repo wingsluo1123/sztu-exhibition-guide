@@ -1,6 +1,7 @@
 """Isolated ROS 2 streams: valid observations and rejected calibration/time/TF."""
 
 import json
+from collections import deque
 import os
 from pathlib import Path
 import subprocess
@@ -50,6 +51,7 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
                 assert time.monotonic() < deadline
                 rclpy.spin_once(source, timeout_sec=.02)
             started = time.monotonic()
+            pending_transforms = deque()
             while process.poll() is None and time.monotonic() - started < 11:
                 elapsed = time.monotonic() - started
                 stamp = source.get_clock().now().to_msg()
@@ -92,7 +94,11 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
                         v.x, v.y, v.z = xyz
                         q.x, q.y, q.z, q.w = quat
                         transforms.append(transform)
-                    broadcaster.sendTransform(transforms)
+                    pending_transforms.append((elapsed, transforms))
+                # Arrive 100ms later than the sensor messages; the diagnostic
+                # must wait for exact TF and use a still-fresh queued pair.
+                while pending_transforms and pending_transforms[0][0] <= elapsed - .1:
+                    broadcaster.sendTransform(pending_transforms.popleft()[1])
                 publishers['info'].publish(info)
                 publishers['image'].publish(image)
                 publishers['cloud'].publish(cloud)
@@ -113,11 +119,15 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
         assert counts['pairs_observed'] >= 3
         assert counts['validation_rejected'] >= 1
         assert counts['depth_timestamp_rejected'] >= 1
-        assert counts['tf_or_processing_rejected'] >= 1
+        assert counts['waiting_exact_tf'] >= 1
         assert any(row['near_roi_depth_points'] > 0 for row in report['rows'])
         # No old valid observation can be recorded during the final missing-TF period.
         assert max(row['elapsed_s'] for row in report['rows']) < 7
         assert all(max(row['input_ages_at_record_s']) <= .5 for row in report['rows'])
+        # During healthy streaming with delayed TF, observations remain continuous.
+        healthy = [row['depth_stamp_ns'] for row in report['rows'] if row['elapsed_s'] < 2.8]
+        assert len(healthy) >= 5
+        assert max(np.diff(healthy)) / 1e9 < .5
         assert len(report['captures']) >= 1
     finally:
         if process is not None and process.poll() is None:

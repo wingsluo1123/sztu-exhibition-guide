@@ -230,29 +230,46 @@ def run(args, output):
             mono = time.monotonic()
             if mono < next_check:
                 continue
-            next_check = mono + .2  # at most 5 diagnostic pairs/s
+            # Retry exact-TF availability without spending the 5Hz observation
+            # budget on a pair whose TF has not arrived yet. Never block spin.
+            next_check = mono + .02
             for queue in queues.values():
                 while queue and age(queue[0]) > .5:
                     queue.popleft()
             if not all(queues.values()):
                 counts['waiting_inputs'] += 1
                 continue
-            candidates = [(abs(stamp_nanoseconds(i[0].header.stamp)
-                               - stamp_nanoseconds(c[0].header.stamp)), i, c)
-                          for i in queues['depth'] for c in queues['cloud']]
-            gap, image_entry, cloud_entry = min(candidates, key=lambda row: row[0])
-            image, cloud = image_entry[0], cloud_entry[0]
-            depth_ns = stamp_nanoseconds(image.header.stamp)
-            if last_used is not None and depth_ns <= last_used:
-                counts['waiting_new_pair'] += 1
+            candidates = []
+            for image_entry in reversed(queues['depth']):
+                depth_ns = stamp_nanoseconds(image_entry[0].header.stamp)
+                if last_used is not None and depth_ns <= last_used:
+                    continue
+                info_entry = min(queues['info'], key=lambda entry:
+                                 abs(stamp_nanoseconds(entry[0].header.stamp) - depth_ns))
+                info_gap = abs(stamp_nanoseconds(info_entry[0].header.stamp) - depth_ns) / 1e9
+                if info_gap > .05:
+                    continue
+                for cloud_entry in queues['cloud']:
+                    gap = abs(stamp_nanoseconds(cloud_entry[0].header.stamp) - depth_ns)
+                    if gap <= 50_000_000:
+                        candidates.append((depth_ns, gap, info_gap, image_entry, cloud_entry, info_entry))
+            candidates.sort(key=lambda row: (-row[0], row[1]))
+            selected = None
+            for candidate in candidates:
+                image, cloud = candidate[3][0], candidate[4][0]
+                image_time = Time.from_msg(image.header.stamp)
+                checks = [(frame, image_time) for frame in
+                          ('base_link', image.header.frame_id,
+                           'left_ankle_roll_link', 'right_ankle_roll_link')]
+                checks.append((cloud.header.frame_id, Time.from_msg(cloud.header.stamp)))
+                if all(buffer.can_transform('odom', frame, stamp) for frame, stamp in checks):
+                    selected = candidate
+                    break
+            if selected is None:
+                counts['waiting_exact_tf' if candidates else 'waiting_timestamp_pair'] += 1
                 continue
-            info_entry = min(queues['info'], key=lambda entry:
-                             abs(stamp_nanoseconds(entry[0].header.stamp) - depth_ns))
-            info = info_entry[0]
-            info_gap = abs(stamp_nanoseconds(info.header.stamp) - depth_ns) / 1e9
-            if gap > 50_000_000 or info_gap > .05:
-                counts['pair_gap_rejected'] += 1
-                continue
+            depth_ns, gap, info_gap, image_entry, cloud_entry, info_entry = selected
+            image, cloud, info = image_entry[0], cloud_entry[0], info_entry[0]
             entries = (image_entry, cloud_entry, info_entry)
             try:
                 k = validate_camera(image, info, profile)
@@ -297,6 +314,7 @@ def run(args, output):
                 counts['expired_after_processing'] += 1
                 continue
             last_used = depth_ns
+            next_check = mono + .2  # at most 5 completed observations/s
             counts['pairs_observed'] += 1
             result.update(depth_stamp_ns=depth_ns,
                           cloud_stamp_ns=stamp_nanoseconds(cloud.header.stamp),
