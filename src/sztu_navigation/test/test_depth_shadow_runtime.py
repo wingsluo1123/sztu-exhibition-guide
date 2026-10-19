@@ -64,6 +64,7 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
                 info.r = np.eye(3).ravel().tolist()
                 info.p = np.column_stack((np.array(k).reshape(3, 3), np.zeros(3))).ravel().tolist()
                 info.d, info.distortion_model = [0.] * 8, 'plumb_bob'
+                info.roi.do_rectify = True  # actual driver's full-frame convention
                 if 3 <= elapsed < 4.5:
                     info.k[0] = 101.
                 if 4.5 <= elapsed < 6:

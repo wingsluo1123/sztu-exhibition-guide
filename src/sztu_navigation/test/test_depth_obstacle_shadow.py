@@ -81,6 +81,23 @@ def test_expected_camera_profile_accepted():
     np.testing.assert_array_equal(shadow.validate_camera(image, info, profile), K)
 
 
+@pytest.mark.parametrize('explicit_full_size', [False, True])
+def test_full_frame_rectify_hint_preserves_identity_projection(explicit_full_size):
+    image, info, profile = camera()
+    info.roi.do_rectify = True
+    if explicit_full_size:
+        info.roi.width, info.roi.height = image.width, image.height
+    # Independently known centre pixel/axial distance projects identically;
+    # this hint is not permission to accept a true crop or changed D/R/P.
+    k = shadow.validate_camera(image, info, profile)
+    pixels, _, inside = geometry.project([[0, 0, 1]], k, np.eye(3), np.zeros(3), (5, 5))
+    np.testing.assert_array_equal(pixels, [[2, 2]])
+    assert inside.tolist() == [True]
+    info.roi.width = 4
+    with pytest.raises(ValueError):
+        shadow.validate_camera(image, info, profile)
+
+
 def test_known_ray_obstruction_surface_invalid_and_outside_controls():
     depth = np.full((5, 5), 1000, dtype=np.uint16)
     # All centre rays: a surface at z=1 occludes 1.5 and lies past .5.

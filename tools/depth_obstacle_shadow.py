@@ -36,6 +36,11 @@ def validate_camera(image, info, profile):
     expected = geometry.intrinsics(profile['k'])
     p = np.column_stack((k, np.zeros(3)))
     roi = info.roi
+    # RegionOfInterest.msg defines zero size as full resolution. do_rectify
+    # requests a rectified ROI; with D=0, R=I and P=[K|0] it does not change
+    # this full-frame projection. Do not mistake the hint for actual cropping.
+    full_frame_roi = (roi.x_offset == 0 and roi.y_offset == 0
+                      and (roi.width, roi.height) in ((0, 0), (info.width, info.height)))
     if (image.header.frame_id != profile['frame']
             or info.header.frame_id != image.header.frame_id
             or (image.width, image.height) != (profile['width'], profile['height'])
@@ -47,7 +52,7 @@ def validate_camera(image, info, profile):
             or not np.allclose(np.asarray(info.r).reshape(3, 3), np.eye(3), atol=1e-6, rtol=0)
             or not np.allclose(np.asarray(info.p).reshape(3, 4), p, atol=1e-6, rtol=0)
             or info.binning_x not in (0, 1) or info.binning_y not in (0, 1)
-            or any((roi.x_offset, roi.y_offset, roi.width, roi.height, roi.do_rectify))):
+            or not full_frame_roi):
         raise ValueError('camera calibration/frame/profile mismatch')
     return k
 

@@ -20,6 +20,11 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 tools/depth_obstacle_shadow.py 
 16UC1支持大小端和行填充；截断或不合法布局拒绝。0.001 m单位及坐标轴沿用
 10月19日同姿态雷达对照假设，不能替代独立标定。
 
+按Humble的 `sensor_msgs/RegionOfInterest.msg`，ROI宽高为0表示整幅图。
+在D=0、R=I、P=[K|0]且无裁剪时，允许 `roi.do_rectify=true`，它是计算
+校正ROI的提示，不改变当前恒等投影。真实裁剪、非恒等校正或不同内参仍拒绝。
+首轮实机诊断因误把这一提示当作裁剪而拒绝，原报告保留，修正后另存新一轮。
+
 深度和雷达配对时间差不超过50 ms，各输入及处理后的年龄不超过0.5 s，
 拒绝重复、乱序、过期和超过50 ms未来容差的时间戳，同时用单调时钟防止
 排队时间被ROS时钟停滞掩盖。查精确传感器时刻的TF，不回退最新TF。
