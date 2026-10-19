@@ -39,6 +39,12 @@ FAST-LIO2 -> lio_odom_bridge -> /slam/lidar_odom
 视场：空场、遮挡和高度过滤都会改变范围。当前 `live` 和三个覆盖标志仍为
 false，详情见[静态导航空跑](../maps/classroom/diagnostics/20261019/navigation_dry_trial.md)。
 
+2026-10-19晚间已观察到固定防跌保护下静止遥控切换阻尼，操作者随后恢复站立，
+只读检查确认站立、rc输入和零速消息，RViz仍贴合；见
+[恢复记录](../maps/classroom/diagnostics/20261019/post_stand_recovery_summary.json)。
+这项结果不替代运动中遥控接管、地面停车距离、近身感知及身体扫掠验证，
+live和三个覆盖标志仍保持false。
+
 ## 现场要求
 
 启动前由现场人员确认：

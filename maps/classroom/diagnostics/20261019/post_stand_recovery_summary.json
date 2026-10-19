@@ -1,0 +1,393 @@
+{
+  "scope": "Read-only recovery observation after operator independently restored standing. No mode or velocity command, goal, restart or parameter change by assistant.",
+  "operator_reports": {
+    "standing_recovery": "L2+X prepare standing; R2+X stand; already performed by operator.",
+    "rviz": "Position and orientation still correspond; red scan broadly aligns."
+  },
+  "mc": {
+    "duration_s": 6.004241325001203,
+    "counts": {
+      "state": 55,
+      "command": 236,
+      "odom": 50
+    },
+    "fresh_state_count": 55,
+    "action_descriptions": [
+      "STAND_DEFAULT"
+    ],
+    "raw_action_values": [
+      0
+    ],
+    "fsm_values": [
+      4
+    ],
+    "input_sources": [
+      "rc"
+    ],
+    "nonzero_wire_count": 0
+  },
+  "main_observation": {
+    "duration_s": 10.011782661997131,
+    "abort": null,
+    "command_count": 399,
+    "nonzero_or_invalid_commands": 0,
+    "parameters": {
+      "live": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "stopping_margin": {
+        "type": 3,
+        "boolean": false,
+        "double": 0.25
+      }
+    },
+    "stream_metrics": {
+      "/amcl_pose": {
+        "count": 16,
+        "source_age_max_s": 0.560592317,
+        "maximum_receive_gap_s": 0.5847988569985318,
+        "gaps_over_500ms": [
+          {
+            "first_elapsed_s": 3.614101633997052,
+            "next_elapsed_s": 4.124065528998472,
+            "gap_s": 0.5099638950014196,
+            "source_gap_s": 0.599822
+          },
+          {
+            "first_elapsed_s": 6.5192037249980785,
+            "next_elapsed_s": 7.10400258199661,
+            "gap_s": 0.5847988569985318,
+            "source_gap_s": 0.499904
+          },
+          {
+            "first_elapsed_s": 7.524296595998749,
+            "next_elapsed_s": 8.104713916000037,
+            "gap_s": 0.5804173200012883,
+            "source_gap_s": 0.399976
+          },
+          {
+            "first_elapsed_s": 8.546225332000176,
+            "next_elapsed_s": 9.06197358099962,
+            "gap_s": 0.5157482489994436,
+            "source_gap_s": 0.504239
+          }
+        ]
+      },
+      "/sztu/nav_odom": {
+        "count": 81,
+        "source_age_max_s": 0.553611142,
+        "maximum_receive_gap_s": 1.788001990000339,
+        "gaps_over_500ms": [
+          {
+            "first_elapsed_s": 0.40384955299668945,
+            "next_elapsed_s": 2.1918515429970284,
+            "gap_s": 1.788001990000339,
+            "source_gap_s": 1.61729908
+          }
+        ]
+      },
+      "/sztu/safety_scan": {
+        "count": 75,
+        "source_age_max_s": 0.556327618,
+        "maximum_receive_gap_s": 1.7546084030000202,
+        "gaps_over_500ms": [
+          {
+            "first_elapsed_s": 0.4428346659988165,
+            "next_elapsed_s": 2.1974430689988367,
+            "gap_s": 1.7546084030000202,
+            "source_gap_s": 1.715338
+          }
+        ]
+      },
+      "/sztu/scan": {
+        "count": 75,
+        "source_age_max_s": 0.559258928,
+        "maximum_receive_gap_s": 1.7428354330004368,
+        "gaps_over_500ms": [
+          {
+            "first_elapsed_s": 0.45755379799811635,
+            "next_elapsed_s": 2.200389230998553,
+            "gap_s": 1.7428354330004368,
+            "source_gap_s": 1.715338
+          }
+        ]
+      }
+    },
+    "transforms": {
+      "map->sztu_nav_base": {
+        "stamp_ns": 1792423674010574102,
+        "translation": [
+          -1.997294431769612,
+          0.4658121515849558,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.11255741367924711,
+          0.9936452227157533
+        ]
+      },
+      "sztu_nav_odom->sztu_nav_base": {
+        "stamp_ns": 1792423674010574102,
+        "translation": [
+          1.1733939421128694,
+          9.118201464348207,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.25491453255488095,
+          0.9669635882970602
+        ]
+      }
+    }
+  },
+  "timing_followup": {
+    "duration_s": 20.01442595000117,
+    "metrics": {
+      "/Odometry": {
+        "count": 188,
+        "first_elapsed_s": 1.077683044000878,
+        "last_elapsed_s": 20.014312033999886,
+        "source_age_p50_p90_max_s": [
+          0.075370439,
+          0.1735643339,
+          1.173232119
+        ],
+        "maximum_receive_gap_s": 0.874579167997581,
+        "receive_gaps_over_500ms": 1
+      },
+      "/lio/points": {
+        "count": 195,
+        "first_elapsed_s": 1.1132683450014156,
+        "last_elapsed_s": 19.959618447999674,
+        "source_age_p50_p90_max_s": [
+          0.114865581,
+          0.1478138278,
+          0.7226791
+        ],
+        "maximum_receive_gap_s": 0.702586743998836,
+        "receive_gaps_over_500ms": 1
+      },
+      "/sztu/nav_odom": {
+        "count": 178,
+        "first_elapsed_s": 2.629394572999445,
+        "last_elapsed_s": 19.910769702000835,
+        "source_age_p50_p90_max_s": [
+          0.088754748,
+          0.16303531440000002,
+          0.490656343
+        ],
+        "maximum_receive_gap_s": 0.19905132900021272,
+        "receive_gaps_over_500ms": 0
+      },
+      "/slam/lidar_odom": {
+        "count": 173,
+        "first_elapsed_s": 2.8477527700015344,
+        "last_elapsed_s": 19.9029338750006,
+        "source_age_p50_p90_max_s": [
+          0.078249822,
+          0.12130544600000005,
+          0.262434309
+        ],
+        "maximum_receive_gap_s": 0.19779586699951324,
+        "receive_gaps_over_500ms": 0
+      },
+      "/sztu/scan": {
+        "count": 171,
+        "first_elapsed_s": 2.920812741998816,
+        "last_elapsed_s": 19.94044697299978,
+        "source_age_p50_p90_max_s": [
+          0.208653454,
+          0.262273638,
+          0.477369519
+        ],
+        "maximum_receive_gap_s": 0.209959150000941,
+        "receive_gaps_over_500ms": 0
+      },
+      "/sztu/safety_scan": {
+        "count": 171,
+        "first_elapsed_s": 2.921078497001872,
+        "last_elapsed_s": 19.939086901998962,
+        "source_age_p50_p90_max_s": [
+          0.205389254,
+          0.261449005,
+          0.477631625
+        ],
+        "maximum_receive_gap_s": 0.21202354100023513,
+        "receive_gaps_over_500ms": 0
+      }
+    },
+    "publishers": {
+      "/Odometry": [
+        {
+          "name": "laser_mapping",
+          "namespace": "/"
+        }
+      ],
+      "/lio/points": [
+        {
+          "name": "cloud_to_velodyne",
+          "namespace": "/"
+        }
+      ],
+      "/sztu/nav_odom": [
+        {
+          "name": "nav_sensor_adapter",
+          "namespace": "/"
+        }
+      ],
+      "/slam/lidar_odom": [
+        {
+          "name": "lio_odom_bridge",
+          "namespace": "/"
+        }
+      ],
+      "/sztu/scan": [
+        {
+          "name": "nav_sensor_adapter",
+          "namespace": "/"
+        }
+      ],
+      "/sztu/safety_scan": [
+        {
+          "name": "nav_sensor_adapter",
+          "namespace": "/"
+        }
+      ]
+    }
+  },
+  "conclusion": "Standing and rc source observed, wire commands zero, localization visually still aligned. Main observer had an early 1.75s safety-scan gap; follow-up safety scan max receive gap 0.212s and max age 0.478s. No persistent 1.75s gap established; cause and long-run latency remain unresolved.",
+  "state_checks": {
+    "before_post_stand_01": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 197,
+        "cmd_vel": 163
+      },
+      "commit": "380c3a5750387da09e2a4e40b304168b570e363d",
+      "stamp_ns": 1792423642452690820
+    },
+    "after_post_stand_01": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 154,
+        "hardware_rc": 134
+      },
+      "commit": "380c3a5750387da09e2a4e40b304168b570e363d",
+      "stamp_ns": 1792423660888961636
+    }
+  },
+  "hardware_stop_verified": false,
+  "hardware_coverage_verified": false,
+  "remaining": [
+    "Near-body joint sensor visibility and measured humanoid swept volume.",
+    "Depth shadow latency tails; depth is not fused into control.",
+    "Moving independent remote takeover and measured ground stopping.",
+    "Final environment map validity; temporary diagnostic map does not certify free space."
+  ],
+  "artifacts": [
+    {
+      "name": "after_post_stand_01.json",
+      "bytes": 3327,
+      "sha256": "4247c93881350456e6eb2f710d461d55f04606ecb069d2106c0857433192dbbd"
+    },
+    {
+      "name": "after_post_stand_01.log",
+      "bytes": 323635,
+      "sha256": "0abd5f7253ced08d1d2e064757029da744b9d59d218c5e2ab5d9503a501185b3"
+    },
+    {
+      "name": "before_post_stand_01.json",
+      "bytes": 2846,
+      "sha256": "5c60e4f2b1875478a3617777d59c078ae5b91e9f559e1d3066c235c161ca61ce"
+    },
+    {
+      "name": "before_post_stand_01.log",
+      "bytes": 324271,
+      "sha256": "b74f03b7e5532835b5bb87f7af05a8b9d99a5795670b7bd3d9f56f68a2237b44"
+    },
+    {
+      "name": "mc_state_post_stand_01.json",
+      "bytes": 443605,
+      "sha256": "ebba6a58126923352d1d52f8cb8a9c7b0f4f666c729fc9f1c3178783ab83f628"
+    },
+    {
+      "name": "post_stand_mc_01.log",
+      "bytes": 309862,
+      "sha256": "44eedfa3ca75f7cf68dec7966ad403622f8288b0188fa08f5f2c569e5a8754ee"
+    },
+    {
+      "name": "post_stand_sensor_01.json",
+      "bytes": 221248,
+      "sha256": "02c9e27a2c93e7cbab29fd680dcff7d1b057c57021c8275e1f83c201c1276745"
+    },
+    {
+      "name": "post_stand_sensor_01.log",
+      "bytes": 336492,
+      "sha256": "ead949d4eac036ad9b60febfa4475848fc91c1a2f000e1301dcf52e64ef5725d"
+    },
+    {
+      "name": "post_stand_timing_01.json",
+      "bytes": 155241,
+      "sha256": "962cc3caaf6d40efc3b73d69e4591d61f948db32087def67641da19f4e405388"
+    },
+    {
+      "name": "post_stand_timing_01.log",
+      "bytes": 4274074,
+      "sha256": "7c8c3c18546d4b8fccfe2e6288cda859eabc69217855be93d028827aa80c9aa3"
+    },
+    {
+      "name": "post_stand_wrapper_01.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "sztu_post_stand_readonly_20261019_01.sh",
+      "bytes": 1418,
+      "sha256": "68df17fc935677715a6794d1efa957c4942ca41d1f3409e1bb4ca9132b76d56b"
+    },
+    {
+      "name": "sztu_post_stand_timing_20261019_01.py",
+      "bytes": 1875,
+      "sha256": "f0bb58e1f88dccb99406c45e3e5e71a8d57ce58b9a0b0cb53a56cd48caebc6dc"
+    },
+    {
+      "name": "sztu_post_stand_timing_20261019_01.sh",
+      "bytes": 844,
+      "sha256": "3eec25a132a1744a513b40473dcbbe13fdb79eb7231652ab2e910e1aac380c43"
+    }
+  ],
+  "artifact_verification": "14 files SHA-256 equal on robot and developer machine."
+}
