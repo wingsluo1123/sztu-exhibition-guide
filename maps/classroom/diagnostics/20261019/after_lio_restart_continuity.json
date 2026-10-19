@@ -1,0 +1,133 @@
+{
+  "scope": "30 second read-only observation; no independent physical reference",
+  "summary": {
+    "/slam/lidar_odom": {
+      "count": 282,
+      "duration": 27.8850099350002,
+      "max_source_age": 0.9905009269714355,
+      "max_receive_gap": 0.3708251999996719,
+      "first_xyz": [
+        -0.02112353402183263,
+        0.05418767914161167,
+        -0.2991312686307174
+      ],
+      "last_xyz": [
+        -0.019807126673525428,
+        0.06455175975934396,
+        -0.2985237195287665
+      ],
+      "xyz_span": [
+        0.010491394654501638,
+        0.014955649835707907,
+        0.006762462169422556
+      ],
+      "max_step_3d": 0.006219402783732559
+    },
+    "/cmd_vel": {
+      "count": 1354,
+      "duration": 27.840631017000305,
+      "maximum_abs_command": 0.0
+    },
+    "/amcl_pose": {
+      "count": 56,
+      "duration": 27.39731528700031,
+      "max_source_age": 0.7301077842712402,
+      "max_receive_gap": 0.6529430520004098,
+      "first_xyz": [
+        -1.3426729214188062,
+        0.48205782328338503,
+        0.0
+      ],
+      "last_xyz": [
+        -1.3565765400722767,
+        0.4917660924042611,
+        0.0
+      ],
+      "xyz_span": [
+        0.019925382119825308,
+        0.01625764037398253,
+        0.0
+      ],
+      "max_step_3d": 0.010066262411652227
+    },
+    "/sztu/nav_odom": {
+      "count": 276,
+      "duration": 27.37149518699971,
+      "max_source_age": 0.5311832427978516,
+      "max_receive_gap": 0.38416169500032993,
+      "first_xyz": [
+        -0.021817848642073066,
+        0.05722366727004588,
+        0.0
+      ],
+      "last_xyz": [
+        -0.019807126673525428,
+        0.06455175975934396,
+        0.0
+      ],
+      "xyz_span": [
+        0.010491394654501638,
+        0.014955649835707907,
+        0.0
+      ],
+      "max_step_3d": 0.004591638527851242
+    },
+    "/sztu/scan": {
+      "count": 275,
+      "duration": 27.35696756299967,
+      "max_source_age": 0.6268184185028076,
+      "max_receive_gap": 0.47452178499952424
+    },
+    "/Odometry": {
+      "count": 273,
+      "duration": 26.852203611000732,
+      "max_source_age": 0.4264068603515625,
+      "max_receive_gap": 0.1551558360006311,
+      "first_xyz": [
+        0.03132381186559321,
+        0.029609379379772264,
+        -0.09614473591792719
+      ],
+      "last_xyz": [
+        0.030805047932170444,
+        0.03682019869333995,
+        -0.09659554321918619
+      ],
+      "xyz_span": [
+        0.006644572232751923,
+        0.014606749742526032,
+        0.010440494643571399
+      ],
+      "max_step_3d": 0.0048133076026934405
+    }
+  },
+  "scan_match": {
+    "endpoints_in_map": 177,
+    "fraction_within_0_15m": 0.8418079096045198,
+    "median_distance": 0.0
+  },
+  "operator_report": "Operator confirmed manual movement between LIO recovery and new RViz initialization. The two sparse snapshots do not measure the intervening trajectory.",
+  "raw_record_robot_path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_1600_recovery/continuity.json",
+  "ages_after_5_seconds": {
+    "/slam/lidar_odom": {
+      "count": 249,
+      "max_source_age": 0.16857194900512695
+    },
+    "/amcl_pose": {
+      "count": 50,
+      "max_source_age": 0.27132582664489746
+    },
+    "/sztu/nav_odom": {
+      "count": 249,
+      "max_source_age": 0.1820986270904541
+    },
+    "/sztu/scan": {
+      "count": 249,
+      "max_source_age": 0.3000936508178711
+    },
+    "/Odometry": {
+      "count": 249,
+      "max_source_age": 0.13710522651672363
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "kind": "ComputePathToPose only; no motion goals",
+  "live": false,
+  "current_start_xy": [
+    -1.3170025767183364,
+    0.483874303444347
+  ],
+  "start_static": {
+    "value": 0,
+    "grid_center_clearance": 0.800000011920929
+  },
+  "start_cost": 0,
+  "goals": [
+    {
+      "name": "classroom_test_02",
+      "xy": [
+        -1.516,
+        1.394
+      ],
+      "static": {
+        "value": 0,
+        "grid_center_clearance": 1.0965856263134643
+      },
+      "accepted": true,
+      "status": 4,
+      "poses": 37,
+      "length": 0.9491611769841803,
+      "start_xy": [
+        -1.305099752640725,
+        0.4900002771615988
+      ],
+      "end_xy": [
+        -1.516,
+        1.394
+      ],
+      "minimum_static_grid_clearance": 0.8015609890382592,
+      "static_invalid_samples": 0,
+      "dynamic_invalid_samples": 0,
+      "maximum_dynamic_cost": 0,
+      "costmap_update_age": 0.007284443644775401
+    },
+    {
+      "name": "classroom_test_03",
+      "xy": [
+        -0.483,
+        1.533
+      ],
+      "static": {
+        "value": 0,
+        "grid_center_clearance": 1.274754897393524
+      },
+      "accepted": true,
+      "status": 4,
+      "poses": 53,
+      "length": 1.3491248191304759,
+      "start_xy": [
+        -1.305099752640725,
+        0.4900002771615988
+      ],
+      "end_xy": [
+        -0.483,
+        1.533
+      ],
+      "minimum_static_grid_clearance": 0.8514693309842017,
+      "static_invalid_samples": 0,
+      "dynamic_invalid_samples": 0,
+      "maximum_dynamic_cost": 0,
+      "costmap_update_age": 0.006733893484985348
+    },
+    {
+      "name": "outside_map_negative_control",
+      "xy": [
+        14.594900469386577,
+        0.483874303444347
+      ],
+      "static": null,
+      "accepted": true,
+      "status": 6,
+      "poses": 0
+    }
+  ],
+  "map_hashes": {
+    "map.pgm": "8f743962d34a4b32276c28d2a7b2f5cc600b708679ee1ecf6c1d9054eb47a5cb",
+    "map.yaml": "b5cdac79c8ca741a32398aaa3effca7dca9eed1af5d5a1d8933cd0bee6c3bfbe"
+  },
+  "scan_matching": {
+    "error": "Lookup would require extrapolation into the future.  Requested time 1792397866.815695 but the latest data is at time 1792397866.811722, when looking up transform from frame [sztu_nav_base] to frame [map]"
+  },
+  "maximum_abs_cmd_vel_observed": 0.0,
+  "amcl_age_at_end": 0.5665874095001221
+}

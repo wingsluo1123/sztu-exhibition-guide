@@ -1,0 +1,61 @@
+{
+  "kind": "NavigateToPose dry run; live=false; no hardware output",
+  "goal_xy": [
+    -1.516,
+    1.394
+  ],
+  "cmd_vel_consumers": [],
+  "observer_subscription_present": true,
+  "goal_accepted": true,
+  "cancel_return_code": 0,
+  "canceling_goals": 1,
+  "result_status": 5,
+  "live_parameter_at_end": false,
+  "commands": {
+    "/cmd_vel": {
+      "count": 649,
+      "maximum_abs": 0.0,
+      "last_second_maximum_abs": 0.0,
+      "final_observed_values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "final_observed_phase": "after_cancel"
+    },
+    "/cmd_vel_nav_raw": {
+      "count": 51,
+      "maximum_abs": 0.05,
+      "last_second_maximum_abs": null,
+      "final_observed_values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "final_observed_phase": "cancel"
+    },
+    "/cmd_vel_nav": {
+      "count": 105,
+      "maximum_abs": 0.05,
+      "last_second_maximum_abs": 0.015000000000000006,
+      "final_observed_values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "final_observed_phase": "after_cancel"
+    }
+  },
+  "scope_limit": "Hardware output disabled throughout. This confirms the Nav2 action, command generation, safety rejection and cancellation only; it does not measure hardware motion or stopping.",
+  "diagnostic_correction": "First preflight counted its own read-only /cmd_vel subscription and aborted before any goal. The corrected check excludes this exact observer name and namespace. The failed preflight is retained on the robot.",
+  "raw_record_robot_path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_1600_recovery/action_dryrun.json"
+}
