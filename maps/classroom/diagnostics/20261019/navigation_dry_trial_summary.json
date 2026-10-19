@@ -1,0 +1,1175 @@
+{
+  "command_path": {
+    "scope": "Read-only live endpoint and per-writer traffic observation, no commands, goals, registration, or MC configuration changes. Endpoint discovery and observed traffic do not prove winning arbitration or physical stopping.",
+    "duration": 25.01596382400021,
+    "parameters": {
+      "live": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "boolean": false,
+        "double": 0.0
+      },
+      "stopping_margin": {
+        "type": 3,
+        "boolean": false,
+        "double": 0.25
+      }
+    },
+    "graph": {
+      "/cmd_vel": {
+        "publishers": [
+          {
+            "name": "sztu_safety_gateway",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              27,
+              133,
+              58,
+              69,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              22,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "controller_server_ros_node",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              192,
+              18,
+              70,
+              120,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              18,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ],
+        "subscribers": [
+          {
+            "name": "sztu_command_path_readonly",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              12,
+              236,
+              85,
+              30,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              18,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ]
+      },
+      "/cmd_vel_nav": {
+        "publishers": [
+          {
+            "name": "velocity_smoother",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              243,
+              132,
+              32,
+              68,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              29,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ],
+        "subscribers": [
+          {
+            "name": "sztu_command_path_readonly",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              12,
+              236,
+              85,
+              30,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              19,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "sztu_safety_gateway",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              27,
+              133,
+              58,
+              69,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              23,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ]
+      },
+      "/cmd_vel_nav_raw": {
+        "publishers": [
+          {
+            "name": "controller_server",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              234,
+              132,
+              245,
+              240,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              77,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "behavior_server",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              236,
+              132,
+              202,
+              249,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              43,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ],
+        "subscribers": [
+          {
+            "name": "sztu_command_path_readonly",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              12,
+              236,
+              85,
+              30,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              20,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "velocity_smoother",
+            "namespace": "/",
+            "type": "geometry_msgs/msg/Twist",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              243,
+              132,
+              32,
+              68,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              30,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ]
+      },
+      "/aima/mc/locomotion/velocity": {
+        "publishers": [
+          {
+            "name": "soc0_rc3339",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              93,
+              115,
+              11,
+              13,
+              143,
+              132,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              25,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "app_proxy",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              93,
+              115,
+              234,
+              15,
+              255,
+              87,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              52,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "soc2_interaction_slave1887",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              181,
+              165,
+              95,
+              7,
+              75,
+              185,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              37,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "aimrt_planning_planning_node4800",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              192,
+              18,
+              70,
+              120,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              170,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ],
+        "subscribers": [
+          {
+            "name": "mc_ros2_node3341",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              93,
+              115,
+              13,
+              13,
+              93,
+              175,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              35,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "soc0_drp_ros2_node2220",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              93,
+              115,
+              172,
+              8,
+              99,
+              101,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              32,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "soc2_drp_ros2_node3129",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              181,
+              165,
+              57,
+              12,
+              66,
+              114,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              35,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "sztu_command_path_readonly",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              12,
+              236,
+              85,
+              30,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              23,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          },
+          {
+            "name": "soc1_drp_ros2_node3090",
+            "namespace": "/",
+            "type": "aimdk_msgs/msg/McLocomotionVelocity",
+            "gid": [
+              1,
+              15,
+              189,
+              96,
+              18,
+              12,
+              76,
+              156,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              35,
+              4,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "qos": "QoSProfile(history=HistoryPolicy.UNKNOWN, depth=0, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+          }
+        ]
+      }
+    },
+    "errors": [],
+    "traffic": {
+      "/cmd_vel": {
+        "count": 1081,
+        "sources": [],
+        "nonzero": 0
+      },
+      "/cmd_vel_nav": {
+        "count": 0,
+        "sources": [],
+        "nonzero": 0
+      },
+      "/cmd_vel_nav_raw": {
+        "count": 0,
+        "sources": [],
+        "nonzero": 0
+      },
+      "/aima/mc/locomotion/velocity": {
+        "count": 1092,
+        "sources": [
+          "rc"
+        ],
+        "nonzero": 0
+      }
+    },
+    "return_angles": {
+      "count": 222,
+      "min_degrees": -46.314334607585494,
+      "max_degrees": 44.31153184428014,
+      "five_occupied_sectors": 222,
+      "meaning": "Return endpoints only, not optical field of view, visibility completeness, or free space."
+    },
+    "writer_attribution": "Unavailable: installed MessageInfo dictionaries did not supply publisher_gid; all recorded GIDs empty. Endpoint GIDs are inventory only, not per-sample writer attribution."
+  },
+  "navigation_dry_trial": {
+    "scope": "One NavigateToPose software-only trial, <=6 seconds before cancel. live=false and all coverage flags false verified before goal; no hardware velocity publication, source registration, MC setting, initialpose, or map changes. Does not establish physical motion or stopping.",
+    "parameters_before": {
+      "live": {
+        "type": 1,
+        "value": false
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "value": false
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "value": false
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "value": false
+      }
+    },
+    "subscribers_before": {
+      "/cmd_vel": [
+        {
+          "name": "sztu_bounded_navigation_dry_trial",
+          "namespace": "/"
+        }
+      ],
+      "/cmd_vel_nav": [
+        {
+          "name": "sztu_safety_gateway",
+          "namespace": "/"
+        },
+        {
+          "name": "sztu_bounded_navigation_dry_trial",
+          "namespace": "/"
+        }
+      ],
+      "/cmd_vel_nav_raw": [
+        {
+          "name": "sztu_bounded_navigation_dry_trial",
+          "namespace": "/"
+        },
+        {
+          "name": "velocity_smoother",
+          "namespace": "/"
+        }
+      ]
+    },
+    "goal": [
+      -1.808536046162038,
+      0.26433531774102187,
+      -0.38911455057664773
+    ],
+    "parameters_immediately_before_goal": {
+      "live": {
+        "type": 1,
+        "value": false
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "value": false
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "value": false
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "value": false
+      }
+    },
+    "accepted": true,
+    "cancel_response": 0,
+    "canceling_count": 1,
+    "action_status": 5,
+    "parameters_after": {
+      "live": {
+        "type": 1,
+        "value": false
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "value": false
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "value": false
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "value": false
+      }
+    },
+    "duration": 10.52919195999857,
+    "errors": [],
+    "current_source_queries": [
+      {
+        "name": "rc",
+        "priority": 80,
+        "timeout_ms": 1000,
+        "code": 0,
+        "state": 0,
+        "response_age": 0.00616476
+      }
+    ],
+    "traffic": {
+      "/cmd_vel": {
+        "count": 443,
+        "nonzero": 0,
+        "max_abs": 0.0,
+        "last": {
+          "topic": "/cmd_vel",
+          "t": 10.528102437001507,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "source": null
+        }
+      },
+      "/cmd_vel_nav": {
+        "count": 140,
+        "nonzero": 139,
+        "max_abs": 0.25,
+        "last": {
+          "topic": "/cmd_vel_nav",
+          "t": 9.420443258000887,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "source": null
+        }
+      },
+      "/cmd_vel_nav_raw": {
+        "count": 61,
+        "nonzero": 60,
+        "max_abs": 0.25,
+        "last": {
+          "topic": "/cmd_vel_nav_raw",
+          "t": 8.463331694998487,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "source": null
+        }
+      },
+      "/aima/mc/locomotion/velocity": {
+        "count": 452,
+        "nonzero": 0,
+        "max_abs": 0.0,
+        "last": {
+          "topic": "/aima/mc/locomotion/velocity",
+          "t": 10.528325051000138,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "source": "rc"
+        }
+      }
+    }
+  },
+  "raw_evidence": {
+    "command_path_readonly.json": {
+      "developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/command_path_readonly.json",
+      "sha256": "6ccd64f9cbcd51ce7604ecbb5910b5008f2ce1fbc385f1a40d484469f2cce3a0"
+    },
+    "navigation_dry_trial.json": {
+      "developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/navigation_dry_trial.json",
+      "sha256": "f798af11f3837e156c03163ec7889fd43c4a63e528f56a081a777b0b83917077"
+    },
+    "costmap_loaded_params.json": {
+      "developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/costmap_loaded_params.json",
+      "sha256": "56f78701373632723b853cfaca2fe00f29bcdd5f6080310eb46e2d2bf7cf48fd"
+    },
+    "sztu_command_path_readonly_20261019.py": {
+      "archived_developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/sztu_command_path_readonly_20261019.py",
+      "sha256": "da89f21fa5bda4a1b64710198a14f8081cf7efb773a1f1d4690b346cee53084d"
+    },
+    "sztu_navigation_dry_trial_20261019.py": {
+      "archived_developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/sztu_navigation_dry_trial_20261019.py",
+      "sha256": "777e75f906051ff2c12369aa79a5b17c956a80143ed5422a50672f75bfcd5a1f"
+    },
+    "sztu_costmap_params_readonly_20261019.py": {
+      "archived_developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/sztu_costmap_params_readonly_20261019.py",
+      "sha256": "0ef73415220ada234935992179d3e5371b04b83dc024ca9954546ddc1d335755"
+    },
+    "local_costmap_params_retry.json": {
+      "developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/local_costmap_params_retry.json",
+      "sha256": "923e7ca163cb9a05dd283f08a4c3424764f8a89a68507c55a116aa91ef664f8d"
+    },
+    "depth_readonly.json": {
+      "developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/depth_readonly.json",
+      "sha256": "f0f857cd65a6743109f95731ddf557a7ab3acceb908b7e65c979f206d30ec38d"
+    },
+    "depth_readonly.npz": {
+      "developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/depth_readonly.npz",
+      "sha256": "0fd9eacdafb9204e3fe93c179ceacc841b3e5d7d119e972e916a56ca99fc7cc4"
+    },
+    "sztu_depth_readonly_20261019.py": {
+      "archived_developer_path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/sztu_depth_readonly_20261019.py",
+      "sha256": "a8b35c9abbd0ce9e639e6e801036ea7ab89f63fec4698cd404f86f322e3bb7a3"
+    }
+  },
+  "costmap_loaded_params.json": {
+    "/local_costmap/local_costmap": {
+      "error": "response unavailable"
+    },
+    "/global_costmap/global_costmap": {
+      "obstacle_layer.scan.topic": {
+        "type": 4,
+        "string": "/sztu/safety_scan",
+        "double": 0.0,
+        "boolean": false
+      },
+      "obstacle_layer.scan.expected_update_rate": {
+        "type": 3,
+        "string": "",
+        "double": 0.5,
+        "boolean": false
+      },
+      "obstacle_layer.scan.observation_persistence": {
+        "type": 3,
+        "string": "",
+        "double": 0.0,
+        "boolean": false
+      },
+      "obstacle_layer.scan.inf_is_valid": {
+        "type": 1,
+        "string": "",
+        "double": 0.0,
+        "boolean": false
+      },
+      "obstacle_layer.enabled": {
+        "type": 1,
+        "string": "",
+        "double": 0.0,
+        "boolean": true
+      }
+    },
+    "/amcl": {
+      "scan_topic": {
+        "type": 4,
+        "string": "/sztu/scan",
+        "double": 0.0,
+        "boolean": false
+      }
+    },
+    "hardware_range_topics": [
+      {
+        "topic": "/aima/hal/sensor/lidar_chest_front/lidar_pointcloud",
+        "types": [
+          "sensor_msgs/msg/PointCloud2"
+        ],
+        "publishers": [
+          {
+            "name": "soc1_hal_sensor_orin2832",
+            "namespace": "/"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/lidar_chest_front/lidar_pointcloud_down_sampling",
+        "types": [
+          "sensor_msgs/msg/PointCloud2"
+        ],
+        "publishers": [
+          {
+            "name": "soc1_hal_sensor_orin2832",
+            "namespace": "/"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/rgb_head_front_center/camera_info",
+        "types": [
+          "sensor_msgs/msg/CameraInfo"
+        ],
+        "publishers": [
+          {
+            "name": "soc2_hal_sensor2142",
+            "namespace": "/"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/rgb_head_rear/camera_info",
+        "types": [
+          "sensor_msgs/msg/CameraInfo"
+        ],
+        "publishers": [
+          {
+            "name": "soc1_hal_camera3513",
+            "namespace": "/"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/rgbd_head_front/depth_camera_info",
+        "types": [
+          "sensor_msgs/msg/CameraInfo"
+        ],
+        "publishers": [
+          {
+            "name": "camera",
+            "namespace": "/camera"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/rgbd_head_front/depth_image",
+        "types": [
+          "sensor_msgs/msg/Image"
+        ],
+        "publishers": [
+          {
+            "name": "camera",
+            "namespace": "/camera"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/rgbd_head_front/rgb_camera_info",
+        "types": [
+          "sensor_msgs/msg/CameraInfo"
+        ],
+        "publishers": [
+          {
+            "name": "camera",
+            "namespace": "/camera"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/stereo_head_front_left/camera_info",
+        "types": [
+          "sensor_msgs/msg/CameraInfo"
+        ],
+        "publishers": [
+          {
+            "name": "soc1_hal_camera3513",
+            "namespace": "/"
+          }
+        ]
+      },
+      {
+        "topic": "/aima/hal/sensor/stereo_head_front_right/camera_info",
+        "types": [
+          "sensor_msgs/msg/CameraInfo"
+        ],
+        "publishers": [
+          {
+            "name": "soc1_hal_camera3513",
+            "namespace": "/"
+          }
+        ]
+      }
+    ]
+  },
+  "local_costmap_params_retry.json": {
+    "obstacle_layer.scan.topic": {
+      "type": 4,
+      "string": "/sztu/safety_scan",
+      "double": 0.0,
+      "boolean": false
+    },
+    "obstacle_layer.scan.expected_update_rate": {
+      "type": 3,
+      "string": "",
+      "double": 0.5,
+      "boolean": false
+    },
+    "obstacle_layer.scan.observation_persistence": {
+      "type": 3,
+      "string": "",
+      "double": 0.0,
+      "boolean": false
+    },
+    "obstacle_layer.scan.inf_is_valid": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "boolean": false
+    },
+    "obstacle_layer.enabled": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "boolean": true
+    }
+  },
+  "depth_readonly": {
+    "scope": "Read-only depth image, camera calibration and exact-image-time base_link TF inventory. Raw depth units not yet validated; no fusion, coverage certification or navigation output enabled.",
+    "duration": 10.213852802000474,
+    "camera_info": [
+      {
+        "frame": "rgbd_depth_head_front",
+        "width": 1280,
+        "height": 720,
+        "k": [
+          624.4961547851562,
+          0.0,
+          638.5,
+          0.0,
+          624.4961547851562,
+          360.5,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "p": [
+          624.4961547851562,
+          0.0,
+          638.5,
+          0.0,
+          0.0,
+          624.4961547851562,
+          360.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "d": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "distortion_model": "plumb_bob"
+      }
+    ],
+    "first_tf_errors": [
+      "\"rgbd_depth_head_front\" passed to lookupTransform argument source_frame does not exist. ",
+      "\"rgbd_depth_head_front\" passed to lookupTransform argument source_frame does not exist. ",
+      "Lookup would require extrapolation into the future.  Requested time 1792416074.461994 but the latest data is at time 1792416074.413455, when looking up transform from frame [rgbd_depth_head_front] to frame [base_link]",
+      "Lookup would require extrapolation into the future.  Requested time 1792416074.495365 but the latest data is at time 1792416074.413455, when looking up transform from frame [rgbd_depth_head_front] to frame [base_link]"
+    ],
+    "last_depth": {
+      "positive_finite": 815240,
+      "total": 921600,
+      "raw_unit_percentiles": [
+        1013.0,
+        1098.0,
+        1720.0,
+        3343.0,
+        8925.0
+      ]
+    },
+    "image_count": 184,
+    "exact_time_transform_count": 173,
+    "age_max": 0.879752412,
+    "age_median": 0.053992528,
+    "over_half_second": 20
+  }
+}

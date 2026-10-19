@@ -89,7 +89,12 @@ FRONT_ARC_MAX_HEADING_CHANGE = 0.45
 
 
 def front_scan_sectors(points):
-    """Bucket planar points into the five equal sectors of a 120-degree cone."""
+    """Bucket returns in a 120-degree cone; this is a liveness heuristic.
+
+    Five occupied buckets do not establish a 120-degree field of view,
+    continuous visibility, or near-body clearance. Coverage flags require
+    separate sensor and swept-body validation, including height and occlusion.
+    """
     span = FRONT_SCAN_MAX - FRONT_SCAN_MIN
     return {min(FRONT_SCAN_SECTORS - 1,
                 int((angle - FRONT_SCAN_MIN) / span * FRONT_SCAN_SECTORS))
@@ -99,12 +104,13 @@ def front_scan_sectors(points):
 
 
 def limit_front_arc_command(forward, angular, horizon=1.0):
-    """Clamp a command to what a single 120-degree forward sensor can justify.
+    """Apply the configured front-arc kinematic limits.
 
     A circular footprint sweeps no new ground when it rotates about its own
-    centre, so in-place rotation only needs a bounded rate.  Arc motion does
-    move the footprint into unobserved space, so both its curvature and the
-    heading change over one reaction horizon are capped.
+    centre. That model alone does not validate a humanoid's feet/body sweep
+    or visibility of its surroundings. The caller must independently validate
+    coverage before enabling this mode. Arc curvature and heading change over
+    one reaction horizon are capped; these limits do not certify visibility.
     """
     if not (math.isfinite(forward) and math.isfinite(angular)):
         return 0.0, 0.0
