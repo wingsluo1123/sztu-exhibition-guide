@@ -1,0 +1,889 @@
+{
+  "scope": "Read-only timing attribution; no control outputs or coverage certification.",
+  "summary_commit": "5f0572c",
+  "software_validation": "33 passed in 22.88s, domain 42; includes slow-storage and direct-odometry controls",
+  "runs": {
+    "run_05": {
+      "counts": {
+        "depth_received": 616,
+        "depth_timestamp_rejected": 14,
+        "cloud_received": 277,
+        "cloud_timestamp_rejected": 4,
+        "info_received": 608,
+        "info_timestamp_rejected": 8,
+        "waiting_inputs": 37,
+        "waiting_timestamp_pair": 11,
+        "waiting_exact_tf": 147,
+        "pairs_observed": 114,
+        "expired_after_processing": 1
+      },
+      "first_errors": [],
+      "driver_checks": [
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 0.2688699579994136,
+          "stamp_ns": 1792421274542519022
+        },
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 0.057967181001004064,
+          "stamp_ns": 1792421304749316374
+        }
+      ],
+      "source_sha256": {
+        "depth_obstacle_shadow.py": "7e9f96477aafca8b76a6265523a91234446eaebbd86a705cd84288468c01081d",
+        "analyze_depth_lidar_pairs.py": "31752cc4aa79d2896626336660b38f2d6fcfffeca22f7761fd2cb4f93df02770",
+        "depth_shadow_head_front.json": "021c5297b8a0404c6486737fc58a90938f5d8fecad1d5ba7a74c01b881b6ca27",
+        "ground_plane.py": "263a8ea2dc45ea3ff17885418d191651c7f0997e19d8407fa03a3c72a392fa7b",
+        "nav_geometry.py": "ed12ffefd118566d56feca917f334a5f685d4a8bbaab28a70b2812b692ff6932",
+        "message_validation.py": "75eefe7fc334ce94e3bcda2342e331c94f6c6c448628c504b9ce405ebf1eaea1"
+      },
+      "timing_summary_s": {
+        "depth_source_age_at_callback_s": {
+          "count": 616,
+          "median": 0.0491428805,
+          "p90": 0.151219695,
+          "max": 0.876374414
+        },
+        "cloud_source_age_at_callback_s": {
+          "count": 277,
+          "median": 0.13358192,
+          "p90": 0.18425603640000002,
+          "max": 0.807201299
+        },
+        "info_source_age_at_callback_s": {
+          "count": 608,
+          "median": 0.039784685,
+          "p90": 0.09759992750000009,
+          "max": 0.616240679
+        },
+        "selection_s": {
+          "count": 273,
+          "median": 0.0009693829997559078,
+          "p90": 0.005212684400612489,
+          "max": 0.019890461000613868
+        },
+        "ground_fit_s": {
+          "count": 115,
+          "median": 0.009900398999889148,
+          "p90": 0.02223602380036028,
+          "max": 0.061048183000821155
+        },
+        "validation_s": {
+          "count": 115,
+          "median": 0.0012841589996241964,
+          "p90": 0.0060691734004649335,
+          "max": 0.015769859001011355
+        },
+        "transforms_s": {
+          "count": 115,
+          "median": 0.003427342002396472,
+          "p90": 0.014280754400533625,
+          "max": 0.021979639001074247
+        },
+        "cloud_projection_s": {
+          "count": 115,
+          "median": 0.005761434000305599,
+          "p90": 0.013014821199612926,
+          "max": 0.022300265001831576
+        },
+        "summarize_s": {
+          "count": 115,
+          "median": 0.02599741000085487,
+          "p90": 0.0549468311990495,
+          "max": 0.10443717900125193
+        },
+        "processing_s": {
+          "count": 115,
+          "median": 0.05159730900049908,
+          "p90": 0.09398933179982129,
+          "max": 0.17805388000124367
+        },
+        "capture_write_and_hash_s": {
+          "count": 3,
+          "median": 0.2612499829992885,
+          "p90": 0.26998434380220715,
+          "max": 0.2721679340029368
+        }
+      },
+      "exact_tf_missing_poll_counts": {
+        "base_link": 533,
+        "rgbd_depth_head_front": 533,
+        "left_ankle_roll_link": 533,
+        "right_ankle_roll_link": 533,
+        "lidar_chest_front": 642
+      },
+      "timing_scope": "Callback source age includes driver/transport/executor delay; these components are not separately observable here. TF wait is first failed poll to selection for the selected pair, not arrival latency. Stage summaries include completed stages of rejected attempts too. Capture writing follows row freshness validation and blocks this executor.",
+      "observations": 114,
+      "observation_window_s": null,
+      "duration_s": 30.075886946997343,
+      "runtime_commit": "dbe62ba1a08c044414b024172236870bcfbe1ef9",
+      "record_interval_s": {
+        "min": 0.15088280200143345,
+        "median": 0.2167801409996173,
+        "p90": 0.30968040019943144,
+        "max": 0.5737008310024976
+      },
+      "sensor_stamp_interval_s": {
+        "min": 0.03337088,
+        "median": 0.200224,
+        "p90": 0.3937732095999999,
+        "max": 0.667414016
+      },
+      "effective_input_age_s": {
+        "min": 0.18394412999987253,
+        "median": 0.3191205365001224,
+        "p90": 0.39832157400014695,
+        "max": 0.4699948070010578
+      },
+      "observed_tf_wait_s": {
+        "min": 0.0,
+        "median": 0.0,
+        "p90": 0.0766446286987048,
+        "max": 0.2222565010015387
+      },
+      "source_ages_at_callback_s": {
+        "depth": {
+          "min": 0.030738191,
+          "median": 0.043391040000000006,
+          "p90": 0.07857334550000002,
+          "max": 0.267056665
+        },
+        "cloud": {
+          "min": 0.109071152,
+          "median": 0.1320097885,
+          "p90": 0.1751012034,
+          "max": 0.214097866
+        },
+        "info": {
+          "min": 0.024388648,
+          "median": 0.0353295035,
+          "p90": 0.0576730889,
+          "max": 0.25927978
+        }
+      },
+      "queue_residence_at_selection_s": {
+        "depth": {
+          "min": 0.023201963002065895,
+          "median": 0.17019389450069866,
+          "p90": 0.24641634530089504,
+          "max": 0.3149412790007773
+        },
+        "cloud": {
+          "min": 0.0008335640013683587,
+          "median": 0.11098212500110094,
+          "p90": 0.15397717440064299,
+          "max": 0.2684765600024548
+        },
+        "info": {
+          "min": 0.022621559000981506,
+          "median": 0.18667371000083222,
+          "p90": 0.2594362096009718,
+          "max": 0.31873364800048876
+        }
+      },
+      "raw_pairs_reproduced": [
+        "pair_0.npz",
+        "pair_1.npz",
+        "pair_2.npz"
+      ]
+    },
+    "run_06": {
+      "counts": {
+        "cloud_received": 309,
+        "depth_received": 666,
+        "depth_timestamp_rejected": 8,
+        "info_received": 659,
+        "info_timestamp_rejected": 9,
+        "waiting_exact_tf": 136,
+        "waiting_inputs": 2,
+        "waiting_timestamp_pair": 2,
+        "pairs_observed": 127,
+        "expired_after_processing": 2
+      },
+      "first_errors": [],
+      "driver_checks": [
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 2.7827982010021515,
+          "stamp_ns": 1792421452904708469
+        },
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 0.03923405300156446,
+          "stamp_ns": 1792421483112360758
+        }
+      ],
+      "source_sha256": {
+        "depth_obstacle_shadow.py": "dd9c78501b2c902d9e3573183acec6b2c0ff2bf03b62568ba372ad80da4bd978",
+        "analyze_depth_lidar_pairs.py": "31752cc4aa79d2896626336660b38f2d6fcfffeca22f7761fd2cb4f93df02770",
+        "depth_shadow_head_front.json": "021c5297b8a0404c6486737fc58a90938f5d8fecad1d5ba7a74c01b881b6ca27",
+        "ground_plane.py": "263a8ea2dc45ea3ff17885418d191651c7f0997e19d8407fa03a3c72a392fa7b",
+        "nav_geometry.py": "ed12ffefd118566d56feca917f334a5f685d4a8bbaab28a70b2812b692ff6932",
+        "message_validation.py": "75eefe7fc334ce94e3bcda2342e331c94f6c6c448628c504b9ce405ebf1eaea1"
+      },
+      "timing_summary_s": {
+        "cloud_source_age_at_callback_s": {
+          "count": 309,
+          "median": 0.136389727,
+          "p90": 0.1874988106,
+          "max": 0.321238711
+        },
+        "depth_source_age_at_callback_s": {
+          "count": 666,
+          "median": 0.048046650499999996,
+          "p90": 0.0791497575,
+          "max": 1.027098736
+        },
+        "info_source_age_at_callback_s": {
+          "count": 659,
+          "median": 0.037507663,
+          "p90": 0.0668360268,
+          "max": 0.960304653
+        },
+        "selection_s": {
+          "count": 267,
+          "median": 0.0010273459993186407,
+          "p90": 0.005870755000796636,
+          "max": 0.029107820999342948
+        },
+        "ground_fit_s": {
+          "count": 129,
+          "median": 0.008226879999710945,
+          "p90": 0.024223516198981093,
+          "max": 0.05211644799783244
+        },
+        "validation_s": {
+          "count": 129,
+          "median": 0.0011564589985937346,
+          "p90": 0.007978742801060437,
+          "max": 0.05321649100005743
+        },
+        "transforms_s": {
+          "count": 129,
+          "median": 0.0031282089985325,
+          "p90": 0.013083753801038257,
+          "max": 0.02943967000101111
+        },
+        "cloud_projection_s": {
+          "count": 129,
+          "median": 0.004460545002075378,
+          "p90": 0.013409073401999195,
+          "max": 0.029750457000773167
+        },
+        "summarize_s": {
+          "count": 129,
+          "median": 0.024909421998017933,
+          "p90": 0.04216371279981104,
+          "max": 0.08061708899913356
+        },
+        "processing_s": {
+          "count": 129,
+          "median": 0.05206530100258533,
+          "p90": 0.08364068480223068,
+          "max": 0.16060406399992644
+        },
+        "capture_write_and_hash_s": {
+          "count": 3,
+          "median": 0.19516851700245752,
+          "p90": 0.19585459220033954,
+          "max": 0.19602611099981004
+        }
+      },
+      "exact_tf_missing_poll_counts": {
+        "base_link": 508,
+        "rgbd_depth_head_front": 508,
+        "left_ankle_roll_link": 508,
+        "right_ankle_roll_link": 508,
+        "lidar_chest_front": 606
+      },
+      "timing_scope": "Callback source age includes driver/transport/executor delay; these components are not separately observable here. TF wait is first failed poll to selection for the selected pair, not arrival latency. Stage summaries include completed stages of rejected attempts too. At most three raw pairs are retained; compression/writes occur after the observation window and final driver check, outside input processing.",
+      "observations": 127,
+      "observation_window_s": 30.151401755003462,
+      "duration_s": 30.784585770001286,
+      "runtime_commit": "9dd630a0f1231a481dd0d92371a528c3cb2da44c",
+      "record_interval_s": {
+        "min": 0.1371856799996749,
+        "median": 0.214940921001471,
+        "p90": 0.3037088984983711,
+        "max": 0.7875039749997086
+      },
+      "sensor_stamp_interval_s": {
+        "min": 0.033369856,
+        "median": 0.200224,
+        "p90": 0.333707008,
+        "max": 0.800896
+      },
+      "effective_input_age_s": {
+        "min": 0.20183184900088236,
+        "median": 0.30906984900138923,
+        "p90": 0.40469477380102037,
+        "max": 0.4790829159974237
+      },
+      "observed_tf_wait_s": {
+        "min": 0.0,
+        "median": 0.0,
+        "p90": 0.07497741939951087,
+        "max": 0.22897970999838435
+      },
+      "source_ages_at_callback_s": {
+        "depth": {
+          "min": 0.027251435,
+          "median": 0.046990868,
+          "p90": 0.07169723480000002,
+          "max": 0.368044005
+        },
+        "cloud": {
+          "min": 0.110139692,
+          "median": 0.136015108,
+          "p90": 0.17044100600000003,
+          "max": 0.228157488
+        },
+        "info": {
+          "min": 0.0239456,
+          "median": 0.036426726,
+          "p90": 0.061392849200000016,
+          "max": 0.320572536
+        }
+      },
+      "queue_residence_at_selection_s": {
+        "depth": {
+          "min": 0.000610421000601491,
+          "median": 0.17086090999873704,
+          "p90": 0.2593114444003731,
+          "max": 0.31696556899987627
+        },
+        "cloud": {
+          "min": 0.01871327399931033,
+          "median": 0.1164756780017342,
+          "p90": 0.19253662040209754,
+          "max": 0.24447195900211227
+        },
+        "info": {
+          "min": 0.011165594998601591,
+          "median": 0.17330283599949325,
+          "p90": 0.26610790560080205,
+          "max": 0.3210877179990348
+        }
+      },
+      "raw_pairs_reproduced": [
+        "pair_0.npz",
+        "pair_1.npz",
+        "pair_2.npz"
+      ]
+    },
+    "run_07": {
+      "counts": {
+        "cloud_received": 281,
+        "info_received": 587,
+        "info_timestamp_rejected": 18,
+        "depth_received": 589,
+        "depth_timestamp_rejected": 18,
+        "waiting_inputs": 47,
+        "odom_received": 270,
+        "odom_cached": 270,
+        "waiting_timestamp_pair": 22,
+        "waiting_exact_tf": 55,
+        "pairs_observed": 120,
+        "expired_after_processing": 5
+      },
+      "first_errors": [],
+      "driver_checks": [
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 0.23871637100091903,
+          "stamp_ns": 1792421631375897604
+        },
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 0.029447420998621965,
+          "stamp_ns": 1792421661459001848
+        }
+      ],
+      "source_sha256": {
+        "depth_obstacle_shadow.py": "3b68d2a49aa12cb832987c9d339af4a01f7d058b9137241626edcf27a213571b",
+        "analyze_depth_lidar_pairs.py": "31752cc4aa79d2896626336660b38f2d6fcfffeca22f7761fd2cb4f93df02770",
+        "depth_shadow_head_front.json": "021c5297b8a0404c6486737fc58a90938f5d8fecad1d5ba7a74c01b881b6ca27",
+        "ground_plane.py": "263a8ea2dc45ea3ff17885418d191651c7f0997e19d8407fa03a3c72a392fa7b",
+        "nav_geometry.py": "ed12ffefd118566d56feca917f334a5f685d4a8bbaab28a70b2812b692ff6932",
+        "message_validation.py": "75eefe7fc334ce94e3bcda2342e331c94f6c6c448628c504b9ce405ebf1eaea1"
+      },
+      "timing_summary_s": {
+        "cloud_source_age_at_callback_s": {
+          "count": 281,
+          "median": 0.127081236,
+          "p90": 0.184962572,
+          "max": 0.476966356
+        },
+        "info_source_age_at_callback_s": {
+          "count": 587,
+          "median": 0.037443274,
+          "p90": 0.05985050439999999,
+          "max": 1.285615951
+        },
+        "depth_source_age_at_callback_s": {
+          "count": 589,
+          "median": 0.047656596,
+          "p90": 0.07576665140000004,
+          "max": 1.368952048
+        },
+        "odom_source_age_at_callback_s": {
+          "count": 270,
+          "median": 0.1139519115,
+          "p90": 0.19467741109999998,
+          "max": 0.395475304
+        },
+        "selection_s": {
+          "count": 202,
+          "median": 0.0009047954990819562,
+          "p90": 0.005229610199967283,
+          "max": 0.05449752600179636
+        },
+        "ground_fit_s": {
+          "count": 125,
+          "median": 0.009996804998081643,
+          "p90": 0.021039318400289636,
+          "max": 0.1247819320014969
+        },
+        "validation_s": {
+          "count": 125,
+          "median": 0.0011411669984227046,
+          "p90": 0.00564574039890431,
+          "max": 0.022572105001017917
+        },
+        "transforms_s": {
+          "count": 125,
+          "median": 0.004035882997413864,
+          "p90": 0.016270565801096384,
+          "max": 0.047481771998718614
+        },
+        "cloud_projection_s": {
+          "count": 125,
+          "median": 0.005672690000210423,
+          "p90": 0.014100088200939356,
+          "max": 0.039408115997503046
+        },
+        "summarize_s": {
+          "count": 125,
+          "median": 0.02599807799924747,
+          "p90": 0.046319985398440636,
+          "max": 0.12762347199895885
+        },
+        "processing_s": {
+          "count": 125,
+          "median": 0.05091027999878861,
+          "p90": 0.09167756099850524,
+          "max": 0.2978693740005838
+        },
+        "capture_write_and_hash_s": {
+          "count": 3,
+          "median": 0.23580469600346987,
+          "p90": 0.2813762551995751,
+          "max": 0.2927691449986014
+        }
+      },
+      "exact_tf_missing_poll_counts": {
+        "base_link": 238,
+        "rgbd_depth_head_front": 239,
+        "left_ankle_roll_link": 239,
+        "right_ankle_roll_link": 239,
+        "lidar_chest_front": 348
+      },
+      "timing_scope": "Callback source age includes driver/transport/executor delay; these components are not separately observable here. TF wait is first failed poll to selection for the selected pair, not arrival latency. Stage summaries include completed stages of rejected attempts too. At most three raw pairs are retained; compression/writes occur after the observation window and final driver check, outside input processing.",
+      "observations": 120,
+      "observation_window_s": 30.00288552299753,
+      "duration_s": 30.783512063997478,
+      "runtime_commit": "5f0572ca6fda4c94fd5767b3f130cc9245735624",
+      "record_interval_s": {
+        "min": 0.10766393199810409,
+        "median": 0.21184043499670224,
+        "p90": 0.2729425839999749,
+        "max": 0.800686983999185
+      },
+      "sensor_stamp_interval_s": {
+        "min": 0.033369856,
+        "median": 0.200224,
+        "p90": 0.333707008,
+        "max": 0.867638016
+      },
+      "effective_input_age_s": {
+        "min": 0.2138961990021926,
+        "median": 0.30597671599753085,
+        "p90": 0.39936257490153365,
+        "max": 0.48631808099889895
+      },
+      "observed_tf_wait_s": {
+        "min": 0.0,
+        "median": 0.0,
+        "p90": 0.05534967189923922,
+        "max": 0.2352041759986605
+      },
+      "source_ages_at_callback_s": {
+        "depth": {
+          "min": 0.030313591,
+          "median": 0.047341709,
+          "p90": 0.06877034410000003,
+          "max": 0.293836671
+        },
+        "cloud": {
+          "min": 0.107889051,
+          "median": 0.12437672599999999,
+          "p90": 0.17156357490000002,
+          "max": 0.228115577
+        },
+        "info": {
+          "min": 0.024244351,
+          "median": 0.0395921825,
+          "p90": 0.058160694199999995,
+          "max": 0.257031253
+        }
+      },
+      "queue_residence_at_selection_s": {
+        "depth": {
+          "min": 0.016621687002043473,
+          "median": 0.16540567450101662,
+          "p90": 0.2568834757013974,
+          "max": 0.383922197001084
+        },
+        "cloud": {
+          "min": 0.02405971000189311,
+          "median": 0.11698117150081089,
+          "p90": 0.16852880100304904,
+          "max": 0.3073428050010989
+        },
+        "info": {
+          "min": 0.015274870002031093,
+          "median": 0.1769237209991843,
+          "p90": 0.2711757083998237,
+          "max": 0.38986676599961356
+        }
+      },
+      "raw_pairs_reproduced": [
+        "pair_0.npz",
+        "pair_1.npz",
+        "pair_2.npz"
+      ]
+    }
+  },
+  "state_checks": {
+    "before_05.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 142,
+        "hardware_rc": 183
+      },
+      "commit": "dbe62ba1a08c044414b024172236870bcfbe1ef9",
+      "stamp_ns": 1792421269332659658
+    },
+    "after_05.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 189,
+        "cmd_vel": 181
+      },
+      "commit": "dbe62ba1a08c044414b024172236870bcfbe1ef9",
+      "stamp_ns": 1792421314026655073
+    },
+    "before_06.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 201,
+        "cmd_vel": 170
+      },
+      "commit": "9dd630a0f1231a481dd0d92371a528c3cb2da44c",
+      "stamp_ns": 1792421446550840256
+    },
+    "after_06.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 202,
+        "cmd_vel": 201
+      },
+      "commit": "9dd630a0f1231a481dd0d92371a528c3cb2da44c",
+      "stamp_ns": 1792421494051881161
+    },
+    "before_07.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 167,
+        "hardware_rc": 187
+      },
+      "commit": "5f0572ca6fda4c94fd5767b3f130cc9245735624",
+      "stamp_ns": 1792421627379530571
+    },
+    "after_07.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 124,
+        "hardware_rc": 89
+      },
+      "commit": "5f0572ca6fda4c94fd5767b3f130cc9245735624",
+      "stamp_ns": 1792421671054318042
+    }
+  },
+  "artifacts": [
+    {
+      "name": "sztu_summarize_shadow_stages.py",
+      "sha256": "e94817c072299413173c18cbce10d1053284bb479d1508b6423b0fb6f11f6648",
+      "bytes": 3680
+    },
+    {
+      "name": "run_05/pair_1.npz",
+      "sha256": "08118ef9b47c310063eaa48ff5c91192fe7fede3c0b428f3bffd729030e1a331",
+      "bytes": 1115429
+    },
+    {
+      "name": "run_05/observations.json",
+      "sha256": "045e9a3dd85d7eabcb17e61cabba235f38357cb4dd3735eaef1c2e43d91bee9e",
+      "bytes": 297994
+    },
+    {
+      "name": "run_05/pair_2.npz",
+      "sha256": "57570a82ab260f3bdfaac75948bd7417315cecdb23876b3a60b48836d30c944a",
+      "bytes": 1122157
+    },
+    {
+      "name": "run_05/pair_0.npz",
+      "sha256": "090bd2c9cc0862816a8f5e795817bde8923261387232b1e5d00f939ede464f24",
+      "bytes": 1117904
+    },
+    {
+      "name": "run_05.log",
+      "sha256": "2430898642822c8c2dcb5565ac16f42f6567cdbb8e16b8c0ccedcb11c426ee13",
+      "bytes": 20972990
+    },
+    {
+      "name": "before_05.json",
+      "sha256": "6b506767c3127c14f5ca012d2725421b19c683aad652a39c9d97c3fd2db13fb6",
+      "bytes": 4142
+    },
+    {
+      "name": "before_05.log",
+      "sha256": "f8ed06beda62c361b1a7fc3b7ebb96a7812b46200fdcdd8f63e5b8ae99c46e54",
+      "bytes": 326380
+    },
+    {
+      "name": "after_05.json",
+      "sha256": "4ed694ab3b6f9bf65a5100b802760d44c6772e7b2f264c552a1b4fb365262b6c",
+      "bytes": 4612
+    },
+    {
+      "name": "after_05.log",
+      "sha256": "582a2b27d15a4db379fc021c2a9fbc6e8183417df2b27ad4c363bafe07d707bf",
+      "bytes": 328192
+    },
+    {
+      "name": "sztu_run_depth_shadow_20261019_05.sh",
+      "sha256": "b8952b2eef17fef4efc453d67cf62b6a47c511174a2a29c05ef1c79ad2eb6e71",
+      "bytes": 1399
+    },
+    {
+      "name": "run_06/pair_1.npz",
+      "sha256": "672d8cb31904aa47c7dc8d09b114965eec76b31bf38e263a696d7474085b0722",
+      "bytes": 1117229
+    },
+    {
+      "name": "run_06/observations.json",
+      "sha256": "bfe5d5523da5816f0a33319fe3373e27e2c2e9c7e7f1a9a2eac48ac3891a8f7b",
+      "bytes": 326302
+    },
+    {
+      "name": "run_06/pair_2.npz",
+      "sha256": "07f063499e1f9720fb209cc72da64b207e313092303f4c3fe18f31f973139219",
+      "bytes": 1123126
+    },
+    {
+      "name": "run_06/pair_0.npz",
+      "sha256": "04858f822d0d89dc1a76c33210cac7c489b1e04f9391b2d520f8bd06a3ffd7f5",
+      "bytes": 1120844
+    },
+    {
+      "name": "run_06.log",
+      "sha256": "6abc43af48096440f5b48af6a74d932e7831ff288cfc107d0a7728e23be6a67e",
+      "bytes": 20972961
+    },
+    {
+      "name": "before_06.json",
+      "sha256": "67e0570a0dd42fb6edd30a6a4cea207c463d0889a0b4c3db803f9532f2528d0a",
+      "bytes": 3960
+    },
+    {
+      "name": "before_06.log",
+      "sha256": "575c17ef693b7ecc0163c9c09fb649701a0c533ce8d689c5c7afb9df11738de9",
+      "bytes": 329174
+    },
+    {
+      "name": "after_06.json",
+      "sha256": "58b21ba810255bdd57e54b4756839f9b840af4fba0766ecfe09e9f4050bd27a9",
+      "bytes": 4771
+    },
+    {
+      "name": "after_06.log",
+      "sha256": "98c1f6815a7e86f4bb33a4e9e8555bba8fff69963d36da86db2ef3b41ddcaece",
+      "bytes": 329851
+    },
+    {
+      "name": "sztu_run_depth_shadow_20261019_06.sh",
+      "sha256": "c6f4c804bad49fd6163bcb8ade2621637b2a34ccce26acbc9cf89d8cda1a8eb7",
+      "bytes": 1399
+    },
+    {
+      "name": "run_07/pair_1.npz",
+      "sha256": "256a0bd9a3864b7af30ad9fcf1ed13571f11a8be94da7b9ba1f32ae400d34b5e",
+      "bytes": 1122675
+    },
+    {
+      "name": "run_07/observations.json",
+      "sha256": "1252a99b59695e56dfa81cbbc21d9bc2fccba221b63d5557c5b104414d3f8bfb",
+      "bytes": 310365
+    },
+    {
+      "name": "run_07/pair_2.npz",
+      "sha256": "54f73c53c9d8b9717ab576f7199826e8af086ee0346ba564a294aa37a1904475",
+      "bytes": 1121283
+    },
+    {
+      "name": "run_07/pair_0.npz",
+      "sha256": "a7c9fb9d7b5ca3e75056df2d052f5fc7633b64029d948f2dab0c726653dffdbb",
+      "bytes": 1120338
+    },
+    {
+      "name": "run_07.log",
+      "sha256": "eb707ac82571100d38a3e5fc981d8e971f1f3e1e19ed4a7b9cab370a66f0f32e",
+      "bytes": 20973008
+    },
+    {
+      "name": "before_07.json",
+      "sha256": "a7225c097bb379a2e6f812ae299ab14523e1bac66b070405678ecb028eef41a7",
+      "bytes": 3960
+    },
+    {
+      "name": "before_07.log",
+      "sha256": "6f7bc0c26bd0f5768f546416151f1e955100c8f39fef781e51b1f76f9b3afe62",
+      "bytes": 326562
+    },
+    {
+      "name": "after_07.json",
+      "sha256": "bc205115cd299d851f3f62ed3756c7d558a3e4c8880eb8d33bef5d7253f58630",
+      "bytes": 3660
+    },
+    {
+      "name": "after_07.log",
+      "sha256": "dc95fa70dd678d79d37cfb7f12738f19a83a8cc43602784ad39bf6ad60d943ff",
+      "bytes": 325888
+    },
+    {
+      "name": "sztu_run_depth_shadow_20261019_07.sh",
+      "sha256": "6ec5bbbebec2d6f7372305a03d02799be78d5dcbf6195789dcacd765c86c0d86",
+      "bytes": 1399
+    }
+  ]
+}

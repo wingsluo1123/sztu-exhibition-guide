@@ -344,3 +344,6 @@ ros2 param get /sztu_safety_gateway front_only_coverage
 - 深度与雷达[运行时影子观测工具](depth_obstacle_shadow.md)：只做本机诊断，不接入安全门或放行覆盖标志。
 - 深度影子观测[实机结果](../maps/classroom/diagnostics/20261019/depth_shadow_assessment.md)：修正队列调度后，30 s有效观测58组增至122组，最长传感器时间间隔2.67 s降至0.73 s；近身视野外/无效深度缺口和时效问题仍在，尚不接入安全控制。
 - 人工停止观察：[manual_stop_trial.md](manual_stop_trial.md)
+
+2026-10-19后续：[影子观测阶段耗时与两项修正](../maps/classroom/diagnostics/20261019/depth_shadow_stage_assessment.md)。
+仅修正独立诊断，最新最长观测间隔仍0.868 s，未接安全门。

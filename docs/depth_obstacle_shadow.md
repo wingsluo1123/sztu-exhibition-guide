@@ -63,6 +63,7 @@ TF未齐每20 ms重查，不阻塞ROS回调；成功观测的处理起点间隔�
 2026-10-19实机[调度对照](../maps/classroom/diagnostics/20261019/depth_shadow_timing_summary.json)：
 30 s有效观测58组增至122组，传感器时刻最大间隔2.670 s降至0.734 s；
 仍存在超过0.5 s的缺口，不能作为连续安全控制输入。
+后续分段计时、延后写盘及本地里程计缓存见[新对照](../maps/classroom/diagnostics/20261019/depth_shadow_stage_assessment.md)，最新最长间隔仍0.868 s。
 
 耗时诊断记录每种输入的回调源年龄、配对选中时的队列驻留时间、精确TF首次
 失败轮询到选中的等待时间，以及校验、TF查询、点云变换、地面拟合、几何统计、
