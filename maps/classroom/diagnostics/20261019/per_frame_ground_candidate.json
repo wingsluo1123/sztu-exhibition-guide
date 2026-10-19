@@ -1,0 +1,549 @@
+{
+  "scope": "Offline per-frame estimator replay. Ankle positions here are representative synthetic stance values, NOT timestamped measurement; only live shadow trial can validate TF integration. No noise removal or readiness claim. Historical fixed-plane failures preserved.",
+  "ankles_in_leveled_base": [
+    [
+      0.0,
+      0.15,
+      -0.58
+    ],
+    [
+      0.0,
+      -0.15,
+      -0.58
+    ]
+  ],
+  "frames": [
+    {
+      "file": "chair_front_frame_0.npz",
+      "sha256": "a2f1ebc20ebb62783778258bfd01309c5b4f5b33f58c6e1fc74a3776e4c8a940",
+      "fit_seconds": 0.0021690570283681154,
+      "plane_valid": true,
+      "normal": [
+        0.057682169323648995,
+        -0.09882648460573074,
+        0.9934314738735583
+      ],
+      "offset": -0.6622672311688945,
+      "residual_p95": 0.016531261439740905,
+      "inliers": 7907,
+      "regions": {
+        "front": {
+          "low_recovered": 547,
+          "nearest": 1.1089643215843048
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_front_frame_1.npz",
+      "sha256": "d54d85f0cb8358e47bc53c6424d5ac28a0ddc716445df5ae8215a4a8a39cd8f1",
+      "fit_seconds": 0.0019114231690764427,
+      "plane_valid": true,
+      "normal": [
+        0.056597291604792106,
+        -0.09837702211223842,
+        0.9935384784211078
+      ],
+      "offset": -0.6638533468386423,
+      "residual_p95": 0.016820141168176355,
+      "inliers": 7889,
+      "regions": {
+        "front": {
+          "low_recovered": 541,
+          "nearest": 1.1087086059126006
+        },
+        "left": {
+          "low_recovered": 1,
+          "nearest": 1.0889682099786218
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_front_frame_2.npz",
+      "sha256": "c847d2dfef4763ca60459e646b7ea965e6122dc80d8dcd11af90e61e44aaf58d",
+      "fit_seconds": 0.0016956189647316933,
+      "plane_valid": true,
+      "normal": [
+        0.05436122039637258,
+        -0.09700538282373394,
+        0.9937981753959089
+      ],
+      "offset": -0.6665357285673438,
+      "residual_p95": 0.016628830022946964,
+      "inliers": 7850,
+      "regions": {
+        "front": {
+          "low_recovered": 540,
+          "nearest": 1.1135566007427569
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_left_frame_0.npz",
+      "sha256": "8b5f3db8c1d12b5b524ac77df71b583bd8976b7e28d0e6b5b4e5da578ce30598",
+      "fit_seconds": 0.0017100179102271795,
+      "plane_valid": true,
+      "normal": [
+        0.05717372869889998,
+        -0.10106691464760664,
+        0.9932354421335747
+      ],
+      "offset": -0.6634038016216325,
+      "residual_p95": 0.01678056098110255,
+      "inliers": 7992,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 480,
+          "nearest": 1.1465555084119416
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_left_frame_1.npz",
+      "sha256": "b72378114c5ca7f6efe4e38e8a3dee8828542b754338c6eba529b0c8d29d0d90",
+      "fit_seconds": 0.0017327649984508753,
+      "plane_valid": true,
+      "normal": [
+        0.056546403896536,
+        -0.09933866332222774,
+        0.9934456875822267
+      ],
+      "offset": -0.6636391649322783,
+      "residual_p95": 0.01683188852160749,
+      "inliers": 7972,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 477,
+          "nearest": 1.1487267595030082
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_left_frame_2.npz",
+      "sha256": "fcf59ee4a8417bfd80ec576355f528a1d050f3ca58f2d9d288f8ceaed688a640",
+      "fit_seconds": 0.002019205130636692,
+      "plane_valid": true,
+      "normal": [
+        0.05672670246443485,
+        -0.10068549324529813,
+        0.9932998100661565
+      ],
+      "offset": -0.6637531405800593,
+      "residual_p95": 0.01691802639045121,
+      "inliers": 7988,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 477,
+          "nearest": 1.1368987931661376
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_removed_frame_0.npz",
+      "sha256": "aeb4d3053178c6c916fefe597eb0ce15b74fae7231c973c4929bead1c61e87e8",
+      "fit_seconds": 0.0018065071199089289,
+      "plane_valid": true,
+      "normal": [
+        0.05619879238557002,
+        -0.09895465517574209,
+        0.9935037352488684
+      ],
+      "offset": -0.665634817185969,
+      "residual_p95": 0.016489629513239252,
+      "inliers": 8534,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_removed_frame_1.npz",
+      "sha256": "09705a3086ce36d6e5a74e2cd2c71bf1896c75d643025d2873e85f598e29052d",
+      "fit_seconds": 0.001711786026135087,
+      "plane_valid": true,
+      "normal": [
+        0.056909816160047505,
+        -0.09936139644492292,
+        0.993422662174134
+      ],
+      "offset": -0.6633004934356269,
+      "residual_p95": 0.01653881624705055,
+      "inliers": 8505,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_removed_frame_2.npz",
+      "sha256": "1d6c358747065663b8537db688e677474b360e8836ab14f8889921adbc0b9587",
+      "fit_seconds": 0.002099323086440563,
+      "plane_valid": true,
+      "normal": [
+        0.05695559244912621,
+        -0.09931349069959328,
+        0.993424829090672
+      ],
+      "offset": -0.6635391160995158,
+      "residual_p95": 0.016529312549609432,
+      "inliers": 8521,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_right_frame_0.npz",
+      "sha256": "af310466a11515dfa808695a0b1f8322f773b9fbf4903b62c3c6f6b9c8fbd607",
+      "fit_seconds": 0.001541034085676074,
+      "plane_valid": true,
+      "normal": [
+        0.05519701171495676,
+        -0.09726533518672115,
+        0.9937266950569225
+      ],
+      "offset": -0.6641970372474957,
+      "residual_p95": 0.016369266205327332,
+      "inliers": 7986,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 553,
+          "nearest": 1.0913825573444031
+        }
+      }
+    },
+    {
+      "file": "chair_right_frame_1.npz",
+      "sha256": "ac02f2374cbf0f0cdec73bbfa9244b45d0621c5b3e105ebc9043b250d7ad7446",
+      "fit_seconds": 0.0016342690214514732,
+      "plane_valid": true,
+      "normal": [
+        0.05463978579683199,
+        -0.0972907491839074,
+        0.9937550019654293
+      ],
+      "offset": -0.6645712057978063,
+      "residual_p95": 0.01627059236978454,
+      "inliers": 7943,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 556,
+          "nearest": 1.0864820510323487
+        }
+      }
+    },
+    {
+      "file": "chair_right_frame_2.npz",
+      "sha256": "963f5b61b991acc44fbea2088493bc1255e9e706e1d66ace039580b6ddbc99b6",
+      "fit_seconds": 0.001514533068984747,
+      "plane_valid": true,
+      "normal": [
+        0.05496307392985704,
+        -0.09677110884420054,
+        0.9937879114767119
+      ],
+      "offset": -0.6652544503029446,
+      "residual_p95": 0.016262899084200262,
+      "inliers": 7934,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 553,
+          "nearest": 1.0979925703061133
+        }
+      }
+    },
+    {
+      "file": "chair_sides_removed_frame_0.npz",
+      "sha256": "2fb042f5f4c26f6c3fcf7b71ad73fe925b65ebdf3237c0ba8bc7d4b841fd3493",
+      "fit_seconds": 0.00177602912299335,
+      "plane_valid": true,
+      "normal": [
+        0.05778427932794248,
+        -0.09873801090955237,
+        0.9934343371678751
+      ],
+      "offset": -0.6624714985482596,
+      "residual_p95": 0.016412759199051163,
+      "inliers": 8521,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_sides_removed_frame_1.npz",
+      "sha256": "c0cdb703176a75459b31b8415e4c8e708067841b0c92baed39147caa48575cef",
+      "fit_seconds": 0.0020206989720463753,
+      "plane_valid": true,
+      "normal": [
+        0.05715144411414321,
+        -0.09928719480564019,
+        0.993416209543258
+      ],
+      "offset": -0.6635385181674867,
+      "residual_p95": 0.016487131660758946,
+      "inliers": 8532,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "chair_sides_removed_frame_2.npz",
+      "sha256": "adf6dc7e064055f1ba53201a31126ed7fbdcaf394cd1fa1d95162d16cdf781bc",
+      "fit_seconds": 0.0017675780691206455,
+      "plane_valid": true,
+      "normal": [
+        0.056891441899454775,
+        -0.09859254055979849,
+        0.9935003144360679
+      ],
+      "offset": -0.6627365098907633,
+      "residual_p95": 0.016423445053524527,
+      "inliers": 8516,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    },
+    {
+      "file": "ground_probe_last_frame.npz",
+      "sha256": "aa006eba31488335c09bdaf80fb8a0cff193bd2974b5a282f58c4a69a88db8bd",
+      "fit_seconds": 0.0014882630202919245,
+      "plane_valid": true,
+      "normal": [
+        -0.04935460626685553,
+        -0.10245492701017433,
+        0.9935125116331366
+      ],
+      "offset": -0.6671306767247999,
+      "residual_p95": 0.016934933376596083,
+      "inliers": 6393,
+      "regions": {
+        "front": {
+          "low_recovered": 429,
+          "nearest": 1.0450826600408667
+        },
+        "left": {
+          "low_recovered": 138,
+          "nearest": 1.4925542817984145
+        },
+        "right": {
+          "low_recovered": 834,
+          "nearest": 0.736104387765488
+        }
+      }
+    },
+    {
+      "file": "open_baseline_frame_0.npz",
+      "sha256": "61f39bbbdbea7552b734eaf19a481f0bcb0ffc2036119a896f808d09f41590ba",
+      "fit_seconds": 0.0019707949832081795,
+      "plane_valid": true,
+      "normal": [
+        0.05625740071977699,
+        -0.09897508091912832,
+        0.9934983836027648
+      ],
+      "offset": -0.6639335621614786,
+      "residual_p95": 0.016608494877376034,
+      "inliers": 8491,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 1,
+          "nearest": 1.126019904937071
+        }
+      }
+    },
+    {
+      "file": "open_baseline_frame_1.npz",
+      "sha256": "e64d02c1e7af11bc9577847e8244574b0b7484463c8b7343f4c0c591b01728a5",
+      "fit_seconds": 0.0018028498161584139,
+      "plane_valid": true,
+      "normal": [
+        0.056843345538999696,
+        -0.09951201135738852,
+        0.9934113919537771
+      ],
+      "offset": -0.6634350492412346,
+      "residual_p95": 0.016373797250647783,
+      "inliers": 8537,
+      "regions": {
+        "front": {
+          "low_recovered": 1,
+          "nearest": 1.6747987732223977
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 1,
+          "nearest": 0.8678539892152104
+        }
+      }
+    },
+    {
+      "file": "open_baseline_frame_2.npz",
+      "sha256": "22ce47bf22324e8bb5faec75088e0397d22293210bd8c17e53402a03ab1aa22f",
+      "fit_seconds": 0.001746772089973092,
+      "plane_valid": true,
+      "normal": [
+        0.055690460227600214,
+        -0.09911607497823638,
+        0.9935162687749739
+      ],
+      "offset": -0.6649312542095951,
+      "residual_p95": 0.016607513736277238,
+      "inliers": 8493,
+      "regions": {
+        "front": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "left": {
+          "low_recovered": 0,
+          "nearest": null
+        },
+        "right": {
+          "low_recovered": 0,
+          "nearest": null
+        }
+      }
+    }
+  ]
+}

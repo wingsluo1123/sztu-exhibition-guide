@@ -57,7 +57,7 @@ def odometry_adapter():
     published, transforms = [], []
     node = SimpleNamespace(
         settings={'source_odom_frame': 'odom', 'source_base_frame': 'base_link',
-                  'max_age': 0.5},
+                  'max_age': 0.5, 'publish_odometry': True},
         odom_freshness=MessageFreshness(0.5), previous=None, buffer=Buffer(),
         get_clock=lambda: SimpleNamespace(now=lambda: Time(seconds=10.2)),
         odom_pub=SimpleNamespace(publish=published.append),
@@ -74,8 +74,10 @@ def odometry_adapter():
     return node, message, published, transforms
 
 
-def test_odometry_supplies_full_source_tf_without_dds_loopback():
+@pytest.mark.parametrize('publish_odometry', [True, False])
+def test_odometry_supplies_full_source_tf_without_dds_loopback(publish_odometry):
     node, message, published, transforms = odometry_adapter()
+    node.settings['publish_odometry'] = publish_odometry
     NavSensorAdapter.odom_callback(node, message)
     stamp = Time.from_msg(message.header.stamp)
     source = node.buffer.lookup_transform('odom', 'base_link', stamp)
@@ -89,8 +91,9 @@ def test_odometry_supplies_full_source_tf_without_dds_loopback():
     assert planar.transform.rotation.x == 0.0
     assert message.pose.pose.position.z == pytest.approx(0.3)
     assert message.pose.pose.orientation.x == pytest.approx(math.sin(0.1))
-    assert len(published) == len(transforms) == 1
-    assert transforms[0].child_frame_id == 'sztu_nav_base'
+    assert len(published) == len(transforms) == int(publish_odometry)
+    if publish_odometry:
+        assert transforms[0].child_frame_id == 'sztu_nav_base'
 
 
 @pytest.mark.parametrize('invalid', ['expired', 'future', 'frame', 'quaternion'])
