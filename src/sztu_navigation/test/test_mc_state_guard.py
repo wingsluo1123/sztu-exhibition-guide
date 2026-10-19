@@ -21,7 +21,7 @@ def test_known_stand_locomotion_and_inconsistent_raw_zero():
     assert guard.check(10**9, 1.) == 'mc_state_unavailable'
     guard.receive(state(), 10**9, 1.)
     assert guard.arm(10**9, 1.) == ''
-    guard.receive(state(1.1, 'LOCOMOTION_DEFAULT', fsm=3), 1_100_000_000, 1.1)
+    guard.receive(state(1.1, 'LOCOMOTION_DEFAULT', fsm=5), 1_100_000_000, 1.1)
     assert guard.check(1_100_000_000, 1.1) == ''
 
 
@@ -72,7 +72,7 @@ def test_fresh_message_after_executor_gap_cannot_hide_mode_loss():
     assert guard.check(2_000_000_000, 2.) == 'mc_state_stale'
 
 
-def test_actual_handoff_trace_preserves_first_transition_fault_through_damping():
+def test_actual_trace_accepts_documented_cycle_then_latches_actual_damping():
     fixture = json.loads((Path(__file__).parent / 'fixtures'
                           / 'guarded_handoff_20261020_modes.json').read_text())
     guard = McStateGuard()
@@ -90,23 +90,60 @@ def test_actual_handoff_trace_preserves_first_transition_fault_through_damping()
             assert guard.arm(now_ns, monotonic_now) == ''
         if guard.reason and first_fault is None:
             first_fault = guard.first_fault
-            assert first_fault['reason'] == 'mc_state_invalid'
-            assert first_fault['observation']['action_status'] == 200
-            assert first_fault['observation']['action_desc'] == 'STAND_DEFAULT'
+            assert first_fault['reason'] == 'mc_damping_observed'
+            assert first_fault['observation']['action_status'] == 100
+            assert first_fault['observation']['action_desc'] == 'DAMPING_DEFAULT'
             assert first_fault['observation']['timestamp_accepted']
     assert first_fault is not None
     assert guard.first_fault == first_fault
-    assert guard.arm(now_ns, monotonic_now) == 'mc_state_invalid'
+    assert guard.arm(now_ns, monotonic_now) == 'mc_damping_observed'
     assert not guard.valid
 
 
-def test_special_fsm_is_not_silently_promoted_to_normal_locomotion():
+@pytest.mark.parametrize('fsm', [0, 1, 2, 3, 7, 8])
+def test_unknown_start_finish_special_and_test_fsm_are_rejected(fsm):
     guard = McStateGuard()
     guard.receive(state(), 10**9, 1.)
     assert guard.arm(10**9, 1.) == ''
-    guard.receive(state(1.1, 'LOCOMOTION_DEFAULT', fsm=5), 1_100_000_000, 1.1)
+    guard.receive(state(1.1, 'LOCOMOTION_DEFAULT', fsm=fsm), 1_100_000_000, 1.1)
     assert guard.reason == 'mc_state_invalid'
-    assert guard.first_fault['observation']['fsm_state'] == 5
+    assert guard.first_fault['observation']['fsm_state'] == fsm
+
+
+@pytest.mark.parametrize('changed', [dict(status=200), dict(fsm=5),
+                                    dict(description='LOCOMOTION_DEFAULT', fsm=5)])
+def test_first_arm_requires_running_stable_stand(changed):
+    guard = McStateGuard()
+    guard.receive(state(**changed), 10**9, 1.)
+    assert guard.arm(10**9, 1.) == 'mc_state_unavailable'
+    assert not guard.armed
+
+
+def test_continuously_fresh_transition_has_independent_monotonic_deadline():
+    guard = McStateGuard()
+    guard.receive(state(), 10**9, 1.)
+    assert not guard.arm(10**9, 1.)
+    # A stalled ROS clock must not extend the transition deadline. Each source
+    # sample still advances and passes source/receipt freshness checks.
+    for index in range(23):
+        now_ns = 1_100_000_000 + index * 10_000_000
+        guard.receive(state(now_ns / 1e9, status=200), now_ns, 1.1 + index * .1)
+    assert guard.reason == 'mc_transition_timeout'
+    guard.receive(state(1.4), 1_400_000_000, 3.4)
+    assert guard.arm(1_400_000_000, 3.4) == 'mc_transition_timeout'
+
+
+def test_running_clears_transition_timer_but_damping_wins_during_transition():
+    guard = McStateGuard()
+    guard.receive(state(), 10**9, 1.)
+    assert not guard.arm(10**9, 1.)
+    guard.receive(state(1.1, status=200), 1_100_000_000, 1.1)
+    assert guard.transition_started_at == 1.1
+    guard.receive(state(1.2, 'LOCOMOTION_DEFAULT', fsm=5), 1_200_000_000, 1.2)
+    assert guard.transition_started_at is None
+    guard.receive(state(1.3, status=200), 1_300_000_000, 1.3)
+    guard.receive(state(1.4, 'DAMPING_DEFAULT', status=200), 1_400_000_000, 1.4)
+    assert guard.reason == 'mc_damping_observed'
 
 
 def test_gap_fault_keeps_previous_observation_and_detection_time():

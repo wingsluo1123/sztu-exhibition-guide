@@ -1,5 +1,5 @@
 {
-  "origin": "20261020_guarded_handoff_01 actual MC state changes; input source changes excluded; last pre-pulse baseline retained before arming",
+  "origin": "20261020_guarded_handoff_01 actual MC samples from last pre-pulse baseline to end, with repeated states retained for continuity",
   "raw_sha256": "587f8095cf0d7ad57d7825df6d9dd89cdb1f91a6337153cedf2230a13fd543f4",
   "clock_note": "Receive offsets are real; ROS receipt time was not saved. Replay tests use source stamp +20ms and do not test original source freshness.",
   "states": [
@@ -8,6 +8,30 @@
       "source_stamp": {
         "sec": 1792426689,
         "nanosec": 768499256
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.025503127995762043,
+      "source_stamp": {
+        "sec": 1792426689,
+        "nanosec": 868457506
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.12592245999985607,
+      "source_stamp": {
+        "sec": 1792426689,
+        "nanosec": 968437631
       },
       "action_desc": "STAND_DEFAULT",
       "action_value": 0,
@@ -52,10 +76,382 @@
       "body_status": 1
     },
     {
+      "relative_s": 0.5255448929965496,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 368427839
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.6281307089957409,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 468416715
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.7255539580000914,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 568417256
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.8347747899970273,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 668424798
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.9261868689936819,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 768431173
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.0273579289932968,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 868417423
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.1264101659980952,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 968417673
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.2260950799973216,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 68430465
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.3286746699959622,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 168461048
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.4258422179991612,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 268469757
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.5273538979963632,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 368479340
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.6292488559993217,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 468465007
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.7273474679968785,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 568462048
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.828591798999696,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 668466673
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 1.9261169319943292,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 768485007
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.02576645299996,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 868459882
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.126238305994775,
+      "source_stamp": {
+        "sec": 1792426691,
+        "nanosec": 968436507
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
       "relative_s": 2.2260907929958194,
       "source_stamp": {
         "sec": 1792426692,
         "nanosec": 68462715
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.3300727259993437,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 168417465
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.428228549993946,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 268417424
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.5273630479932763,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 368416799
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.626916535999044,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 468401882
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.7257472399942344,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 568417591
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.825739234998764,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 668421341
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.926599221995275,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 768417799
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.026815910998266,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 868417757
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.1302082289985265,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 968416841
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.225669712999661,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 68425841
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.326812132996565,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 168438924
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.4263572719937656,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 268444424
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.527631452998321,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 368442049
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.6264443999971263,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 468476133
       },
       "action_desc": "LOCOMOTION_DEFAULT",
       "action_value": 0,
@@ -88,6 +484,30 @@
       "body_status": 1
     },
     {
+      "relative_s": 3.925773160997778,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 768448883
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.025526546000037,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 868447966
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
       "relative_s": 4.126925328993821,
       "source_stamp": {
         "sec": 1792426693,
@@ -112,10 +532,238 @@
       "body_status": 1
     },
     {
+      "relative_s": 4.325892545995885,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 168416925
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.426955507995444,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 268417466
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.525464215999818,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 368420341
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.625877254999068,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 468389966
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.7256330419986625,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 568417341
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.825458682993485,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 668425758
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.926090465000016,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 768401217
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
       "relative_s": 5.025470332999248,
       "source_stamp": {
         "sec": 1792426694,
         "nanosec": 868417508
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.125480413997138,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 968417467
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.2254789429935045,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 68427925
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.326972478993412,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 168438092
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.426846949994797,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 268443883
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.525755863993254,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 368519967
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.626921509996464,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 468465675
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.726616980995459,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 568438800
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.826352258998668,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 668430300
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 5.926027826993959,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 768478675
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 6.026723701994342,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 868434592
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 6.1255530349953915,
+      "source_stamp": {
+        "sec": 1792426695,
+        "nanosec": 968453217
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    },
+    {
+      "relative_s": 6.225631496999995,
+      "source_stamp": {
+        "sec": 1792426696,
+        "nanosec": 68469217
       },
       "action_desc": "DAMPING_DEFAULT",
       "action_value": 0,

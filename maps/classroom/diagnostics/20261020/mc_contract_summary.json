@@ -1,0 +1,36 @@
+{
+  "sources": {
+    "mc_status": "/agibot/software/aimdk/docs/cn/_build/html/zh-cn/dev/Interface/control_mod/mc_status.html",
+    "mode_switch": "/agibot/software/aimdk/docs/cn/_build/html/zh-cn/dev/Interface/control_mod/modeswitch.html"
+  },
+  "documented_version": "AimDK_X2 1.1.0",
+  "fsm_mapping": {
+    "4": "STABLE",
+    "5": "MOVING",
+    "6": "SAFE",
+    "7": "SPECIAL",
+    "8": "TEST"
+  },
+  "current_action": "reserved; modeswitch documents unused since v0.8.2",
+  "mode_switch": "v0.8.0+ automatic internal switching between stable stand and locomotion",
+  "retracted": "Inference from older generated McFsmState IDL that actual FSM5 is SPECIAL; original physical trial remains aborted, not retroactively passed.",
+  "transition_deadline_s": 2.0,
+  "deadline_class": "Self-developed commissioning bound, not vendor timing or measured stop guarantee; 1.50s observed zero-phase transition plus 0.5s message age budget; freeze before new physical confirmation.",
+  "preserved_limits": {
+    "message_age_s": 0.5,
+    "wire_readback_s": 0.25,
+    "pulse_duration_s": 1.0,
+    "live": false,
+    "coverage_flags": false
+  },
+  "raw_files_sha256": {
+    "mc_status.html": "aa7284b0d6facee3d58877a55176a178bdce5ed3d6e68784fdf1185954edd9df",
+    "mc_status.html.txt": "98f74f06c5a94e79f144da7645425f287088e6b2bd2d7386f6bf7d82e6fda97b",
+    "modeswitch.html": "4d09c0ea2d3e5a5ae77e2ac8d25dba74699d7dcbdada2681175e3a582824f493",
+    "modeswitch.html.txt": "f05f8bfdd58e12736ba3ee6171847837ff59edabd3efa4eca918fef80dae4fb4"
+  },
+  "verification": {
+    "developer_domain42": "72 passed: guard, gateway, restrained-trial logic",
+    "robot_sdk_domain42": "pending"
+  }
+}
