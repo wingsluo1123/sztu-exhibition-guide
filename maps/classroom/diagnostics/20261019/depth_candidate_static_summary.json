@@ -43,7 +43,9 @@
     "developer_non_runtime": "421 passed, 3 skipped, 31 deselected; before final diagnostic-only hardware guard test was added",
     "robot_isolated_mc_guard": "19 passed, 15 deselected; real McCommonState, ROS domain 42, no connection to MC hardware",
     "depth_shadow_runtime": "4 passed; includes opt-in candidate output, calibration/time/TF faults",
-    "final_added_checks": "3 passed: diagnostic-only hardware refusal, CLI preview, image boundary"
+    "final_added_checks": "3 passed: diagnostic-only hardware refusal, CLI preview, image boundary",
+    "final_robot_sdk": "28 passed, 42 deselected in 96.41s; ROS domain 42, localhost only, mock services; mode guard, six trial cases, gateway latch, depth veto and wrapper",
+    "final_offline_and_gateway": "42 passed after adding standalone offline CLI regression"
   },
   "hardware_stop_verified": false,
   "hardware_coverage_verified": false,
@@ -70,6 +72,27 @@
     "producer/pair_1.npz": "9d59a5c23289c0df36cd197dcb7db0b2104107ac14835d8ee3256b74315ad531",
     "producer/observations.json": "c0cd6ef1d078f431ee9549c4b521ec58a5d25c353ba90e7988949a0a44a27f57",
     "producer/pair_2.npz": "07c84be3a90b569de2c4b9f5490a5043719afa5b80ebc399e6fbd140a8e32c1b",
-    "producer/pair_0.npz": "6bb78e202017f3085f0d7bc3868fd350602f0d004704f39eecead285edffb3c0"
+    "producer/pair_0.npz": "6bb78e202017f3085f0d7bc3868fd350602f0d004704f39eecead285edffb3c0",
+    "final_sdk_tests.log": "f7674245649f0f4bf582ef29e2438e7adb6f20881a2dbafc9661b9b629a31506",
+    "final_preflight.json": "d9dacb301e9c5d2589f966e30bebded032082e487062116fe679ff75a6e204f1"
+  },
+  "deployed_source_commit": "51777e0bc4ac9237b1d01fc6f3d9af9d906270da",
+  "builds": {
+    "developer": "colcon build --packages-select sztu_navigation --symlink-install: passed",
+    "robot": "same command: passed; existing setuptools tests_require warning"
+  },
+  "final_preflight": {
+    "flags": {
+      "live": false,
+      "surround_coverage_verified": false,
+      "front_only_coverage": false,
+      "front_arc_coverage": false
+    },
+    "command_counts": {
+      "cmd_vel": 120,
+      "hardware_rc": 159
+    },
+    "bridge_state": "inactive",
+    "commit": "51777e0bc4ac9237b1d01fc6f3d9af9d906270da"
   }
 }
