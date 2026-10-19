@@ -196,6 +196,93 @@ def test_contained_trial_runtime_on_isolated_domain(tmp_path, mode):
         rclpy.try_shutdown()
 
 
+@pytest.mark.parametrize('fault', ['healthy', 'damping', 'lost', 'missing', 'invalid', 'countdown'])
+def test_mc_supervised_trial_never_restarts_after_mode_loss(tmp_path, fault):
+    try:
+        from aimdk_msgs.msg import McCommonState
+    except ImportError:
+        pytest.skip('developer SDK lacks McCommonState; run with robot SDK in domain 42')
+    rclpy.init(domain_id=42)
+    fixture = rclpy.create_node('mc_ros2_node_guard_fixture')
+    records, requests = [], []
+    def parameters(request, response):
+        response.values = [ParameterValue(type=1, bool_value=False)]
+        return response
+    def register(request, response):
+        requests.append(request)
+        response.response.state.value = CommonState.SUCCESS
+        return response
+    def query(request, response):
+        response.response.header.stamp = fixture.get_clock().now().to_msg()
+        response.input_source.name = 'rc'
+        response.input_source.priority = 80
+        return response
+    fixture.create_service(GetParameters, '/sztu_safety_gateway/get_parameters', parameters)
+    fixture.create_service(SetMcInputSource, '/aimdk_5Fmsgs/srv/SetMcInputSource', register)
+    fixture.create_service(GetCurrentInputSource, '/aimdk_5Fmsgs/srv/GetCurrentInputSource', query)
+    fixture.create_subscription(McLocomotionVelocity, '/aima/mc/locomotion/velocity',
+        lambda msg: records.append((time.monotonic(), msg)), qos_profile_sensor_data)
+    publisher = fixture.create_publisher(McCommonState, '/aima/mc/common/state', qos_profile_sensor_data)
+    binaries = tmp_path / 'bin'
+    binaries.mkdir()
+    stub = binaries / 'systemctl'
+    stub.write_text('#!/bin/sh\nexit 3\n')
+    stub.chmod(0o755)
+    root = Path(__file__).resolve().parents[3]
+    output = tmp_path / 'report.json'
+    process, fault_at = None, None
+    try:
+        with (tmp_path / 'log').open('w') as log:
+            process = subprocess.Popen([sys.executable, str(root / 'tools/restrained_drive_trial.py'),
+                '--execute', '--restrained', '--operator-stop-ready', '--require-mc-state',
+                '--start-delay', '1', '--output', str(output)],
+                env=dict(os.environ, ROS_DOMAIN_ID='42', PATH=str(binaries)+os.pathsep+os.environ['PATH']),
+                stdout=log, stderr=log)
+            deadline = time.monotonic()+22
+            while process.poll() is None and time.monotonic() < deadline:
+                rclpy.spin_once(fixture, timeout_sec=.01)
+                now = time.monotonic()
+                if fault_at is None and (any(m.forward_velocity > 0 for _, m in records)
+                        or (fault == 'countdown' and 'PULSE_COUNTDOWN' in (tmp_path/'log').read_text())):
+                    fault_at = now
+                injecting = fault_at is not None and now-fault_at < .8
+                if fault == 'missing' or (fault == 'lost' and injecting):
+                    continue
+                state = McCommonState()
+                state.header.stamp = fixture.get_clock().now().to_msg()
+                state.action_info.action_desc = ('DAMPING_DEFAULT' if injecting and fault in ('damping', 'countdown')
+                                                  else 'STAND_DEFAULT')
+                state.action_info.status.value = 0 if injecting and fault == 'invalid' else 100
+                state.fsm_state.current_state = 4
+                state.body_status.value = 1
+                publisher.publish(state)
+            assert process.wait(timeout=2) == (0 if fault == 'healthy' else 2), (tmp_path/'log').read_text()
+        report = json.loads(output.read_text())
+        own = [(t,m) for t,m in records if m.source == 'sdk_sztu_restrained_trial']
+        active = [(t,m) for t,m in own if m.forward_velocity > 0]
+        if fault in ('missing', 'countdown'):
+            assert not active
+            if fault == 'missing':
+                assert not requests
+        else:
+            assert active
+            after = [m for t,m in own if t > active[-1][0]]
+            assert len(after) >= 20 and all(m.forward_velocity == 0 for m in after)
+        expected = dict(healthy='', damping='mc_damping_observed', lost='mc_state_stale',
+                        missing='', invalid='mc_state_invalid', countdown='mc_damping_observed')
+        assert report['mc_guard_latched_reason'] == expected[fault]
+        assert report['hardware_stop_verified'] is False
+        if fault not in ('healthy', 'missing'):
+            # Later fresh standing data is recorded, yet the stop stays latched.
+            assert report['mc_state_records'][-1]['message']['action_info']['action_desc'] == 'STAND_DEFAULT'
+    finally:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait(timeout=3)
+        fixture.destroy_node()
+        rclpy.try_shutdown()
+
+
 def test_cli_preview_and_missing_containment_do_not_load_ros(tmp_path):
     root = Path(__file__).resolve().parents[3]
     script = root / 'tools/restrained_drive_trial.py'

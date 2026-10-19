@@ -1,7 +1,10 @@
 """Independent pinhole/rigid-transform controls for offline depth diagnostics."""
 
 import importlib.util
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -14,6 +17,14 @@ analysis = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(analysis)
 
 INTRINSICS = np.array([[100., 0., 2.], [0., 100., 2.], [0., 0., 1.]])
+
+
+def test_standalone_offline_cli_needs_no_ros_workspace_environment():
+    script = Path(__file__).resolve().parents[3] / 'tools/analyze_depth_lidar_pairs.py'
+    result = subprocess.run([sys.executable, str(script), '--help'],
+                            env=dict(os.environ, PYTHONPATH=''), capture_output=True, text=True, timeout=3)
+    assert result.returncode == 0, result.stderr
+    assert '--depth-scale' in result.stdout
 
 
 def test_known_target_under_rotated_translated_camera():

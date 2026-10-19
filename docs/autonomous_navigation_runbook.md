@@ -352,4 +352,7 @@ ros2 param get /sztu_safety_gateway front_only_coverage
 - 人工停止观察：[manual_stop_trial.md](manual_stop_trial.md)
 
 2026-10-19后续：[影子观测阶段耗时与两项修正](../maps/classroom/diagnostics/20261019/depth_shadow_stage_assessment.md)。
+
+2026-10-20：[状态锁停、深度候选及下一次受保护接管试验](commissioning_next_trial.md)。
+一次性入口默认预览，执行需现场确认包络；不自动开放live或覆盖标志。
 仅修正独立诊断，最新最长观测间隔仍0.868 s，未接安全门。

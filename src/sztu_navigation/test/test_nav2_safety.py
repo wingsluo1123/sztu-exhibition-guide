@@ -1,4 +1,6 @@
 import math
+import time
+from types import SimpleNamespace as NS
 
 import numpy as np
 import pytest
@@ -263,5 +265,101 @@ def test_live_requires_coverage_before_registration():
     try:
         with pytest.raises(RuntimeError, match='coverage'):
             SafetyGateway(parameter_overrides=[Parameter('live', value=True)])
+    finally:
+        rclpy.shutdown()
+
+
+def healthy_gateway_inputs(gateway):
+    gateway.coverage_verified = True  # isolated synthetic coverage positive control
+    gateway.buffer = NS(lookup_transform=lambda *args: None)
+    stamp = gateway.get_clock().now().to_msg()
+    scan = LaserScan()
+    scan.header.frame_id, scan.header.stamp = 'sztu_nav_base', stamp
+    scan.angle_min, scan.angle_increment = -math.pi, 2*math.pi/719
+    scan.ranges = surround_scan()
+    gateway.scan_callback(scan)
+    pose = pose_message()
+    pose.header.stamp = stamp
+    gateway.localization_callback(pose)
+    odom = Odometry()
+    odom.header.frame_id, odom.child_frame_id = 'sztu_nav_odom', 'sztu_nav_base'
+    odom.header.stamp, odom.pose.pose.orientation.w = stamp, 1.
+    gateway.odom_callback(odom)
+    command = Twist()
+    command.linear.x = .1
+    gateway.command_callback(command)
+    return stamp
+
+
+def test_gateway_mode_stop_cannot_replay_with_new_standing_and_commands(gateway):
+    from sztu_navigation.mc_state_guard import McStateGuard
+    captured, hardware = [], []
+    gateway.output = NS(publish=captured.append)
+    gateway.locomotion = NS(set_velocity=lambda *args: hardware.append(args), tick=lambda: None,
+                            stop=lambda: hardware.append((0., 0., 0.)), destroy_node=lambda: None)
+    gateway.mc_guard = McStateGuard()
+    def mode(description, stamp):
+        return NS(header=NS(stamp=stamp), action_info=NS(action_desc=description,
+            current_action=NS(value=0), status=NS(value=100)),
+            fsm_state=NS(current_state=4), body_status=NS(value=1))
+    stamp = healthy_gateway_inputs(gateway)
+    gateway.mc_state_callback(mode('STAND_DEFAULT', stamp))
+    gateway.tick()
+    assert captured[-1].linear.x == hardware[-1][0] == .1
+    gateway.mc_state_callback(mode('DAMPING_DEFAULT', gateway.get_clock().now().to_msg()))
+    for _ in range(3):
+        stamp = healthy_gateway_inputs(gateway)
+        gateway.mc_state_callback(mode('STAND_DEFAULT', stamp))
+        gateway.tick()
+        assert captured[-1] == Twist()
+        assert hardware[-1] == (0., 0., 0.)
+
+
+@pytest.mark.parametrize('fault', ['obstacle', 'lost', 'gap_before_callback'])
+def test_depth_veto_only_adds_stops_and_never_clears_latched_stop(gateway, fault):
+    captured = []
+    gateway.output = NS(publish=captured.append)
+    gateway.depth_veto = True
+    def depth(distance):
+        stamp = healthy_gateway_inputs(gateway)
+        message = LaserScan()
+        message.header.frame_id, message.header.stamp = 'sztu_nav_base', stamp
+        message.angle_min, message.angle_increment = 0., .01
+        message.ranges = [distance, math.nan]
+        gateway.depth_callback(message)
+    depth(math.nan)
+    gateway.tick()
+    assert captured[-1].linear.x == .1  # main LiDAR alone supplies synthetic coverage
+    if fault == 'obstacle':
+        depth(.7)
+    else:
+        gateway.depth_freshness.received_at = time.monotonic()-1.
+        if fault == 'gap_before_callback':
+            depth(math.nan)
+    gateway.tick()
+    assert captured[-1] == Twist()
+    assert gateway.depth_stop_reason
+    depth(math.nan)
+    gateway.tick()
+    assert captured[-1] == Twist()
+    assert gateway.depth_stop_reason
+
+
+def test_depth_candidates_cannot_supply_missing_lidar_coverage(gateway):
+    captured = []
+    gateway.output = NS(publish=captured.append)
+    healthy_gateway_inputs(gateway)
+    gateway.coverage_verified = False
+    gateway.tick()
+    assert captured[-1] == Twist()
+
+
+def test_experimental_depth_path_refuses_hardware_registration():
+    rclpy.init()
+    try:
+        with pytest.raises(RuntimeError, match='diagnostic-only'):
+            SafetyGateway(parameter_overrides=[Parameter('live', value=True),
+                Parameter('surround_coverage_verified', value=True),
+                Parameter('depth_obstacle_veto', value=True)])
     finally:
         rclpy.shutdown()

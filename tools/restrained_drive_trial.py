@@ -11,6 +11,16 @@ import sys
 import time
 
 
+def finite_json(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: finite_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [finite_json(item) for item in value]
+    return value
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--execute', action='store_true')
@@ -18,10 +28,16 @@ def main():
     parser.add_argument('--operator-stop-ready', action='store_true')
     parser.add_argument('--zero-only', action='store_true',
                         help='register and query arbitration while publishing only zero velocity')
+    parser.add_argument('--require-mc-state', action='store_true',
+                        help='require fresh known MC mode; latch zero on damping or state loss')
+    parser.add_argument('--start-delay', type=float, default=0.,
+                        help='extra zero-only countdown before the single pulse (0--5 seconds)')
     parser.add_argument('--speed', type=float, default=0.10)
     parser.add_argument('--duration', type=float, default=1.0)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if not math.isfinite(args.start_delay) or not 0 <= args.start_delay <= 5:
+        parser.error('--start-delay must be 0--5 seconds')
     root = Path(__file__).resolve().parents[1]
     sys.path[:0] = [str(root / 'src/sztu_navigation')]
     from sztu_navigation.restrained_trial import RestrainedTrial
@@ -34,6 +50,7 @@ def main():
               'duration_s': args.duration, 'zero_duration_s': 3.0,
               'commanded_distance_m': 0.0 if args.zero_only else args.speed * args.duration,
               'zero_only': args.zero_only,
+              'require_mc_state': args.require_mc_state, 'start_delay_s': args.start_delay,
               'requested_publish_rate_hz': 50.0,
               'source': 'sdk_sztu_restrained_trial', 'wire_records': [],
               'note': ('Wire readback is not MC acceptance or physical stopping evidence; '
@@ -55,6 +72,17 @@ def main():
     from rclpy.qos import qos_profile_sensor_data
     from std_msgs.msg import Bool
     from sztu_navigation.locomotion import LocomotionController
+    from sztu_navigation.mc_state_guard import McStateGuard
+
+    if args.require_mc_state:
+        try:
+            from aimdk_msgs.msg import McCommonState
+            from rosidl_runtime_py.convert import message_to_ordereddict
+        except ImportError as error:
+            report.update(phase='preflight', verification_failure=str(error))
+            args.output.write_text(json.dumps(report, indent=2, allow_nan=False))
+            print('PREFLIGHT_FAILED: MC state interface unavailable; no ROS control created.', flush=True)
+            return 2
 
     rclpy.init()
     node = rclpy.create_node('sztu_restrained_trial_monitor')
@@ -70,6 +98,19 @@ def main():
     query_started_at = 0.0
     query_phase = None
     report['input_source_observations'] = []
+    mode_guard = McStateGuard() if args.require_mc_state else None
+    report['mc_state_records'] = []
+    if mode_guard is not None:
+        def receive_mode(message):
+            now = time.monotonic()
+            mode_guard.receive(message, node.get_clock().now().nanoseconds, now)
+            report['mc_state_records'].append(dict(
+                received_monotonic_s=now, message=finite_json(message_to_ordereddict(message))))
+            if mode_guard.reason:
+                trial.abort(now, mode_guard.reason)
+
+        node.create_subscription(McCommonState, '/aima/mc/common/state',
+                                 receive_mode, qos_profile_sensor_data)
 
     class ZeroDiagnosticCompleted(Exception):
         pass
@@ -190,6 +231,12 @@ def main():
             rclpy.spin_once(node, timeout_sec=.02)
         if signal_reason or trial.phase != 'preflight':
             raise RuntimeError(signal_reason or trial.reason)
+        if mode_guard is not None:
+            reason = mode_guard.check(node.get_clock().now().nanoseconds, time.monotonic())
+            if reason:
+                raise RuntimeError(reason)
+            if len(node.get_publishers_info_by_topic('/aima/mc/common/state')) != 1:
+                raise RuntimeError('requires exactly one MC state publisher')
         owners = [endpoint.node_name for endpoint in node.get_subscriptions_info_by_topic(
                   '/aima/mc/locomotion/velocity') if endpoint.node_name.startswith('mc_ros2_node')]
         report['mc_subscribers'] = owners
@@ -236,20 +283,50 @@ def main():
         if (signal_reason or trial.phase != 'preflight' or own_zero_count < 10
                 or own_last is None or time.monotonic() - own_last > .25):
             raise RuntimeError(signal_reason or trial.reason or 'zero wire preflight failed')
+        countdown_end = time.monotonic() + args.start_delay
+        if args.start_delay:
+            print('PULSE_COUNTDOWN: zero velocity only; single pulse after countdown.', flush=True)
+        while time.monotonic() < countdown_end:
+            wait_for_publish_slot()
+            controller.set_velocity(0, 0, 0)
+            controller.tick()
+            rclpy.spin_once(node, timeout_sec=.02)
+            observe_source('zero_countdown')
+            if signal_reason or trial.phase != 'preflight':
+                raise RuntimeError(signal_reason or trial.reason)
+            if own_last is None or time.monotonic() - own_last > .25:
+                raise RuntimeError('own_wire_lost')
+            if mode_guard is not None:
+                reason = mode_guard.check(node.get_clock().now().nanoseconds, time.monotonic())
+                if reason:
+                    raise RuntimeError(reason)
+        if mode_guard is not None:
+            reason = mode_guard.arm(node.get_clock().now().nanoseconds, time.monotonic())
+            if reason:
+                raise RuntimeError(reason)
         zero_before_pulse = own_zero_count
         trial.arm(time.monotonic())
         armed = True
         if signal_reason:
             trial.abort(time.monotonic(), signal_reason)
-        print('单次悬吊测试开始：最多 1 秒前进指令，随后 3 秒零速；操作者监视实际动作。', flush=True)
+        print('PULSE_STARTED: at most 1 second forward, followed by at least 3 seconds zero.', flush=True)
+        zero_announced = False
         while trial.phase not in ('finished', 'aborted'):
-            now = time.monotonic()
+            wait_for_publish_slot()
+            now = time.monotonic()  # sample after waiting, never send a late command using old time
             if signal_reason:
                 trial.abort(now, signal_reason)
             if own_last is None or now - own_last > .25:
                 trial.abort(now, 'own_wire_lost')
-            wait_for_publish_slot()
-            controller.set_velocity(trial.tick(now), 0, 0)
+            if mode_guard is not None:
+                reason = mode_guard.check(node.get_clock().now().nanoseconds, now)
+                if reason:
+                    trial.abort(now, reason)
+            forward = trial.tick(now)
+            if forward == 0 and not zero_announced:
+                print('PULSE_ENDED: zero commands only; no restart.', flush=True)
+                zero_announced = True
+            controller.set_velocity(forward, 0, 0)
             controller.tick()
             rclpy.spin_once(node, timeout_sec=.02)
             observe_source(trial.phase)
@@ -284,8 +361,10 @@ def main():
             pending_query.cancel()
         report['phase'] = trial.phase
         report['reason'] = trial.reason
+        report['mc_guard_latched_reason'] = mode_guard.reason if mode_guard else None
         args.output.write_text(json.dumps(report, indent=2, allow_nan=False))
-        summary = {key: value for key, value in report.items() if key != 'wire_records'}
+        summary = {key: value for key, value in report.items()
+                   if key not in ('wire_records', 'mc_state_records')}
         print(json.dumps(summary), flush=True)
         node.destroy_node()
         rclpy.try_shutdown()

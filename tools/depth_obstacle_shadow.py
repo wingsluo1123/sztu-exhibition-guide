@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Bounded depth/LiDAR shadow observations on the sensor host; no control outputs.
 
-This diagnostic never publishes scans, TF, velocity or coverage flags. Point/cell
+By default this diagnostic publishes nothing. An opt-in candidate scan uses a
+separate diagnostic topic, never the main safety scan. No TF, velocity or coverage
+flags are published. Point/cell
 presence and single-pixel ray comparisons are observations, not free-space proof.
 """
 
@@ -141,9 +143,10 @@ def run(args, output):
     from rcl_interfaces.srv import GetParameters
     from geometry_msgs.msg import TransformStamped
     from nav_msgs.msg import Odometry
-    from sensor_msgs.msg import CameraInfo, Image, PointCloud2
+    from sensor_msgs.msg import CameraInfo, Image, PointCloud2, LaserScan
     from tf2_ros import Buffer, TransformListener
     from sztu_navigation.ground_plane import estimate_ground
+    from sztu_navigation.depth_obstacles import candidate_scan
     from sztu_navigation.nav_geometry import rotation_matrix, xyz_points, yaw_of
     from sztu_slam.message_validation import MessageFreshness, stamp_nanoseconds, valid_pose
 
@@ -169,6 +172,8 @@ def run(args, output):
                   info='/aima/hal/sensor/rgbd_head_front/depth_camera_info', cloud='/lio/points',
                   odom='/slam/lidar_odom')
     qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
+    candidate_output = (node.create_publisher(LaserScan, '/sztu/depth_obstacle_candidates', qos)
+                        if args.publish_obstacle_candidates else None)
 
     def receive(message, key):
         counts[key + '_received'] += 1
@@ -374,6 +379,17 @@ def run(args, output):
                 rotation, translation = level @ camera_rotation, (camera - base) @ level.T
                 result = summarize(depth, k, rotation, translation, points,
                                    ground.normal, ground.offset, scale)
+                candidate = None
+                if candidate_output is not None:
+                    ranges, increment = candidate_scan(depth, k, rotation, translation,
+                                                       ground.normal, ground.offset, scale)
+                    candidate = LaserScan()
+                    candidate.header.stamp = image.header.stamp
+                    candidate.header.frame_id = 'sztu_nav_base'
+                    candidate.angle_min, candidate.angle_max = -math.pi, math.pi
+                    candidate.angle_increment = increment
+                    candidate.range_min, candidate.range_max = .05, 15.
+                    candidate.ranges = ranges
                 summarized_at = time.monotonic()
                 row_timing.update(validation_s=validated_at - processing_started,
                                   transforms_s=transformed_at - validated_at,
@@ -398,6 +414,9 @@ def run(args, output):
             if max(ages) > .5:
                 counts['expired_after_processing'] += 1
                 continue
+            if candidate is not None:
+                candidate_output.publish(candidate)
+                counts['candidate_scans_published'] += 1
             last_used = depth_ns
             next_check = mono + .2  # successful processing starts at least 200ms apart
             counts['pairs_observed'] += 1
@@ -431,12 +450,14 @@ def run(args, output):
         publishers = {key: [dict(name=p.node_name, namespace=p.node_namespace)
                             for p in node.get_publishers_info_by_topic(topic)]
                       for key, topic in topics.items()}
-        return dict(scope='Shadow observations only; no control, safety scan, TF or coverage publications. '
+        return dict(scope='Diagnostic only; optional obstacle candidate scan on a separate topic. '
+                          'No control, main safety scan, TF or coverage publications. '
                           'No free-space or complete body-sweep coverage claim. Camera scale/axes remain '
                           'the prior single-pose hypothesis; no self-body masking or motion compensation '
                           'for objects moving between sensor times.',
                     diagnostic_completed=True, observations_available=bool(rows),
                     hardware_coverage_verified=False,
+                    candidate_output_enabled=candidate_output is not None,
                     driver_checks=driver_checks,
                     profile_stable_at_checks=all(check['matches'] for check in driver_checks),
                     duration_s=time.monotonic() - started, ros_distro=os.environ.get('ROS_DISTRO'),
@@ -458,6 +479,8 @@ def run(args, output):
                     source_sha256={path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                                    for path in (Path(__file__), Path(geometry.__file__), args.profile,
                                                 Path(estimate_ground.__code__.co_filename),
+                                                Path(candidate_scan.__code__.co_filename),
+                                                Path(geometry.depth_points.__code__.co_filename),
                                                 Path(xyz_points.__code__.co_filename),
                                                 Path(stamp_nanoseconds.__code__.co_filename))})
     finally:
@@ -469,6 +492,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--duration', type=float, default=30)
     parser.add_argument('--profile', type=Path, required=True)
+    parser.add_argument('--publish-obstacle-candidates', action='store_true',
+                        help='publish marking-only diagnostic scan on /sztu/depth_obstacle_candidates')
     parser.add_argument('--output-dir', type=Path, required=True,
                         help='new, unused directory; captures raw depth locally')
     args = parser.parse_args()

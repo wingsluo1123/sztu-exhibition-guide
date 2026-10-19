@@ -174,6 +174,14 @@ def collision_reason(ranges, angle_min, angle_increment, forward, angular,
                     for point_x, point_y in points}
         if (forward != 0 or angular != 0) and len(observed) < 12:
             return 'surround_scan_incomplete'
+    return swept_obstacle_reason(points, forward, angular, radius, stopping_margin, horizon)
+
+
+def swept_obstacle_reason(points, forward, angular, radius=.55, stopping_margin=.25, horizon=1.):
+    """Only test observed obstacle points; an empty set cannot establish clearance.
+
+    Caller must separately enforce coverage, freshness and command bounds.
+    """
     if forward == 0 and angular == 0:
         return ''
     path_length = forward * horizon + stopping_margin

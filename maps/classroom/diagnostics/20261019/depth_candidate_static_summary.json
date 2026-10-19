@@ -1,0 +1,75 @@
+{
+  "scope": "Static hardware candidate publication and isolated software tests only; no new physical motion, no operational release.",
+  "observation_window_s": 20.001438918996428,
+  "candidate_frames_published": 69,
+  "candidate_frames_received": 69,
+  "max_consumer_source_age_s": 0.497494315,
+  "max_source_gap_s": 0.834266112,
+  "consumers_all_frame_and_layout_valid": true,
+  "driver_stable_at_checks": true,
+  "before": {
+    "scope": "Read-only flags and output traffic; no command/registration clients.",
+    "flags": {
+      "live": false,
+      "surround_coverage_verified": false,
+      "front_only_coverage": false,
+      "front_arc_coverage": false
+    },
+    "command_counts": {
+      "hardware_rc": 168,
+      "cmd_vel": 147
+    },
+    "bridge_state": "inactive",
+    "commit": "5d37e9ba4b7b43adbd27b6744345c505e12e8ee0",
+    "stamp_ns": 1792425527430813515
+  },
+  "after": {
+    "scope": "Read-only flags and output traffic; no command/registration clients.",
+    "flags": {
+      "live": false,
+      "surround_coverage_verified": false,
+      "front_only_coverage": false,
+      "front_arc_coverage": false
+    },
+    "command_counts": {
+      "hardware_rc": 139,
+      "cmd_vel": 61
+    },
+    "bridge_state": "inactive",
+    "commit": "5d37e9ba4b7b43adbd27b6744345c505e12e8ee0",
+    "stamp_ns": 1792425569790018417
+  },
+  "tests": {
+    "developer_non_runtime": "421 passed, 3 skipped, 31 deselected; before final diagnostic-only hardware guard test was added",
+    "robot_isolated_mc_guard": "19 passed, 15 deselected; real McCommonState, ROS domain 42, no connection to MC hardware",
+    "depth_shadow_runtime": "4 passed; includes opt-in candidate output, calibration/time/TF faults",
+    "final_added_checks": "3 passed: diagnostic-only hardware refusal, CLI preview, image boundary"
+  },
+  "hardware_stop_verified": false,
+  "hardware_coverage_verified": false,
+  "runtime_gate_restarted": false,
+  "findings": [
+    "69/69 candidate frames arrived; no zero/inf clearing rays fabricated",
+    "max source gap exceeds 0.5s; candidate stream is not continuous safety coverage",
+    "current live and three coverage flags remain false; bridge inactive; no nonzero traffic observed before/after",
+    "first static launcher failed before candidate start because read-only helper expected repository cwd; logs retained separately; corrected launcher used a new directory"
+  ],
+  "raw_archive_directory": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_depth_candidates_02",
+  "raw_sha256": {
+    "mc_guard_isolated.log": "0125437e74250422adbacde81bbd824bf6eb33d878937fb9713f05be6b10e3a4",
+    "producer.log": "7cb79d1c959a7238d54b83f1929a062c9a92927d5ce141d03e367fc79afdce1e",
+    "before.log": "f13ffca38bc7104992a42e0aa86560428d61ed7b0e66bcbcd8ffaf03d42167c5",
+    "before.json": "004c4de34eadee843387a5178002f8b5c87d07c6faf5e959c1ecb2338a74939f",
+    "consumer.json": "d5c2b0068f4a482d38bbf0afe62e9516c77b7cd09a56eda4fde18247bf05d121",
+    "after.log": "c551a692e2ba06105f59d9ba256ea61b28caff76d0ca0a144b7edcb40e3086a8",
+    "after.json": "5936cfffd16a9267e71481b35d9628066f034d52cbe6d2aefc90a1291c09d5ae",
+    "consumer.log": "ae643b7f1317e3a3db96b4d79398d4888571ea5e39a9f765d675acfad66f6997",
+    "sztu_depth_candidate_static_20261019.sh": "4c63f7168bb3d1a099fc3522a9eeca4f3cd5c7d556f2d2b8a2c92108bf662614",
+    "sztu_depth_candidate_observer_20261019.py": "d6982eaffed30138f02ad67fce95ad5774d557d0d599cf742528614e36a4a155",
+    "sztu_commission_candidate_20261019_v2.tar.gz": "55ff745a91909574e3300960bf1b599cedbc8c940a418affb778146186d02708",
+    "producer/pair_1.npz": "9d59a5c23289c0df36cd197dcb7db0b2104107ac14835d8ee3256b74315ad531",
+    "producer/observations.json": "c0cd6ef1d078f431ee9549c4b521ec58a5d25c353ba90e7988949a0a44a27f57",
+    "producer/pair_2.npz": "07c84be3a90b569de2c4b9f5490a5043719afa5b80ebc399e6fbd140a8e32c1b",
+    "producer/pair_0.npz": "6bb78e202017f3085f0d7bc3868fd350602f0d004704f39eecead285edffb3c0"
+  }
+}

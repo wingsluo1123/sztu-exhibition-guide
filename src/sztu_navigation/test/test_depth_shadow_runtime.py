@@ -15,14 +15,19 @@ from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField, LaserScan
 from tf2_ros import TransformBroadcaster
 
 
-@pytest.mark.parametrize('driver_mismatch,direct_odometry', [(False, False), (False, True), (True, False)])
-def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path, driver_mismatch, direct_odometry):
+@pytest.mark.parametrize('driver_mismatch,direct_odometry,publish_candidates', [
+    (False, False, False), (False, True, False), (True, False, False), (False, True, True)])
+def test_shadow_observes_and_rejects_faults_without_control_publishers(
+        tmp_path, driver_mismatch, direct_odometry, publish_candidates):
     rclpy.init(domain_id=42)
     source = rclpy.create_node('depth_shadow_fixture')
+    candidate_records = []
+    source.create_subscription(LaserScan, '/sztu/depth_obstacle_candidates',
+        lambda msg: candidate_records.append((time.monotonic(), msg)), qos_profile_sensor_data)
     source.declare_parameter('depth_flip', False)
     source.declare_parameter('enable_depth_scale', True)
     publishers = {
@@ -55,7 +60,8 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
         with (tmp_path / 'log').open('w') as log:
             process = subprocess.Popen(
                 [sys.executable, str(launcher),
-                 '--duration', '10', '--profile', str(profile), '--output-dir', str(tmp_path / 'result')],
+                 '--duration', '10', '--profile', str(profile), '--output-dir', str(tmp_path / 'result'),
+                 *(['--publish-obstacle-candidates'] if publish_candidates else [])],
                 env=dict(os.environ, ROS_DOMAIN_ID='42', OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1',
                          PYTHONPATH=str(root / 'tools') + os.pathsep + os.environ.get('PYTHONPATH', '')),
                 stdout=log, stderr=log)
@@ -171,6 +177,20 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
         assert report['timing_summary_s']['capture_write_and_hash_s']['count'] == len(report['captures'])
         assert report['timing_summary_s']['capture_write_and_hash_s']['median'] >= .6
         assert max(row['elapsed_s'] for row in report['rows']) <= report['observation_window_s']
+        assert report['candidate_output_enabled'] == publish_candidates
+        if publish_candidates:
+            assert candidate_records
+            assert report['counts']['candidate_scans_published'] == report['counts']['pairs_observed']
+            for _, msg in candidate_records:
+                assert msg.header.frame_id == 'sztu_nav_base'
+                assert len(msg.ranges) == 720
+                assert np.isnan(msg.ranges).any()
+                assert np.isfinite(msg.ranges).any()
+                stamp = msg.header.stamp.sec*10**9+msg.header.stamp.nanosec
+                row = next(row for row in report['rows'] if row['depth_stamp_ns'] == stamp)
+                assert row['elapsed_s'] < 7  # no output from later missing-TF stream
+        else:
+            assert not candidate_records
     finally:
         if process is not None and process.poll() is None:
             process.kill()
