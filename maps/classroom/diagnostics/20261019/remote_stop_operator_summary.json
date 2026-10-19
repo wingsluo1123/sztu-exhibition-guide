@@ -1,0 +1,177 @@
+{
+  "scope": "One authorized operator-executed stationary damping transition under fixed fall protection; recorder sends no control commands.",
+  "authorization": {
+    "granted": true,
+    "physical_attempt_executed": true,
+    "remaining_physical_attempts": 0,
+    "automatic_standing_recovery": false,
+    "additional_motion_authorized": false
+  },
+  "operator_report": "Entered damping; has not restored standing.",
+  "result": "Fresh raw state changed STAND_DEFAULT to DAMPING_DEFAULT, matching operator observation. Stationary remote mode transition observed.",
+  "completed": true,
+  "duration_s": 30.00683521099927,
+  "counts": {
+    "state": 291,
+    "command": 361,
+    "odom": 290
+  },
+  "freshness": {
+    "state": {
+      "fresh_count": 291,
+      "maximum_source_age_s": 0.471853998
+    },
+    "command": {
+      "fresh_count": 356,
+      "maximum_source_age_s": 1.110331631
+    },
+    "odom": {
+      "fresh_count": 290,
+      "maximum_source_age_s": 0.425761841
+    }
+  },
+  "transitions": [
+    {
+      "elapsed_s": 1.4659006950023468,
+      "source_stamp_ns": 1792423229968549398,
+      "source_time": "2026-10-19T23:20:29.968549+08:00",
+      "source_age_s": 0.471853998,
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm": 4,
+      "body_status": 1,
+      "input_source": {
+        "name": "rc",
+        "priority": 80,
+        "timeout": 1000
+      }
+    },
+    {
+      "elapsed_s": 11.396862298999622,
+      "source_stamp_ns": 1792423240368480903,
+      "source_time": "2026-10-19T23:20:40.368481+08:00",
+      "source_age_s": 0.002905704,
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm": 4,
+      "body_status": 1,
+      "input_source": {
+        "name": "rc",
+        "priority": 80,
+        "timeout": 1000
+      }
+    },
+    {
+      "elapsed_s": 11.498847966999165,
+      "source_stamp_ns": 1792423240468456069,
+      "source_time": "2026-10-19T23:20:40.468456+08:00",
+      "source_age_s": 0.004911534,
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm": 6,
+      "body_status": 1,
+      "input_source": {
+        "name": "rc",
+        "priority": 80,
+        "timeout": 1000
+      }
+    },
+    {
+      "elapsed_s": 12.497379265001655,
+      "source_stamp_ns": 1792423241468417737,
+      "source_time": "2026-10-19T23:20:41.468418+08:00",
+      "source_age_s": 0.003482733,
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm": 6,
+      "body_status": 5,
+      "input_source": {
+        "name": "rc",
+        "priority": 80,
+        "timeout": 1000
+      }
+    }
+  ],
+  "nonzero_wire_count": 0,
+  "wire_components_checked": [
+    "forward_velocity",
+    "lateral_velocity",
+    "angular_velocity"
+  ],
+  "caveats": [
+    "Action enum value remains 0 despite nonempty action description; retain raw inconsistency.",
+    "No button-edge timestamp, so no button-to-damping latency measured.",
+    "All observed input sources were rc; this is not an SDK-to-RC moving takeover test.",
+    "Body movement/odometry during damping is not a ground stopping distance measurement.",
+    "No standing recovery, repeat damping operation, motion command, navigation goal or coverage approval follows from this result."
+  ],
+  "hardware_stop_verified": false,
+  "state_checks": {
+    "before_operator_02": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 195,
+        "cmd_vel": 156
+      },
+      "commit": "380c3a5750387da09e2a4e40b304168b570e363d",
+      "stamp_ns": 1792423225030212547
+    },
+    "after_operator_02": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 158
+      },
+      "commit": "380c3a5750387da09e2a4e40b304168b570e363d",
+      "stamp_ns": 1792423269313664908
+    }
+  },
+  "artifacts": [
+    {
+      "name": "after_operator_02.json",
+      "bytes": 3944,
+      "sha256": "cd73d04c58ea3fa6fde16df1593bd1d70777b7827c84aedb64e3b8de28bc29db"
+    },
+    {
+      "name": "after_operator_02.log",
+      "bytes": 328366,
+      "sha256": "8e9d5394cc58090f4eb2459800569d083e9ccf78b3fe9062c7c50407155e46a3"
+    },
+    {
+      "name": "before_operator_02.json",
+      "bytes": 2847,
+      "sha256": "ba1673c272e3e9035deaee1b027dc7c01a1937edbb9caaf4c2d733e2ec8311af"
+    },
+    {
+      "name": "before_operator_02.log",
+      "bytes": 322107,
+      "sha256": "439f454510eb41ebd61df8db35fadeedc7aaac208f939af75826d4037ad5d46c"
+    },
+    {
+      "name": "mc_state_operator_02.json",
+      "bytes": 1848219,
+      "sha256": "5c937a0b2bcb89c18495fcfe40363dca50b9efaa0c45d0ce8b5697a591e80fee"
+    },
+    {
+      "name": "operator_02_console.log",
+      "bytes": 308490,
+      "sha256": "ae5d96634a231002b13ce6ab41b88403cec15194f719bb4afe0251fb2b3f9ab3"
+    }
+  ],
+  "artifact_verification": "All six files match robot SHA-256; raw files archived on both machines under 20261019_remote_stop."
+}

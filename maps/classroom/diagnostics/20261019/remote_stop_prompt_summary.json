@@ -1,0 +1,102 @@
+{
+  "scope": "Recorder ran; no physical damping button operation. Prompt hidden by DDS stdout.",
+  "operator_report": "No buttons pressed; still standing.",
+  "physical_attempt_executed": false,
+  "authorization": "One stationary damping operation remains authorized in unchanged fixed-support envelope; no motion or retry authorization.",
+  "completed": true,
+  "duration_s": 30.011884465999174,
+  "counts": {
+    "state": 284,
+    "command": 1366,
+    "odom": 282
+  },
+  "fresh_state_count": 284,
+  "action_descriptions": [
+    "STAND_DEFAULT"
+  ],
+  "nonzero_wire_count": 0,
+  "wire_components_checked": [
+    "forward_velocity",
+    "lateral_velocity",
+    "angular_velocity"
+  ],
+  "ready_marker_present_in_raw_console": true,
+  "hardware_stop_verified": false,
+  "state_checks": {
+    "before_operator_01": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 193,
+        "cmd_vel": 176
+      },
+      "commit": "380c3a5750387da09e2a4e40b304168b570e363d",
+      "stamp_ns": 1792422922819832979
+    },
+    "after_operator_01": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 187,
+        "cmd_vel": 185
+      },
+      "commit": "380c3a5750387da09e2a4e40b304168b570e363d",
+      "stamp_ns": 1792422968597355849
+    }
+  },
+  "display_fix": "operator_02 wrapper filters console only, preserves full combined output, propagates pipeline errors and refuses reuse before overwriting evidence.",
+  "validation": "bash -n passed; exact display filter exercised with 5000 warning lines and success/failure exits. Recorder unchanged; no physical test executed.",
+  "artifacts": [
+    {
+      "name": "after_operator_01.json",
+      "bytes": 5244,
+      "sha256": "bfb601e8749a0b9fbba52c66e777fc926883f2e6267149a0993388d05e183ad7"
+    },
+    {
+      "name": "after_operator_01.log",
+      "bytes": 322109,
+      "sha256": "c30219d664abdbc6bed4f00b1444b1339a8c5b5f6a5b7aba89c3345504b948c2"
+    },
+    {
+      "name": "before_operator_01.json",
+      "bytes": 5252,
+      "sha256": "77826544962a36de9f07631cb036a594698d7df62910d522e948351eaab4a5a8"
+    },
+    {
+      "name": "before_operator_01.log",
+      "bytes": 322354,
+      "sha256": "0878ba0a7d7ffc9f47adcf0bff1267377b345e36ae227823d46128158bdfe1df"
+    },
+    {
+      "name": "mc_state_operator_01.json",
+      "bytes": 2461949,
+      "sha256": "0cd60ccb0e1d5d00d37f4bdd2c9fedf5c9a02eb2bcd29f243943c72a1429ae5c"
+    },
+    {
+      "name": "operator_01_console.log",
+      "bytes": 307534,
+      "sha256": "9bdf3381445ca6f01b679adf586f11490a3080efc33e43b44a6032e4a3e3fc0e"
+    },
+    {
+      "name": "operator_01_dds.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "prepared_script": {
+    "name": "sztu_remote_stop_observe_20261019_02.sh",
+    "bytes": 2340,
+    "sha256": "f3bee08f95da49fe14a9b5937bd187c911c3adbfc2519e14090c0e8913bb9e27",
+    "executed": false
+  }
+}
