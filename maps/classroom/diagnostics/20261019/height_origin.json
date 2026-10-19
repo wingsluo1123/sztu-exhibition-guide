@@ -1,0 +1,152 @@
+{
+  "scope": "Read-only height-origin probe; exact cloud-time TF only; heights relative to leveled base_link, not a measured floor.",
+  "tf_lookup_failures": [
+    "Lookup would require extrapolation into the past.  Requested time 1792408854.574501 but the earliest data is at time 1792408854.780376, when looking up transform from frame [lidar_chest_front] to frame [base_link]"
+  ],
+  "latest_transforms": {
+    "pelvis": {
+      "xyz_in_base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "stamp": 0.0
+    },
+    "left_ankle_roll_link": {
+      "xyz_in_base": [
+        0.04344752741286093,
+        0.15841046656597213,
+        -0.580689383497874
+      ],
+      "stamp": 1792408869.4573078
+    },
+    "right_ankle_roll_link": {
+      "xyz_in_base": [
+        -0.03906727819823188,
+        -0.15797933538807216,
+        -0.5840169669051803
+      ],
+      "stamp": 1792408869.4573078
+    },
+    "foot_contact": {
+      "error": "Could not find a connection between 'base_link' and 'foot_contact' because they are not part of the same tree.Tf has two or more unconnected trees."
+    },
+    "lidar_chest_front": {
+      "xyz_in_base": [
+        0.09807225912744737,
+        0.002581377211427696,
+        0.33914258865568453
+      ],
+      "stamp": 1792408869.4573078
+    }
+  },
+  "sample_count": 26,
+  "sample_first": {
+    "stamp": 1792408855.119051,
+    "t": 1.1765764140000101,
+    "source_frame": "lidar_chest_front",
+    "sensor_in_base_xyz": [
+      0.09807225912744737,
+      0.002581377211427696,
+      0.33914258865568453
+    ],
+    "front_2m_height_bands": [
+      {
+        "z_relative_base": [
+          -1.0,
+          -0.5
+        ],
+        "points": 4995,
+        "nearest_xy": 0.6658952561944382
+      },
+      {
+        "z_relative_base": [
+          -0.5,
+          -0.05
+        ],
+        "points": 2014,
+        "nearest_xy": 0.685920094454741
+      },
+      {
+        "z_relative_base": [
+          -0.05,
+          0.05
+        ],
+        "points": 735,
+        "nearest_xy": 0.6578950848218158
+      },
+      {
+        "z_relative_base": [
+          0.05,
+          0.25
+        ],
+        "points": 2385,
+        "nearest_xy": 0.6381264442696302
+      },
+      {
+        "z_relative_base": [
+          0.25,
+          1.8
+        ],
+        "points": 905,
+        "nearest_xy": 0.7078785514488407
+      }
+    ],
+    "base_odom_z": -0.5327517607643852
+  },
+  "sample_last": {
+    "stamp": 1792408869.116704,
+    "t": 14.779021736001596,
+    "source_frame": "lidar_chest_front",
+    "sensor_in_base_xyz": [
+      0.09807225912744737,
+      0.002581377211427696,
+      0.33914258865568453
+    ],
+    "front_2m_height_bands": [
+      {
+        "z_relative_base": [
+          -1.0,
+          -0.5
+        ],
+        "points": 5033,
+        "nearest_xy": 0.6618121544990238
+      },
+      {
+        "z_relative_base": [
+          -0.5,
+          -0.05
+        ],
+        "points": 2005,
+        "nearest_xy": 0.6896699976993543
+      },
+      {
+        "z_relative_base": [
+          -0.05,
+          0.05
+        ],
+        "points": 717,
+        "nearest_xy": 0.6582630086013325
+      },
+      {
+        "z_relative_base": [
+          0.05,
+          0.25
+        ],
+        "points": 2393,
+        "nearest_xy": 0.6383231682354255
+      },
+      {
+        "z_relative_base": [
+          0.25,
+          1.8
+        ],
+        "points": 875,
+        "nearest_xy": 0.7184433460296787
+      }
+    ],
+    "base_odom_z": -0.5251579782998512
+  },
+  "finding": "base_link coincides with pelvis. Adapter filters leveled base-relative z >= 0.05, omitting all below-pelvis points. Ground-relative 5cm coverage is not established.",
+  "full_capture_robot": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/height_origin.json"
+}

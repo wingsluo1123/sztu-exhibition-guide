@@ -1,0 +1,824 @@
+{
+  "label": "baseline",
+  "started_utc": "2026-10-19T11:18:35.038825+00:00",
+  "duration_s": 20.150436613002967,
+  "scope": "Read-only static observation. Angular returns do not prove sensor coverage. No motion commands or parameter writes.",
+  "summary": {
+    "/sztu/safety_scan": {
+      "count": 179,
+      "frames_after_5s": 150,
+      "max_age_all": 0.42340636253356934,
+      "max_age_after_5s": 0.26998329162597656,
+      "max_receive_gap_after_5s": 0.22879947499677655,
+      "angular_buckets_after_5s": [
+        {
+          "degrees": [
+            -180,
+            -170
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -170,
+            -160
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -160,
+            -150
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -150,
+            -140
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -140,
+            -130
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -130,
+            -120
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -120,
+            -110
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -110,
+            -100
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -100,
+            -90
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -90,
+            -80
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -80,
+            -70
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -70,
+            -60
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -60,
+            -50
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -50,
+            -40
+          ],
+          "returns": 1950,
+          "min_range": 2.900540590286255,
+          "p10_range": 2.9327749252319335,
+          "median_range": 4.30864143371582
+        },
+        {
+          "degrees": [
+            -40,
+            -30
+          ],
+          "returns": 3000,
+          "min_range": 1.0656450986862183,
+          "p10_range": 1.4242298126220783,
+          "median_range": 6.233630657196045
+        },
+        {
+          "degrees": [
+            -30,
+            -20
+          ],
+          "returns": 3000,
+          "min_range": 1.0021648406982422,
+          "p10_range": 1.009709393978119,
+          "median_range": 1.0240397453308105
+        },
+        {
+          "degrees": [
+            -20,
+            -10
+          ],
+          "returns": 3000,
+          "min_range": 1.0402562618255615,
+          "p10_range": 1.0479354023933412,
+          "median_range": 1.068678379058838
+        },
+        {
+          "degrees": [
+            -10,
+            0
+          ],
+          "returns": 3000,
+          "min_range": 0.6330602169036865,
+          "p10_range": 0.6570433974266052,
+          "median_range": 1.129697859287262
+        },
+        {
+          "degrees": [
+            0,
+            10
+          ],
+          "returns": 3000,
+          "min_range": 0.6108485460281372,
+          "p10_range": 0.6420033574104309,
+          "median_range": 0.6469728052616119
+        },
+        {
+          "degrees": [
+            10,
+            20
+          ],
+          "returns": 3000,
+          "min_range": 0.6183468699455261,
+          "p10_range": 0.6489107489585877,
+          "median_range": 0.6557330787181854
+        },
+        {
+          "degrees": [
+            20,
+            30
+          ],
+          "returns": 3000,
+          "min_range": 0.6578118801116943,
+          "p10_range": 0.6762896597385406,
+          "median_range": 0.7095348238945007
+        },
+        {
+          "degrees": [
+            30,
+            40
+          ],
+          "returns": 3000,
+          "min_range": 1.0890934467315674,
+          "p10_range": 1.2302200555801392,
+          "median_range": 1.591692566871643
+        },
+        {
+          "degrees": [
+            40,
+            50
+          ],
+          "returns": 1164,
+          "min_range": 2.246572732925415,
+          "p10_range": 2.264159846305847,
+          "median_range": 2.30256450176239
+        },
+        {
+          "degrees": [
+            50,
+            60
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            60,
+            70
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            70,
+            80
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            80,
+            90
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            90,
+            100
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            100,
+            110
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            110,
+            120
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            120,
+            130
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            130,
+            140
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            140,
+            150
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            150,
+            160
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            160,
+            170
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            170,
+            180
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        }
+      ]
+    },
+    "/sztu/scan": {
+      "count": 179,
+      "frames_after_5s": 150,
+      "max_age_all": 0.4239223003387451,
+      "max_age_after_5s": 0.2704188823699951,
+      "max_receive_gap_after_5s": 0.22881873799997265,
+      "angular_buckets_after_5s": [
+        {
+          "degrees": [
+            -180,
+            -170
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -170,
+            -160
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -160,
+            -150
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -150,
+            -140
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -140,
+            -130
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -130,
+            -120
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -120,
+            -110
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -110,
+            -100
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -100,
+            -90
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -90,
+            -80
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -80,
+            -70
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -70,
+            -60
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -60,
+            -50
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            -50,
+            -40
+          ],
+          "returns": 1950,
+          "min_range": 2.9400482177734375,
+          "p10_range": 2.969427227973938,
+          "median_range": 4.3814239501953125
+        },
+        {
+          "degrees": [
+            -40,
+            -30
+          ],
+          "returns": 3000,
+          "min_range": 3.0579612255096436,
+          "p10_range": 4.134332799911519,
+          "median_range": 8.051085948944092
+        },
+        {
+          "degrees": [
+            -30,
+            -20
+          ],
+          "returns": 3000,
+          "min_range": 1.465569257736206,
+          "p10_range": 1.4934481143951417,
+          "median_range": 1.538843035697937
+        },
+        {
+          "degrees": [
+            -20,
+            -10
+          ],
+          "returns": 3000,
+          "min_range": 1.4989635944366455,
+          "p10_range": 1.5143348932266236,
+          "median_range": 1.5485811233520508
+        },
+        {
+          "degrees": [
+            -10,
+            0
+          ],
+          "returns": 3000,
+          "min_range": 1.5573309659957886,
+          "p10_range": 1.5877171874046325,
+          "median_range": 1.7009289860725403
+        },
+        {
+          "degrees": [
+            0,
+            10
+          ],
+          "returns": 3000,
+          "min_range": 1.5906846523284912,
+          "p10_range": 1.6263668894767762,
+          "median_range": 1.7026445269584656
+        },
+        {
+          "degrees": [
+            10,
+            20
+          ],
+          "returns": 3000,
+          "min_range": 1.5432031154632568,
+          "p10_range": 1.568793499469757,
+          "median_range": 1.678952157497406
+        },
+        {
+          "degrees": [
+            20,
+            30
+          ],
+          "returns": 3000,
+          "min_range": 0.7050180435180664,
+          "p10_range": 0.7180608451366425,
+          "median_range": 1.0286723375320435
+        },
+        {
+          "degrees": [
+            30,
+            40
+          ],
+          "returns": 3000,
+          "min_range": 1.1949068307876587,
+          "p10_range": 1.387392246723175,
+          "median_range": 1.6336410641670227
+        },
+        {
+          "degrees": [
+            40,
+            50
+          ],
+          "returns": 1164,
+          "min_range": 2.246572732925415,
+          "p10_range": 2.264159846305847,
+          "median_range": 2.30256450176239
+        },
+        {
+          "degrees": [
+            50,
+            60
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            60,
+            70
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            70,
+            80
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            80,
+            90
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            90,
+            100
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            100,
+            110
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            110,
+            120
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            120,
+            130
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            130,
+            140
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            140,
+            150
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            150,
+            160
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            160,
+            170
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        },
+        {
+          "degrees": [
+            170,
+            180
+          ],
+          "returns": 0,
+          "min_range": null,
+          "p10_range": null,
+          "median_range": null
+        }
+      ]
+    }
+  },
+  "parameters": {
+    "nav_sensor_adapter": {
+      "cloud_topic": {
+        "type": 4,
+        "bool": false,
+        "double": 0.0,
+        "string": "/lio/points"
+      },
+      "safety_min_height": {
+        "type": 3,
+        "bool": false,
+        "double": 0.05,
+        "string": ""
+      },
+      "localization_min_height": {
+        "type": 3,
+        "bool": false,
+        "double": 0.25,
+        "string": ""
+      },
+      "max_height": {
+        "type": 3,
+        "bool": false,
+        "double": 1.8,
+        "string": ""
+      }
+    },
+    "sztu_safety_gateway": {
+      "live": {
+        "type": 1,
+        "bool": false,
+        "double": 0.0,
+        "string": ""
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "bool": false,
+        "double": 0.0,
+        "string": ""
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "bool": false,
+        "double": 0.0,
+        "string": ""
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "bool": false,
+        "double": 0.0,
+        "string": ""
+      },
+      "robot_radius": {
+        "type": 3,
+        "bool": false,
+        "double": 0.4,
+        "string": ""
+      },
+      "stopping_margin": {
+        "type": 3,
+        "bool": false,
+        "double": 0.25,
+        "string": ""
+      }
+    }
+  },
+  "unavailable_parameters": [],
+  "command_count": 937,
+  "maximum_abs_command": 0.0,
+  "odom_count": 180,
+  "odom_xy_span": [
+    0.01520611302409458,
+    0.01088167099573667
+  ],
+  "full_capture_robot": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/baseline.json",
+  "full_capture_developer": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/baseline.json",
+  "operator_test_object": "Only chairs or other objects available; controlled placement not yet performed.",
+  "result": "Baseline recorded. Near front returns require scene identification; no sensor coverage mode verified."
+}

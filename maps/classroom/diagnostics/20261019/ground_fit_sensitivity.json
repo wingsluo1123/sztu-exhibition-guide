@@ -1,0 +1,47 @@
+{
+  "scope": "Offline same-frame sensitivity check; no runtime changes, no independent floor measurement",
+  "fits": [
+    {
+      "seed": 0,
+      "normal": [
+        -0.057844740761132954,
+        -0.10289989040103087,
+        0.9930083577300509
+      ],
+      "z_at_base": -0.6802987508531824,
+      "thickness": 0.009373144659134986,
+      "inliers": 7195,
+      "front_2m_old_kept": 2445,
+      "front_2m_candidate_kept": 4621,
+      "front_2m_newly_included": 2176
+    },
+    {
+      "seed": 1,
+      "normal": [
+        -0.05577531681627732,
+        -0.10200059420592583,
+        0.9932195088779127
+      ],
+      "z_at_base": -0.678094830442332,
+      "thickness": 0.008768355609614753,
+      "inliers": 7144,
+      "front_2m_old_kept": 2445,
+      "front_2m_candidate_kept": 4620,
+      "front_2m_newly_included": 2175
+    },
+    {
+      "seed": 2,
+      "normal": [
+        -0.05610829201122238,
+        -0.10250172415821546,
+        0.9931491610589903
+      ],
+      "z_at_base": -0.6785068419476956,
+      "thickness": 0.008805125104188708,
+      "inliers": 7153,
+      "front_2m_old_kept": 2445,
+      "front_2m_candidate_kept": 4621,
+      "front_2m_newly_included": 2176
+    }
+  ]
+}

@@ -1,0 +1,811 @@
+{
+  "scope": "Stationary chair appearance/removal diagnostic; no physical navigation or sensor coverage certification.",
+  "roi": {
+    "angle_degrees": [
+      15.0,
+      45.0
+    ],
+    "range_m": [
+      0.7,
+      1.7
+    ]
+  },
+  "candidate_ground_reference": {
+    "normal": [
+      0.0567893633139002,
+      -0.09983589967687274,
+      0.9933819815912263
+    ],
+    "offset": -0.66354093170415,
+    "source": "open_baseline only; fixed before chair data analysis"
+  },
+  "stages": {
+    "open_baseline": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        },
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.010952273303594606,
+        0.013069162633225773
+      ],
+      "odom_median_xy": [
+        0.8961599144598339,
+        9.344955626215016
+      ],
+      "odom_median_shift_from_baseline": 0.0,
+      "scans": {
+        "/sztu/scan": {
+          "frames_after_5s": 149,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 0,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 3.2714696759976505,
+          "freshness": {
+            "count": 161,
+            "frames_after_5s": 149,
+            "max_age_all": 0.4902980327606201,
+            "max_age_after_5s": 0.4858081340789795,
+            "max_receive_gap_after_5s": 0.23152569199737627
+          }
+        },
+        "/sztu/safety_scan": {
+          "frames_after_5s": 149,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 1,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 3.2885966029971314,
+          "freshness": {
+            "count": 161,
+            "frames_after_5s": 149,
+            "max_age_all": 0.5074248313903809,
+            "max_age_after_5s": 0.4908149242401123,
+            "max_receive_gap_after_5s": 0.24348967400146648
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792409486.224447,
+          "frame_file": "open_baseline_frame_0.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.668216323001252,
+          "stage_plane_thickness": 0.006755103629730782,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409490.620432,
+          "frame_file": "open_baseline_frame_1.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6677081463581594,
+          "stage_plane_thickness": 0.006646354687792828,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409495.01558,
+          "frame_file": "open_baseline_frame_2.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6679316855154659,
+          "stage_plane_thickness": 0.006763754796152787,
+          "stage_fit_error": null
+        }
+      ]
+    },
+    "chair_removed": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        },
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.012409820210068756,
+        0.025706169831632764
+      ],
+      "odom_median_xy": [
+        0.8973477691174772,
+        9.349772226507701
+      ],
+      "odom_median_shift_from_baseline": 0.004960910911029983,
+      "scans": {
+        "/sztu/safety_scan": {
+          "frames_after_5s": 151,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 0,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 5.2439373880006315,
+          "freshness": {
+            "count": 151,
+            "frames_after_5s": 151,
+            "max_age_all": 0.4873545169830322,
+            "max_age_after_5s": 0.4873545169830322,
+            "max_receive_gap_after_5s": 0.2536559699983627
+          }
+        },
+        "/sztu/scan": {
+          "frames_after_5s": 151,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 1,
+          "frames_older_than_0_5s_after_5s": 1,
+          "oldest_frame_t": 5.564491814999201,
+          "freshness": {
+            "count": 151,
+            "frames_after_5s": 151,
+            "max_age_all": 0.5078797340393066,
+            "max_age_after_5s": 0.5078797340393066,
+            "max_receive_gap_after_5s": 0.255503280000994
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792409702.818847,
+          "frame_file": "chair_removed_frame_0.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6679404589725788,
+          "stage_plane_thickness": 0.006579933382412099,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409707.615622,
+          "frame_file": "chair_removed_frame_1.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6663781547441967,
+          "stage_plane_thickness": 0.006787748547272146,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409712.014957,
+          "frame_file": "chair_removed_frame_2.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6663271310388847,
+          "stage_plane_thickness": 0.0066642445076455096,
+          "stage_fit_error": null
+        }
+      ]
+    },
+    "chair_left": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        },
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.01330675508433099,
+        0.020664950245967262
+      ],
+      "odom_median_xy": [
+        0.8934001540075267,
+        9.34454821972079
+      ],
+      "odom_median_shift_from_baseline": 0.0027896698381092017,
+      "scans": {
+        "/sztu/scan": {
+          "frames_after_5s": 150,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 4,
+          "frames_older_than_0_5s_after_5s": 4,
+          "oldest_frame_t": 6.183243544001016,
+          "freshness": {
+            "count": 153,
+            "frames_after_5s": 150,
+            "max_age_all": 0.767836332321167,
+            "max_age_after_5s": 0.767836332321167,
+            "max_receive_gap_after_5s": 0.4180242870024813
+          }
+        },
+        "/sztu/safety_scan": {
+          "frames_after_5s": 150,
+          "frames_with_roi_returns": 150,
+          "fraction_with_roi_returns": 1.0,
+          "roi_return_count_min_max": [
+            31,
+            32
+          ],
+          "median_nearest_roi_range": 1.149538278579712,
+          "frames_older_than_0_5s_all": 4,
+          "frames_older_than_0_5s_after_5s": 4,
+          "oldest_frame_t": 6.188634692000051,
+          "freshness": {
+            "count": 153,
+            "frames_after_5s": 150,
+            "max_age_all": 0.7732205390930176,
+            "max_age_after_5s": 0.7732205390930176,
+            "max_receive_gap_after_5s": 0.4204890789987985
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792409910.724487,
+          "frame_file": "chair_left_frame_0.npz",
+          "old_kept_roi_points": 362,
+          "candidate_kept_roi_points": 1079,
+          "low_roi_points_excluded_by_old": 479,
+          "candidate_height_percentiles": [
+            0.052452654207618465,
+            0.6296818301894196,
+            0.879320746173448
+          ],
+          "stage_plane_z_at_base": -0.6672563788339719,
+          "stage_plane_thickness": 0.007210030663844299,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409916.21496,
+          "frame_file": "chair_left_frame_1.npz",
+          "old_kept_roi_points": 361,
+          "candidate_kept_roi_points": 1079,
+          "low_roi_points_excluded_by_old": 477,
+          "candidate_height_percentiles": [
+            0.05315407365625002,
+            0.6302677908857539,
+            0.8797856373426005
+          ],
+          "stage_plane_z_at_base": -0.668180111560892,
+          "stage_plane_thickness": 0.007125470864724751,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409920.519907,
+          "frame_file": "chair_left_frame_2.npz",
+          "old_kept_roi_points": 358,
+          "candidate_kept_roi_points": 1076,
+          "low_roi_points_excluded_by_old": 476,
+          "candidate_height_percentiles": [
+            0.05188377546425604,
+            0.629599602910691,
+            0.8795924749395061
+          ],
+          "stage_plane_z_at_base": -0.667104571733981,
+          "stage_plane_thickness": 0.007134776445777415,
+          "stage_fit_error": null
+        }
+      ]
+    },
+    "chair_right": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        },
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.014854789018363457,
+        0.027822147182973822
+      ],
+      "odom_median_xy": [
+        0.9000557170207459,
+        9.358044411679684
+      ],
+      "odom_median_shift_from_baseline": 0.013656265321591213,
+      "scans": {
+        "/sztu/safety_scan": {
+          "frames_after_5s": 152,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 0,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 4.666388857000129,
+          "freshness": {
+            "count": 173,
+            "frames_after_5s": 152,
+            "max_age_all": 0.49983954429626465,
+            "max_age_after_5s": 0.47090840339660645,
+            "max_receive_gap_after_5s": 0.32962712799781
+          }
+        },
+        "/sztu/scan": {
+          "frames_after_5s": 152,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 2,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 2.8913933299991186,
+          "freshness": {
+            "count": 173,
+            "frames_after_5s": 152,
+            "max_age_all": 0.5062146186828613,
+            "max_age_after_5s": 0.4658222198486328,
+            "max_receive_gap_after_5s": 0.32720796700232313
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792410027.920123,
+          "frame_file": "chair_right_frame_0.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6678318169264887,
+          "stage_plane_thickness": 0.006964850031627068,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792410032.715278,
+          "frame_file": "chair_right_frame_1.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6680786174539224,
+          "stage_plane_thickness": 0.006948080891391192,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792410037.315226,
+          "frame_file": "chair_right_frame_2.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6690775188579515,
+          "stage_plane_thickness": 0.007006685043641799,
+          "stage_fit_error": null
+        }
+      ]
+    },
+    "chair_sides_removed": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        },
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.014961931989161181,
+        0.020999123357231753
+      ],
+      "odom_median_xy": [
+        0.8987442676452251,
+        9.357805200225524
+      ],
+      "odom_median_shift_from_baseline": 0.013106884970821863,
+      "scans": {
+        "/sztu/scan": {
+          "frames_after_5s": 153,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 2,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 4.578763099001662,
+          "freshness": {
+            "count": 161,
+            "frames_after_5s": 153,
+            "max_age_all": 0.5475983619689941,
+            "max_age_after_5s": 0.4761180877685547,
+            "max_receive_gap_after_5s": 0.25698293000095873
+          }
+        },
+        "/sztu/safety_scan": {
+          "frames_after_5s": 153,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 2,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 4.578342046999751,
+          "freshness": {
+            "count": 161,
+            "frames_after_5s": 153,
+            "max_age_all": 0.5471858978271484,
+            "max_age_after_5s": 0.4730517864227295,
+            "max_receive_gap_after_5s": 0.25724102999811294
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792410130.615482,
+          "frame_file": "chair_sides_removed_frame_0.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6670043482404271,
+          "stage_plane_thickness": 0.006802743208891338,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792410135.515219,
+          "frame_file": "chair_sides_removed_frame_1.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6667932514526239,
+          "stage_plane_thickness": 0.006693383166036175,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792410139.515011,
+          "frame_file": "chair_sides_removed_frame_2.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.666911714422545,
+          "stage_plane_thickness": 0.006571456412789599,
+          "stage_fit_error": null
+        }
+      ]
+    }
+  }
+}

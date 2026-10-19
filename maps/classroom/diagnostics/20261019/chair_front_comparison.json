@@ -1,0 +1,505 @@
+{
+  "scope": "Stationary chair appearance/removal diagnostic; no physical navigation or sensor coverage certification.",
+  "roi": {
+    "angle_degrees": [
+      -20.0,
+      20.0
+    ],
+    "range_m": [
+      0.7,
+      1.7
+    ]
+  },
+  "candidate_ground_reference": {
+    "normal": [
+      0.0567893633139002,
+      -0.09983589967687274,
+      0.9933819815912263
+    ],
+    "offset": -0.66354093170415,
+    "source": "open_baseline only; fixed before chair data analysis"
+  },
+  "stages": {
+    "open_baseline": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        },
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.010952273303594606,
+        0.013069162633225773
+      ],
+      "odom_median_xy": [
+        0.8961599144598339,
+        9.344955626215016
+      ],
+      "odom_median_shift_from_baseline": 0.0,
+      "scans": {
+        "/sztu/scan": {
+          "frames_after_5s": 149,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 0,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 3.2714696759976505,
+          "freshness": {
+            "count": 161,
+            "frames_after_5s": 149,
+            "max_age_all": 0.4902980327606201,
+            "max_age_after_5s": 0.4858081340789795,
+            "max_receive_gap_after_5s": 0.23152569199737627
+          }
+        },
+        "/sztu/safety_scan": {
+          "frames_after_5s": 149,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 1,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 3.2885966029971314,
+          "freshness": {
+            "count": 161,
+            "frames_after_5s": 149,
+            "max_age_all": 0.5074248313903809,
+            "max_age_after_5s": 0.4908149242401123,
+            "max_receive_gap_after_5s": 0.24348967400146648
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792409486.224447,
+          "frame_file": "open_baseline_frame_0.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.668216323001252,
+          "stage_plane_thickness": 0.006755103629730782,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409490.620432,
+          "frame_file": "open_baseline_frame_1.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 1,
+          "low_roi_points_excluded_by_old": 1,
+          "candidate_height_percentiles": [
+            0.1686895131742488,
+            0.1686895131742488,
+            0.1686895131742488
+          ],
+          "stage_plane_z_at_base": -0.6677081463581594,
+          "stage_plane_thickness": 0.006646354687792828,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409495.01558,
+          "frame_file": "open_baseline_frame_2.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6679316855154659,
+          "stage_plane_thickness": 0.006763754796152787,
+          "stage_fit_error": null
+        }
+      ]
+    },
+    "chair_front": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        },
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.009311682231450069,
+        0.013332846581446844
+      ],
+      "odom_median_xy": [
+        0.8997089798742455,
+        9.351744500276478
+      ],
+      "odom_median_shift_from_baseline": 0.007660592427362226,
+      "scans": {
+        "/sztu/safety_scan": {
+          "frames_after_5s": 149,
+          "frames_with_roi_returns": 149,
+          "fraction_with_roi_returns": 1.0,
+          "roi_return_count_min_max": [
+            35,
+            37
+          ],
+          "median_nearest_roi_range": 1.1040184497833252,
+          "frames_older_than_0_5s_all": 1,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 4.097366509999119,
+          "freshness": {
+            "count": 159,
+            "frames_after_5s": 149,
+            "max_age_all": 0.5119445323944092,
+            "max_age_after_5s": 0.4620852470397949,
+            "max_receive_gap_after_5s": 0.3200531200018304
+          }
+        },
+        "/sztu/scan": {
+          "frames_after_5s": 149,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 0,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 4.082416211000236,
+          "freshness": {
+            "count": 159,
+            "frames_after_5s": 149,
+            "max_age_all": 0.49698567390441895,
+            "max_age_after_5s": 0.46248912811279297,
+            "max_receive_gap_after_5s": 0.3216568190000544
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792409601.317674,
+          "frame_file": "chair_front_frame_0.npz",
+          "old_kept_roi_points": 285,
+          "candidate_kept_roi_points": 1302,
+          "low_roi_points_excluded_by_old": 547,
+          "candidate_height_percentiles": [
+            0.05158851261612296,
+            0.6439150789357637,
+            0.89203205935176
+          ],
+          "stage_plane_z_at_base": -0.6680291064768895,
+          "stage_plane_thickness": 0.006836904744899852,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409606.616647,
+          "frame_file": "chair_front_frame_1.npz",
+          "old_kept_roi_points": 295,
+          "candidate_kept_roi_points": 1319,
+          "low_roi_points_excluded_by_old": 540,
+          "candidate_height_percentiles": [
+            0.050834690726238474,
+            0.6499905957425206,
+            0.8996819694352454
+          ],
+          "stage_plane_z_at_base": -0.6679615489364494,
+          "stage_plane_thickness": 0.00679170220228611,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409611.1159,
+          "frame_file": "chair_front_frame_2.npz",
+          "old_kept_roi_points": 292,
+          "candidate_kept_roi_points": 1309,
+          "low_roi_points_excluded_by_old": 541,
+          "candidate_height_percentiles": [
+            0.050453078952072405,
+            0.6480169442719139,
+            0.9035889612415766
+          ],
+          "stage_plane_z_at_base": -0.6682158785522815,
+          "stage_plane_thickness": 0.0069124168346804595,
+          "stage_fit_error": null
+        }
+      ]
+    },
+    "chair_removed": {
+      "maximum_abs_command": 0.0,
+      "parameters": {
+        "nav_sensor_adapter": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "double": 0.0,
+            "string": "/lio/points"
+          },
+          "safety_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.05,
+            "string": ""
+          },
+          "localization_min_height": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          },
+          "max_height": {
+            "type": 3,
+            "bool": false,
+            "double": 1.8,
+            "string": ""
+          }
+        },
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "double": 0.0,
+            "string": ""
+          },
+          "robot_radius": {
+            "type": 3,
+            "bool": false,
+            "double": 0.4,
+            "string": ""
+          },
+          "stopping_margin": {
+            "type": 3,
+            "bool": false,
+            "double": 0.25,
+            "string": ""
+          }
+        }
+      },
+      "odom_xy_span": [
+        0.012409820210068756,
+        0.025706169831632764
+      ],
+      "odom_median_xy": [
+        0.8973477691174772,
+        9.349772226507701
+      ],
+      "odom_median_shift_from_baseline": 0.004960910911029983,
+      "scans": {
+        "/sztu/safety_scan": {
+          "frames_after_5s": 151,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 0,
+          "frames_older_than_0_5s_after_5s": 0,
+          "oldest_frame_t": 5.2439373880006315,
+          "freshness": {
+            "count": 151,
+            "frames_after_5s": 151,
+            "max_age_all": 0.4873545169830322,
+            "max_age_after_5s": 0.4873545169830322,
+            "max_receive_gap_after_5s": 0.2536559699983627
+          }
+        },
+        "/sztu/scan": {
+          "frames_after_5s": 151,
+          "frames_with_roi_returns": 0,
+          "fraction_with_roi_returns": 0.0,
+          "roi_return_count_min_max": [
+            0,
+            0
+          ],
+          "median_nearest_roi_range": null,
+          "frames_older_than_0_5s_all": 1,
+          "frames_older_than_0_5s_after_5s": 1,
+          "oldest_frame_t": 5.564491814999201,
+          "freshness": {
+            "count": 151,
+            "frames_after_5s": 151,
+            "max_age_all": 0.5078797340393066,
+            "max_age_after_5s": 0.5078797340393066,
+            "max_receive_gap_after_5s": 0.255503280000994
+          }
+        }
+      },
+      "cloud_frames": [
+        {
+          "stamp": 1792409702.818847,
+          "frame_file": "chair_removed_frame_0.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6679404589725788,
+          "stage_plane_thickness": 0.006579933382412099,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409707.615622,
+          "frame_file": "chair_removed_frame_1.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6663781547441967,
+          "stage_plane_thickness": 0.006787748547272146,
+          "stage_fit_error": null
+        },
+        {
+          "stamp": 1792409712.014957,
+          "frame_file": "chair_removed_frame_2.npz",
+          "old_kept_roi_points": 0,
+          "candidate_kept_roi_points": 0,
+          "low_roi_points_excluded_by_old": 0,
+          "candidate_height_percentiles": null,
+          "stage_plane_z_at_base": -0.6663271310388847,
+          "stage_plane_thickness": 0.0066642445076455096,
+          "stage_fit_error": null
+        }
+      ]
+    }
+  }
+}
