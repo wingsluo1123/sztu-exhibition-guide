@@ -1,0 +1,580 @@
+{
+  "scope": "Read-only static integration observation. Isolated real scan callback tests admission, not full gateway output or physical stopping. No commands or goals published.",
+  "source_commit": "94dd30e",
+  "old_adapter_pid": 99595,
+  "new_adapter_pid": 353236,
+  "unchanged_amcl_pid": 99558,
+  "unchanged_lio_service_main_pid": 96016,
+  "unchanged_nav_service_main_pid": 99519,
+  "adapter_unit": "sztu-classroom-sensor-fixed-20261019.service",
+  "ownership": "Replacement adapter is a separate transient user service with PartOf and BindsTo main navigation service; original adapter exited, launch has no respawn. Main service restart uses installed fixed adapter normally. Stop replacement if recreating a separate navigation stack without stopping parent.",
+  "parameters": {
+    "live": {
+      "type": 1,
+      "boolean": false,
+      "double": 0.0
+    },
+    "surround_coverage_verified": {
+      "type": 1,
+      "boolean": false,
+      "double": 0.0
+    },
+    "front_only_coverage": {
+      "type": 1,
+      "boolean": false,
+      "double": 0.0
+    },
+    "front_arc_coverage": {
+      "type": 1,
+      "boolean": false,
+      "double": 0.0
+    },
+    "stopping_margin": {
+      "type": 3,
+      "boolean": false,
+      "double": 0.25
+    }
+  },
+  "before_duration": 8.005423435999546,
+  "after_duration": 30.02245611000035,
+  "command_count": 1315,
+  "nonzero_or_invalid_commands": 0,
+  "abort": null,
+  "publishers": {
+    "/sztu/safety_scan": [
+      {
+        "name": "nav_sensor_adapter",
+        "namespace": "/",
+        "gid": [
+          1,
+          15,
+          189,
+          96,
+          212,
+          99,
+          25,
+          76,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          23,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "/sztu/scan": [
+      {
+        "name": "nav_sensor_adapter",
+        "namespace": "/",
+        "gid": [
+          1,
+          15,
+          189,
+          96,
+          212,
+          99,
+          25,
+          76,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          22,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "/sztu/nav_odom": [
+      {
+        "name": "nav_sensor_adapter",
+        "namespace": "/",
+        "gid": [
+          1,
+          15,
+          189,
+          96,
+          212,
+          99,
+          25,
+          76,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          21,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "/amcl_pose": [
+      {
+        "name": "amcl",
+        "namespace": "/",
+        "gid": [
+          1,
+          15,
+          189,
+          96,
+          230,
+          132,
+          246,
+          233,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          36,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "/lio/points": [
+      {
+        "name": "cloud_to_velodyne",
+        "namespace": "/",
+        "gid": [
+          1,
+          15,
+          189,
+          96,
+          203,
+          121,
+          205,
+          193,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          17,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "/cmd_vel": [
+      {
+        "name": "sztu_safety_gateway",
+        "namespace": "/",
+        "gid": [
+          1,
+          15,
+          189,
+          96,
+          27,
+          133,
+          58,
+          69,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          22,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "controller_server_ros_node",
+        "namespace": "/",
+        "gid": [
+          1,
+          15,
+          189,
+          96,
+          192,
+          18,
+          70,
+          120,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          18,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "streams": {
+    "/sztu/safety_scan": {
+      "count": 244,
+      "max_age": 0.549888274,
+      "older_than_0_5": 3,
+      "after_5s_max_age": 0.510603243,
+      "after_5s_older_than_0_5": 2,
+      "isolated_callback_rejected": 3
+    },
+    "/sztu/scan": {
+      "count": 244,
+      "max_age": 0.592497011,
+      "older_than_0_5": 3,
+      "after_5s_max_age": 0.506836104,
+      "after_5s_older_than_0_5": 1
+    },
+    "/sztu/nav_odom": {
+      "count": 258,
+      "max_age": 0.599589948,
+      "older_than_0_5": 3,
+      "after_5s_max_age": 0.426593089,
+      "after_5s_older_than_0_5": 0,
+      "last_pose": {
+        "topic": "/sztu/nav_odom",
+        "elapsed": 29.91678341000079,
+        "stamp_ns": 1792413610910518169,
+        "age": 0.101996279,
+        "frame": "sztu_nav_odom",
+        "position": [
+          0.8968272848946988,
+          9.33929201237236,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          -0.3323525830384552,
+          0.9431552155120952
+        ],
+        "covariance": [
+          4.58271765230259e-07,
+          -5.6746019430136e-08,
+          -9.507719619935703e-09,
+          -8.758740372879213e-08,
+          -6.778088229171206e-07,
+          -5.24148623200118e-07,
+          -5.674601943013457e-08,
+          4.580847634690863e-07,
+          -3.379577444494884e-08,
+          1.290218828906934e-06,
+          1.9674534848059683e-07,
+          2.691672218028972e-07,
+          -9.507719619998793e-09,
+          -3.37957744449043e-08,
+          6.914218154211258e-08,
+          -1.2334719403240644e-07,
+          1.425795968142746e-07,
+          -2.3791000824340527e-09,
+          -8.758740372876128e-08,
+          1.2902188289070015e-06,
+          -1.2334719403258397e-07,
+          4.38118334006561e-06,
+          5.38950649974789e-07,
+          -3.821010618457355e-07,
+          -6.778088229170848e-07,
+          1.9674534848053868e-07,
+          1.4257959681409807e-07,
+          5.389506499747877e-07,
+          2.0073543200726245e-06,
+          4.910764414657176e-07,
+          -5.241486232001234e-07,
+          2.691672218030355e-07,
+          -2.3791000825363493e-09,
+          -3.821010618457367e-07,
+          4.910764414657171e-07,
+          5.798704310225813e-06
+        ]
+      },
+      "before_last_pose": {
+        "topic": "/sztu/nav_odom",
+        "elapsed": 7.965247439999075,
+        "stamp_ns": 1792413514510172128,
+        "age": 0.090868336,
+        "frame": "sztu_nav_odom",
+        "position": [
+          0.8920359810701862,
+          9.329945487002801,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          -0.33218154447228343,
+          0.9432154692921487
+        ],
+        "covariance": [
+          4.828490514912463e-07,
+          -6.417467322109983e-08,
+          -5.657435432609952e-09,
+          -9.360664910035935e-08,
+          -6.910857059265978e-07,
+          -5.741508473340744e-07,
+          -6.417467322109003e-08,
+          4.653342571920916e-07,
+          -3.420353544277876e-08,
+          1.3108771603847247e-06,
+          1.854454041559751e-07,
+          2.7430646283294997e-07,
+          -5.657435432630725e-09,
+          -3.4203535442694114e-08,
+          7.055504796541705e-08,
+          -1.2138406372812428e-07,
+          1.4313531190913635e-07,
+          -6.369848980708486e-09,
+          -9.360664910033211e-08,
+          1.3108771603847285e-06,
+          -1.2138406372839647e-07,
+          4.467638078583672e-06,
+          5.348699171506841e-07,
+          -4.018334549443676e-07,
+          -6.910857059266151e-07,
+          1.8544540415600273e-07,
+          1.4313531190905247e-07,
+          5.348699171506865e-07,
+          2.0038766402689494e-06,
+          4.899468362345372e-07,
+          -5.741508473340807e-07,
+          2.7430646283294235e-07,
+          -6.369848980657896e-09,
+          -4.0183345494436717e-07,
+          4.899468362345441e-07,
+          6.016143394627783e-06
+        ]
+      },
+      "before_after_last_xy_distance": 0.010503053309518468,
+      "limits": "Endpoint displacement includes drift/AMCL updates and elapsed time; not independent truth or maximum jump."
+    },
+    "/amcl_pose": {
+      "count": 51,
+      "max_age": 0.598225069,
+      "older_than_0_5": 2,
+      "after_5s_max_age": 0.510441386,
+      "after_5s_older_than_0_5": 1,
+      "last_pose": {
+        "topic": "/amcl_pose",
+        "elapsed": 29.670694086998992,
+        "stamp_ns": 1792413610515420000,
+        "age": 0.250948584,
+        "frame": "map",
+        "position": [
+          -2.330338469361823,
+          0.5497801102044055,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          -0.20223098036232517,
+          0.9793378531342964
+        ],
+        "covariance": [
+          0.001448891903960335,
+          0.000238598918555477,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0002385989185559211,
+          0.0003824700670576714,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0001705585437997558
+        ]
+      },
+      "before_last_pose": {
+        "topic": "/amcl_pose",
+        "elapsed": 7.61887898599889,
+        "stamp_ns": 1792413514015162000,
+        "age": 0.23949897,
+        "frame": "map",
+        "position": [
+          -2.351979475561481,
+          0.5451258070009398,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          -0.20127469907006942,
+          0.9795348362943775
+        ],
+        "covariance": [
+          0.0014550502265310067,
+          0.00013630482457870668,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.00013630482457870668,
+          0.00036486011423759226,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.00021895669034874643
+        ]
+      },
+      "before_after_last_xy_distance": 0.022135846214758174,
+      "limits": "Endpoint displacement includes drift/AMCL updates and elapsed time; not independent truth or maximum jump."
+    }
+  },
+  "status_last_snapshot": {
+    "elapsed": 29.396894393998082,
+    "status": {
+      "clouds_received": 372,
+      "clouds_expired": 43,
+      "scans_published": 322,
+      "tf_waits": 1721,
+      "ground_rejected": 0,
+      "clouds_superseded": 6,
+      "safety_scans_published": 324,
+      "localization_scans_published": 322,
+      "cloud_age_at_callback": 0.114707106,
+      "cloud_stamp_ns": 1792413610215359000,
+      "ground": {
+        "normal": [
+          0.0570931228067067,
+          -0.09865144659606706,
+          0.9934828973931468
+        ],
+        "offset": -0.6640392475261315,
+        "inliers": 8542,
+        "residual_p95": 0.01659039996573357
+      },
+      "ankles_in_leveled_base": [
+        [
+          -0.04641744607487092,
+          0.1726364549889204,
+          -0.5642916135556447
+        ],
+        [
+          -0.10953185625151189,
+          -0.06637843627369584,
+          -0.5834806846556825
+        ]
+      ],
+      "last_result": "published",
+      "processing_seconds": 0.012590310998348286,
+      "queue_wait_seconds": 0.07916186200236552,
+      "age_at_publish_check": 0.23318909500085283,
+      "status_stamp_ns": 1792413610449610704
+    }
+  },
+  "operator_visual_confirmation": "After replacement, operator reports robot position, heading and red scan still match scene/walls; qualitative only.",
+  "remaining": "No physical motion, stop distance or edge/side/rear coverage proof. Extra /cmd_vel publisher controller_server_ros_node observed; pnc process 4800 is a PID-prefix-correlated candidate, not independently attributed per-publisher traffic. No vendor autonomy investigation or process changes.",
+  "raw_artifacts": {
+    "main_sensor_before.json": {
+      "sha256": "1b54b877fc02e7269637d89703282469657525ac5326c085a13a9707cfc1b48f",
+      "bytes": 180131
+    },
+    "main_sensor_after.json": {
+      "sha256": "7f949789c520db2724e0ddb95b2b6bb3e232d980bef63c17ba973f022396fb9a",
+      "bytes": 702275
+    }
+  }
+}

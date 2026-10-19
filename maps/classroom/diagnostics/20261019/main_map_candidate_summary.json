@@ -1,0 +1,333 @@
+{
+  "scope": "Static map discrepancy diagnosis and dry-run candidate; no hardware motion enabled.",
+  "baseline_plan": {
+    "scope": "Planning only via ComputePathToPose. No NavigateToPose/ThroughPoses goals, no velocity publications. A path is not proof of physical clearance or coverage.",
+    "parameters": {
+      "live": {
+        "type": 1,
+        "value": false
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "value": false
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "value": false
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "value": false
+      }
+    },
+    "start": [
+      -2.3569078661030116,
+      0.5305220300305891,
+      -0.41052199787280275
+    ],
+    "goal": [
+      -1.8067602913097636,
+      0.2910692247659449,
+      -0.41052199787280275
+    ],
+    "accepted": true,
+    "status": 6,
+    "path": [],
+    "path_frame": "",
+    "planning_seconds": 0.0,
+    "observed_command_count": 68,
+    "nonzero_or_invalid_commands": 0
+  },
+  "candidate_plan": {
+    "scope": "Planning only via ComputePathToPose, same start and goal as failed original-map request, after loading separate candidate map. No NavigateToPose/ThroughPoses goals, no velocity publications. A path is not proof of physical clearance or coverage.",
+    "parameters": {
+      "live": {
+        "type": 1,
+        "value": false
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "value": false
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "value": false
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "value": false
+      }
+    },
+    "start": [
+      -2.3569078661030116,
+      0.5305220300305891,
+      -0.41052199787280275
+    ],
+    "goal": [
+      -1.8067602913097636,
+      0.2910692247659449,
+      -0.41052199787280275
+    ],
+    "accepted": true,
+    "status": 4,
+    "path": [
+      [
+        -2.3550997682869443,
+        0.5400002779066568
+      ],
+      [
+        -2.3050997675418863,
+        0.5400002779066568
+      ],
+      [
+        -2.2800997671693572,
+        0.5400002779066568
+      ],
+      [
+        -2.255099766796828,
+        0.5400002779066568
+      ],
+      [
+        -2.230099766424299,
+        0.5400002779066568
+      ],
+      [
+        -2.20509976605177,
+        0.5400002779066568
+      ],
+      [
+        -2.155099765306712,
+        0.5400002779066568
+      ],
+      [
+        -2.105099764561654,
+        0.5400002779066568
+      ],
+      [
+        -2.055099763816596,
+        0.4900002771615988
+      ],
+      [
+        -2.005099763071538,
+        0.4400002764165407
+      ],
+      [
+        -1.9946337594976136,
+        0.39431546128265893
+      ],
+      [
+        -1.9725466620005214,
+        0.3826028146237519
+      ],
+      [
+        -1.948683441430088,
+        0.3751519478135066
+      ],
+      [
+        -1.925018585120423,
+        0.36708920355273733
+      ],
+      [
+        -1.9014788508829348,
+        0.35866940362258504
+      ],
+      [
+        -1.8781710502426527,
+        0.3496285709683349
+      ],
+      [
+        -1.8550997608363637,
+        0.3400002749264246
+      ],
+      [
+        -1.8067602913097636,
+        0.2910692247659449
+      ]
+    ],
+    "path_frame": "map",
+    "planning_seconds": 0.008614966,
+    "observed_command_count": 61,
+    "nonzero_or_invalid_commands": 0
+  },
+  "map_load": {
+    "scope": "Same-frame candidate map switch only; no initialization/goal/velocity publications. Dry-run gates verified. Acceptance checks are static integration continuity heuristics, not physical readiness.",
+    "parameters": {
+      "live": {
+        "type": 1,
+        "value": false
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "value": false
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "value": false
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "value": false
+      }
+    },
+    "loaded_candidate": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/classroom_navigation_candidate.yaml",
+    "load_result": 0,
+    "pose_before": [
+      -2.376339131449912,
+      0.4867858814576898,
+      -0.3815398034695806
+    ],
+    "pose_after": [
+      -2.3758759048087663,
+      0.49424745632257155,
+      -0.3861161412754309
+    ],
+    "odom_before": [
+      0.8949626460811958,
+      9.333506757588333,
+      -0.6777251080388856
+    ],
+    "odom_after": [
+      0.8906206826678749,
+      9.32796135984141,
+      -0.6773987643170821
+    ],
+    "pose_delta_xy_yaw": [
+      0.007475939966673236,
+      0.004576337805850317
+    ],
+    "odom_delta_xy_yaw": [
+      0.007043016573471715,
+      0.00032634372180351257
+    ],
+    "new_pose_count": 16,
+    "pose_age": 0.682982337,
+    "odom_age": 0.089523765,
+    "command_count": 529,
+    "nonzero_or_invalid_commands": 0,
+    "static_continuity_accepted": true,
+    "rollback_result": null,
+    "active_map": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/classroom_navigation_candidate.yaml"
+  },
+  "scan_consistency_metrics": [
+    {
+      "stamp_ns": 1792414040215486000,
+      "range_m": [
+        2,
+        8
+      ],
+      "count": 108,
+      "median": 0.0,
+      "p90": 0.05000000074505806,
+      "within_0_1": 0.9722222222222222
+    },
+    {
+      "stamp_ns": 1792414041217919000,
+      "range_m": [
+        2,
+        8
+      ],
+      "count": 109,
+      "median": 0.0,
+      "p90": 0.05000000074505806,
+      "within_0_1": 0.9724770642201835
+    },
+    {
+      "stamp_ns": 1792414042317885000,
+      "range_m": [
+        2,
+        8
+      ],
+      "count": 108,
+      "median": 0.0,
+      "p90": 0.05000000074505806,
+      "within_0_1": 0.9629629629629629
+    },
+    {
+      "stamp_ns": 1792414043418520000,
+      "range_m": [
+        2,
+        8
+      ],
+      "count": 107,
+      "median": 0.0,
+      "p90": 0.05000000074505806,
+      "within_0_1": 0.9626168224299065
+    },
+    {
+      "stamp_ns": 1792414044422241000,
+      "range_m": [
+        2,
+        8
+      ],
+      "count": 108,
+      "median": 0.0,
+      "p90": 0.05000000074505806,
+      "within_0_1": 0.9722222222222222
+    }
+  ],
+  "scan_consistency_limits": "Exact-time map TF is generated by AMCL from the same scan stream; correlated frames and no independently annotated fixed-wall targets. Local consistency only, not absolute accuracy or unique localization.",
+  "operator_observation": "Robot feet and front half meter empty, no nearby tables/chairs; RViz position/heading/red scan qualitatively still aligned.",
+  "pixel_changes": 36,
+  "unchanged_map_properties": [
+    "dimensions",
+    "resolution",
+    "origin",
+    "coordinate_frame",
+    "all_other_pixels",
+    "unknown_cells",
+    "source_lineage",
+    "gravity_metadata"
+  ],
+  "source_pgm_sha256": "8f743962d34a4b32276c28d2a7b2f5cc600b708679ee1ecf6c1d9054eb47a5cb",
+  "source_yaml_sha256": "b5cdac79c8ca741a32398aaa3effca7dca9eed1af5d5a1d8933cd0bee6c3bfbe",
+  "candidate_pgm_sha256": "9b78c2b7cbc6cdc31ff0d3714d05327dce38c298c29b11b42ed1e77598ce3817",
+  "tests": "11 passed in 1.99s using tools/run_tests.sh on original map lineage/waypoint tests; separate candidate pixel/property checks as recorded.",
+  "raw_artifacts": {
+    "main_plan_only.json": {
+      "sha256": "3a4b278a9ae0718932744971c806a6d6327dda5f6e71f2547b7f3093fd95c777",
+      "bytes": 828
+    },
+    "main_plan_candidate_only.json": {
+      "sha256": "4ac0365e68d3176181c867f5530c25548dd9ca8b578fb0546ed1ea7948c0768f",
+      "bytes": 2094
+    },
+    "main_candidate_map_load.json": {
+      "sha256": "8b8d335d52389b8c7c72bc3f3d0f2eaf8c28179f61179bbdd49d721f69d03ec1",
+      "bytes": 1525
+    },
+    "main_costmap_capture.json": {
+      "sha256": "06fe1971ea6be1dbd05d8009610fff01c07eb0f6c131d36d4fc6ab84881e698b",
+      "bytes": 852
+    },
+    "main_costmap_capture.npz": {
+      "sha256": "97658a4ae5faf6b0594486205be7d93c698db68ab113e232993ce5876ff27b68",
+      "bytes": 6679
+    },
+    "main_costmap_capture_v2.json": {
+      "sha256": "534dc3a36eea3aef9113fed39bd1eda8089f4dec40ff6ed3428c5442bb322fc0",
+      "bytes": 1243
+    },
+    "main_costmap_capture_v2.npz": {
+      "sha256": "3e0078be305a3b4606d54aecd8736a67516ac96393f9b9b7300f335d6ccdfaa4",
+      "bytes": 17533
+    },
+    "main_wall_alignment.json": {
+      "sha256": "1c1c6575c3df716fbd084144ad69e8be4f95a1bc3cd6f582ca20cd1b3df13d89",
+      "bytes": 64373
+    },
+    "main_costmap_candidate_capture.json": {
+      "sha256": "f58a9eb7c3cc7e1ff9ffa4854c92bddc9bdd03ef4cd192198f166a587cbc2de7",
+      "bytes": 1243
+    },
+    "main_costmap_candidate_capture.npz": {
+      "sha256": "6b683ecbd5d284cd0434373b1da3da3adcb9a61c91cfc71036072c0d5a65f798",
+      "bytes": 17510
+    }
+  },
+  "runtime_reload_verification": {
+    "topic": "/sztu/map",
+    "exact_occupancy_grid_match": true,
+    "changed_cells_from_original": 36,
+    "comparison": "Expected occupancy generated from saved candidate PGM under existing map thresholds, same cell order, dimensions and coordinates."
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "scope": "Static background carried forward after operator chair removal; conventional installed Humble SingleThreadedExecutor with identical take path plus metadata retention. Subscriptions reproduce earlier scan+raw-cloud observer workload. Main adapter unchanged; no commands/goals emitted. Candidate scans also pass the installed SafetyGateway.scan_callback with lightweight isolated state: live freshness admission only, no gate output or hardware execution.",
+  "adapter_sha256": "7a51633b07153258cdae655d786aa6157a0b0a8ba5fb6c906b2ba848275a1153",
+  "trace_duration": 55.00734355500026,
+  "attempt_results": {
+    "tf_wait": 2031,
+    "expired_after_processing": 3,
+    "published": 483
+  },
+  "publish_pairs": 483,
+  "safety_first_order_violations": 0,
+  "observer_duration": 40.01370816399867,
+  "parameters": {
+    "live": {
+      "type": 1,
+      "bool": false
+    },
+    "surround_coverage_verified": {
+      "type": 1,
+      "bool": false
+    },
+    "front_only_coverage": {
+      "type": 1,
+      "bool": false
+    },
+    "front_arc_coverage": {
+      "type": 1,
+      "bool": false
+    }
+  },
+  "command_count": 1775,
+  "maximum_abs_command": 0.0,
+  "abort": null,
+  "cloud_publishers": [
+    {
+      "name": "cloud_to_velodyne",
+      "namespace": "/",
+      "gid": [
+        1,
+        15,
+        189,
+        96,
+        203,
+        121,
+        205,
+        193,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        17,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "streams": {
+    "/sztu/safety_scan": {
+      "count": 362,
+      "max_age": 0.509465039,
+      "older_than_0_5": 1,
+      "after_5s_count": 350,
+      "after_5s_max_age": 0.509465039,
+      "after_5s_older_than_0_5": 1,
+      "limits": "After-5-second selection describes this window, not a universal startup exemption."
+    },
+    "/lio/points": {
+      "count": 387,
+      "max_age": 1.165030083,
+      "older_than_0_5": 4,
+      "after_5s_count": 351,
+      "after_5s_max_age": 0.190699938,
+      "after_5s_older_than_0_5": 0,
+      "limits": "After-5-second selection describes this window, not a universal startup exemption."
+    },
+    "/sztu/candidate_safety_scan": {
+      "count": 349,
+      "max_age": 0.699880629,
+      "older_than_0_5": 3,
+      "after_5s_count": 343,
+      "after_5s_max_age": 0.467837179,
+      "after_5s_older_than_0_5": 0,
+      "admission_accepted": 346,
+      "admission_rejected": 3,
+      "after_5s_near_return_frames": 0,
+      "limits": "After-5-second selection describes this window, not a universal startup exemption."
+    }
+  },
+  "late_candidate_frames": [
+    {
+      "topic": "/sztu/candidate_safety_scan",
+      "t": 3.6608994039997924,
+      "clock_ns": 1792413169084122843,
+      "stamp_ns": 1792413168415845000,
+      "dds_source_ns": 1792413168802040625,
+      "dds_received_ns": 1792413169082309870,
+      "age": 0.668277843,
+      "near_returns": [],
+      "gate_accepted": false
+    },
+    {
+      "topic": "/sztu/candidate_safety_scan",
+      "t": 3.6878804869993473,
+      "clock_ns": 1792413169111132220,
+      "stamp_ns": 1792413168519202000,
+      "dds_source_ns": 1792413168850051533,
+      "dds_received_ns": 1792413169084232883,
+      "age": 0.59193022,
+      "near_returns": [],
+      "gate_accepted": false
+    },
+    {
+      "topic": "/sztu/candidate_safety_scan",
+      "t": 4.305753079999704,
+      "clock_ns": 1792413169728983629,
+      "stamp_ns": 1792413169029103000,
+      "dds_source_ns": 1792413169419309887,
+      "dds_received_ns": 1792413169726642972,
+      "age": 0.699880629,
+      "near_returns": [],
+      "gate_accepted": false
+    }
+  ],
+  "operator_ground_observation": {
+    "description": "Reflective marble, no wires or human feet observed in front 0.7–1.7 m (operator report).",
+    "limits": "Potential sparse-return cause only; not established by independent measurement. Sparse points retained."
+  },
+  "raw_artifacts": {
+    "candidate_frame_trace_guard.json": {
+      "sha256": "c12da6e924ada9d3aacec8e86f93833d6e13eabc0811c876e4e70c1fad2e0503",
+      "bytes": 2435323
+    },
+    "candidate_matched_timing_guard.json": {
+      "sha256": "68708356bf569da64597f2d1a25a4c6afff13376a84f90096412cb2b5cd3e6d9",
+      "bytes": 412320
+    }
+  }
+}

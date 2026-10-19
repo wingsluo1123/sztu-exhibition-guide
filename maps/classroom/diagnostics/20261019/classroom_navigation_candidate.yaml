@@ -1,0 +1,118 @@
+image: classroom_navigation_candidate.pgm
+resolution: 0.05
+origin:
+- -17.9051
+- -18.11
+- 0.0
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+sztu_up:
+- 0.998042
+- -0.017724
+- 0.059981
+sztu_up_source: 包里的 /aima/hal/sensor/lidar_chest_front/imu 开头静止段
+sztu_lineage:
+  run_dir: /home/agi/sztu_lio_runs/20261014_153232_live
+  bag: /home/agi/sztu_lio_runs/20261014_153232_live/odom/odom_0.db3
+  bag_sha256_head_tail: ddd2467137166b303da13b61553a5641b794758ad810d667f3d8f8a004f36688
+  bag_bytes: 1263816704
+  odom_topic: /cloud_registered
+  odom_t0: 1791963156.114659
+  odom_t1: 1791963436.510724
+  odom_count: 2805
+  slab_lo: 0.25
+  slab_hi: 1.8
+  range_m: 15.0
+  stride: 1
+  source_revision: 075691a-dirty
+  generated_at: '2026-10-14T07:38:49+00:00'
+  invocation: tools/gridmap.py /home/agi/sztu_lio_runs/20261014_153232_live -o /home/agi/sztu_lio_runs/20261014_153232_live/map
+sztu_navigation_revision:
+  status: dry_run_candidate_only
+  source_pgm_sha256: 8f743962d34a4b32276c28d2a7b2f5cc600b708679ee1ecf6c1d9054eb47a5cb
+  source_yaml_sha256: b5cdac79c8ca741a32398aaa3effca7dca9eed1af5d5a1d8933cd0bee6c3bfbe
+  coordinate_frame: 'unchanged: same resolution, origin, dimensions and FAST-LIO map
+    lineage'
+  changed_occupied_cells: 36
+  cell_indices_map_xy:
+  - - 311
+    - 364
+  - - 312
+    - 364
+  - - 310
+    - 365
+  - - 311
+    - 365
+  - - 312
+    - 365
+  - - 313
+    - 365
+  - - 314
+    - 365
+  - - 315
+    - 365
+  - - 310
+    - 366
+  - - 311
+    - 366
+  - - 312
+    - 366
+  - - 313
+    - 366
+  - - 314
+    - 366
+  - - 315
+    - 366
+  - - 310
+    - 367
+  - - 311
+    - 367
+  - - 312
+    - 367
+  - - 313
+    - 367
+  - - 314
+    - 367
+  - - 315
+    - 367
+  - - 310
+    - 368
+  - - 311
+    - 368
+  - - 312
+    - 368
+  - - 313
+    - 368
+  - - 315
+    - 368
+  - - 311
+    - 369
+  - - 312
+    - 369
+  - - 315
+    - 369
+  - - 311
+    - 370
+  - - 312
+    - 370
+  - - 315
+    - 370
+  - - 310
+    - 371
+  - - 312
+    - 371
+  - - 315
+    - 371
+  - - 311
+    - 372
+  - - 312
+    - 372
+  operator_evidence: Operator confirmed current feet and front 0.5 m are empty; also
+    reports scan/map alignment.
+  limitations: No independent surveyed localization; original retained. Candidate
+    not approved for hardware motion.
+  source_map_yaml_repository_relative: maps/classroom/map.yaml
+  operation: Copy source PGM decoded pixels; set the listed (x,y) map cells to 254
+    (PGM row = height - 1 - y); preserve every other pixel. No coordinate transform
+    or FAST-LIO rerun.
