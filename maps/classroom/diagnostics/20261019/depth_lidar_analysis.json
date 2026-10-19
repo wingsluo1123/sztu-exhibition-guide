@@ -1,0 +1,207 @@
+{
+  "scope": "Offline diagnostic only. Explicit axial depth scale hypothesis; project using recorded TF without axis corrections. Same-pose repeats are not independent calibration. No visibility certification, occlusion/range/reflectivity validation, motion release or hardware commands.",
+  "analyzer_sha256": "31752cc4aa79d2896626336660b38f2d6fcfffeca22f7761fd2cb4f93df02770",
+  "depth_scale": 0.001,
+  "model": {
+    "radius": 0.55,
+    "total_advance": 0.85,
+    "spacing": 0.025
+  },
+  "percentile_order": [
+    5,
+    50,
+    90,
+    95
+  ],
+  "pairs": [
+    {
+      "path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/depth_lidar_pair_0.npz",
+      "sha256": "4462b3134ec7a798164a250364914a0e8123bd94cbd773958075ac68cea1dc88",
+      "stamp_difference_s": 0.01168588,
+      "sampled_depth_points": 51014,
+      "positive_depth_height_percentiles": [
+        -0.05351950423637012,
+        0.01363401921607088,
+        0.13185919869594803,
+        0.2650075800351505
+      ],
+      "fraction_below_lidar_plane_5cm": 0.051554475242090406,
+      "flipped_xy_control_fraction_below_plane_5cm": 0.4920806053240287,
+      "projected_lidar_positive_depth_samples": 10528,
+      "axial_difference_signed_percentiles": [
+        -0.16781735642770726,
+        -0.013461497683384338,
+        0.05045236996336261,
+        0.17529214464598414
+      ],
+      "axial_difference_absolute_percentiles": [
+        0.0022634968274791722,
+        0.023312192139204213,
+        0.17022008239705008,
+        0.3598534127787509
+      ],
+      "axial_depth_ratio_percentiles": [
+        0.9399381716450603,
+        0.991663392880588,
+        1.0221775445326142,
+        1.064047042785218
+      ],
+      "depth_frustum_only": [
+        {
+          "height_above_plane": 0.05,
+          "total": 1495,
+          "within_frustum": 1428,
+          "outside_frustum": 67,
+          "fraction_within_frustum": 0.9551839464882943
+        },
+        {
+          "height_above_plane": 0.2,
+          "total": 1495,
+          "within_frustum": 1447,
+          "outside_frustum": 48,
+          "fraction_within_frustum": 0.9678929765886287
+        },
+        {
+          "height_above_plane": 0.6,
+          "total": 1495,
+          "within_frustum": 1473,
+          "outside_frustum": 22,
+          "fraction_within_frustum": 0.9852842809364548
+        },
+        {
+          "height_above_plane": 1.0,
+          "total": 1495,
+          "within_frustum": 486,
+          "outside_frustum": 1009,
+          "fraction_within_frustum": 0.3250836120401338
+        }
+      ]
+    },
+    {
+      "path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/depth_lidar_pair_1.npz",
+      "sha256": "d5a8b100107e62c3485cd01246695f60c1cc8641b2beed64d10f3490f6a4f59e",
+      "stamp_difference_s": 0.006871008,
+      "sampled_depth_points": 50747,
+      "positive_depth_height_percentiles": [
+        -0.06063369982390644,
+        0.014156124343203347,
+        0.12891705205008994,
+        0.25768443959036635
+      ],
+      "fraction_below_lidar_plane_5cm": 0.05594419374544308,
+      "flipped_xy_control_fraction_below_plane_5cm": 0.4905314599877825,
+      "projected_lidar_positive_depth_samples": 10515,
+      "axial_difference_signed_percentiles": [
+        -0.15662143754408614,
+        -0.014517902131829352,
+        0.054281061649050596,
+        0.17470978861528036
+      ],
+      "axial_difference_absolute_percentiles": [
+        0.0022149899113955043,
+        0.024156589650492277,
+        0.16574133197283275,
+        0.3695530758609619
+      ],
+      "axial_depth_ratio_percentiles": [
+        0.9422760284810775,
+        0.9909405015156602,
+        1.0228955632474066,
+        1.0656130584259278
+      ],
+      "depth_frustum_only": [
+        {
+          "height_above_plane": 0.05,
+          "total": 1495,
+          "within_frustum": 1427,
+          "outside_frustum": 68,
+          "fraction_within_frustum": 0.954515050167224
+        },
+        {
+          "height_above_plane": 0.2,
+          "total": 1495,
+          "within_frustum": 1446,
+          "outside_frustum": 49,
+          "fraction_within_frustum": 0.9672240802675586
+        },
+        {
+          "height_above_plane": 0.6,
+          "total": 1495,
+          "within_frustum": 1473,
+          "outside_frustum": 22,
+          "fraction_within_frustum": 0.9852842809364548
+        },
+        {
+          "height_above_plane": 1.0,
+          "total": 1495,
+          "within_frustum": 490,
+          "outside_frustum": 1005,
+          "fraction_within_frustum": 0.3277591973244147
+        }
+      ]
+    },
+    {
+      "path": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage/depth_lidar_pair_2.npz",
+      "sha256": "f33aef70874f49907b99f79280ea527c6f6dd805ce630331189b5f151f5cfe78",
+      "stamp_difference_s": 0.008885008,
+      "sampled_depth_points": 50692,
+      "positive_depth_height_percentiles": [
+        -0.05107492938532179,
+        0.013691476344925846,
+        0.13212174807563898,
+        0.2671284325202926
+      ],
+      "fraction_below_lidar_plane_5cm": 0.05048133827822931,
+      "flipped_xy_control_fraction_below_plane_5cm": 0.4900576027775586,
+      "projected_lidar_positive_depth_samples": 10543,
+      "axial_difference_signed_percentiles": [
+        -0.17689605253733576,
+        -0.013845436185780713,
+        0.048154416461290386,
+        0.17430623192969338
+      ],
+      "axial_difference_absolute_percentiles": [
+        0.002289425337819018,
+        0.023707667867034488,
+        0.17527175727353175,
+        0.39708369817950756
+      ],
+      "axial_depth_ratio_percentiles": [
+        0.9382578723470518,
+        0.9913393041774818,
+        1.0213421983482804,
+        1.0662645854488548
+      ],
+      "depth_frustum_only": [
+        {
+          "height_above_plane": 0.05,
+          "total": 1495,
+          "within_frustum": 1428,
+          "outside_frustum": 67,
+          "fraction_within_frustum": 0.9551839464882943
+        },
+        {
+          "height_above_plane": 0.2,
+          "total": 1495,
+          "within_frustum": 1447,
+          "outside_frustum": 48,
+          "fraction_within_frustum": 0.9678929765886287
+        },
+        {
+          "height_above_plane": 0.6,
+          "total": 1495,
+          "within_frustum": 1473,
+          "outside_frustum": 22,
+          "fraction_within_frustum": 0.9852842809364548
+        },
+        {
+          "height_above_plane": 1.0,
+          "total": 1495,
+          "within_frustum": 488,
+          "outside_frustum": 1007,
+          "fraction_within_frustum": 0.32642140468227426
+        }
+      ]
+    }
+  ]
+}

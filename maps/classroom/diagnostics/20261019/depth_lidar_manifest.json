@@ -1,0 +1,141 @@
+{
+  "developer_root": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage",
+  "robot_root": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage",
+  "capture_source_commit": "b9ce7b1",
+  "capture_script_note": "Read-only ad hoc capture script preserved in both evidence roots; no runtime publishers or actuator clients. Not a reusable image-layout validator.",
+  "actual_driver_parameters": {
+    "rgbd_depth_frame_id": {
+      "type": 4,
+      "string": "rgbd_depth_head_front",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": false
+    },
+    "rgbd_color_frame_id": {
+      "type": 4,
+      "string": "rgbd_head_front",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": false
+    },
+    "depth_width": {
+      "type": 2,
+      "string": "",
+      "double": 0.0,
+      "integer": 1280,
+      "boolean": false
+    },
+    "depth_height": {
+      "type": 2,
+      "string": "",
+      "double": 0.0,
+      "integer": 720,
+      "boolean": false
+    },
+    "depth_fps": {
+      "type": 2,
+      "string": "",
+      "double": 0.0,
+      "integer": 30,
+      "boolean": false
+    },
+    "depth_flip": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": false
+    },
+    "depth_mirror": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": false
+    },
+    "depth_rotation": {
+      "type": 2,
+      "string": "",
+      "double": 0.0,
+      "integer": -1,
+      "boolean": false
+    },
+    "depth_precision": {
+      "type": 4,
+      "string": "",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": false
+    },
+    "enable_depth_scale": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": true
+    },
+    "enable_point_cloud": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": false
+    },
+    "depth_registration": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": false
+    },
+    "enable_frame_sync": {
+      "type": 1,
+      "string": "",
+      "double": 0.0,
+      "integer": 0,
+      "boolean": true
+    }
+  },
+  "artifacts": [
+    {
+      "name": "depth_lidar_pairs.json",
+      "bytes": 3946,
+      "sha256": "aa9cfad742aa804982953da5bc57afb9b8b2f27cbb474102b137baeba5b43d9e"
+    },
+    {
+      "name": "depth_lidar_pair_0.npz",
+      "bytes": 1118907,
+      "sha256": "4462b3134ec7a798164a250364914a0e8123bd94cbd773958075ac68cea1dc88"
+    },
+    {
+      "name": "depth_lidar_pair_1.npz",
+      "bytes": 1119345,
+      "sha256": "d5a8b100107e62c3485cd01246695f60c1cc8641b2beed64d10f3490f6a4f59e"
+    },
+    {
+      "name": "depth_lidar_pair_2.npz",
+      "bytes": 1115290,
+      "sha256": "f33aef70874f49907b99f79280ea527c6f6dd805ce630331189b5f151f5cfe78"
+    },
+    {
+      "name": "sztu_depth_lidar_pairs_20261019.py",
+      "bytes": 4553,
+      "sha256": "6a708677be0e7fa6876b517e3d6d5c61066584c49866b5cd98cdf5d09c78ac16"
+    },
+    {
+      "name": "sztu_depth_driver_inventory.log",
+      "bytes": 336252,
+      "sha256": "bdcfbd1a3a9218077d9009fee6455fdf41a17d30a755fb9eb318bae9db75a6e3"
+    },
+    {
+      "name": "depth_readonly.json",
+      "bytes": 117140,
+      "sha256": "f0f857cd65a6743109f95731ddf557a7ab3acceb908b7e65c979f206d30ec38d"
+    },
+    {
+      "name": "depth_readonly.npz",
+      "bytes": 523304,
+      "sha256": "0fd9eacdafb9204e3fe93c179ceacc841b3e5d7d119e972e916a56ca99fc7cc4"
+    }
+  ]
+}

@@ -339,4 +339,5 @@ ros2 param get /sztu_safety_gateway front_only_coverage
 - 历史诊断与证据：[autonomous_navigation.md](autonomous_navigation.md)
 - FAST-LIO 启动检查：[slam_runtime_checks.md](slam_runtime_checks.md)
 - 悬吊运控测试（不是自主导航）：[restrained_drive_trial.md](restrained_drive_trial.md)
+- 头部深度与雷达离线核对及近身视锥缺口：[2026-10-19 诊断](../maps/classroom/diagnostics/20261019/depth_lidar_assessment.md)。该结果不放行感知覆盖或自主行走。
 - 人工停止观察：[manual_stop_trial.md](manual_stop_trial.md)
