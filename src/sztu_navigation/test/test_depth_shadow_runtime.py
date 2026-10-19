@@ -12,14 +12,15 @@ import numpy as np
 import pytest
 import rclpy
 from geometry_msgs.msg import TransformStamped
+from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
 from tf2_ros import TransformBroadcaster
 
 
-@pytest.mark.parametrize('driver_mismatch', [False, True])
-def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path, driver_mismatch):
+@pytest.mark.parametrize('driver_mismatch,direct_odometry', [(False, False), (False, True), (True, False)])
+def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path, driver_mismatch, direct_odometry):
     rclpy.init(domain_id=42)
     source = rclpy.create_node('depth_shadow_fixture')
     source.declare_parameter('depth_flip', False)
@@ -29,6 +30,8 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
         'info': source.create_publisher(CameraInfo, '/aima/hal/sensor/rgbd_head_front/depth_camera_info', qos_profile_sensor_data),
         'cloud': source.create_publisher(PointCloud2, '/lio/points', qos_profile_sensor_data),
     }
+    if direct_odometry:
+        publishers['odom'] = source.create_publisher(Odometry, '/slam/lidar_odom', qos_profile_sensor_data)
     broadcaster = TransformBroadcaster(source)
     root = Path(__file__).resolve().parents[3]
     k = [100., 0., 2., 0., 100., 2., 0., 0., 1.]
@@ -98,8 +101,11 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
                         ('left_ankle_roll_link', [0., .1, -.7], [0., 0., 0., 1.]),
                         ('right_ankle_roll_link', [0., -.1, -.7], [0., 0., 0., 1.]),
                     ]:
+                        if direct_odometry and frame == 'base_link':
+                            continue  # no odom->base TF is ever broadcast in this case
                         transform = TransformStamped()
-                        transform.header.frame_id, transform.header.stamp = 'odom', stamp
+                        transform.header.frame_id = 'base_link' if direct_odometry else 'odom'
+                        transform.header.stamp = stamp
                         transform.child_frame_id = frame
                         v, q = transform.transform.translation, transform.transform.rotation
                         v.x, v.y, v.z = xyz
@@ -110,6 +116,14 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
                 # must wait for exact TF and use a still-fresh queued pair.
                 while pending_transforms and pending_transforms[0][0] <= elapsed - .1:
                     broadcaster.sendTransform(pending_transforms.popleft()[1])
+                if direct_odometry:
+                    odom = Odometry()
+                    odom.header.frame_id, odom.header.stamp = 'odom', stamp
+                    odom.child_frame_id = 'base_link'
+                    odom.pose.pose.orientation.w = 1.
+                    if 6 <= elapsed:
+                        odom.pose.pose.orientation.w = 0.  # invalid pose must not refresh TF
+                    publishers['odom'].publish(odom)
                 publishers['info'].publish(info)
                 publishers['image'].publish(image)
                 publishers['cloud'].publish(cloud)
@@ -127,6 +141,8 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
         counts = report['counts']
         assert report['profile_stable_at_checks']
         assert report['hardware_coverage_verified'] is False
+        if direct_odometry:
+            assert counts['odom_cached'] > 0 and counts['odom_rejected'] > 0
         assert counts['pairs_observed'] >= 3
         assert counts['validation_rejected'] >= 1
         assert counts['depth_timestamp_rejected'] >= 1

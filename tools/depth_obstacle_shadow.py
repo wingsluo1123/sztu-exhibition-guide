@@ -139,11 +139,13 @@ def run(args, output):
     from rclpy.qos import QoSProfile, ReliabilityPolicy
     from rclpy.time import Time
     from rcl_interfaces.srv import GetParameters
+    from geometry_msgs.msg import TransformStamped
+    from nav_msgs.msg import Odometry
     from sensor_msgs.msg import CameraInfo, Image, PointCloud2
     from tf2_ros import Buffer, TransformListener
     from sztu_navigation.ground_plane import estimate_ground
     from sztu_navigation.nav_geometry import rotation_matrix, xyz_points, yaw_of
-    from sztu_slam.message_validation import MessageFreshness, stamp_nanoseconds
+    from sztu_slam.message_validation import MessageFreshness, stamp_nanoseconds, valid_pose
 
     profile = json.loads(args.profile.read_text())
     scale = float(profile['depth_scale'])
@@ -164,7 +166,8 @@ def run(args, output):
     def sample(name, value):
         timings.setdefault(name, []).append(value)
     topics = dict(depth='/aima/hal/sensor/rgbd_head_front/depth_image',
-                  info='/aima/hal/sensor/rgbd_head_front/depth_camera_info', cloud='/lio/points')
+                  info='/aima/hal/sensor/rgbd_head_front/depth_camera_info', cloud='/lio/points',
+                  odom='/slam/lidar_odom')
     qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
 
     def receive(message, key):
@@ -181,6 +184,34 @@ def run(args, output):
     subscriptions = [node.create_subscription(
         kind, topics[key], lambda message, key=key: receive(message, key), qos)
         for key, kind in [('depth', Image), ('cloud', PointCloud2), ('info', CameraInfo)]]
+
+    odom_guard = MessageFreshness(.5)
+
+    def receive_odom(message):
+        # Same exact-time local-cache path as nav_sensor_adapter: avoid waiting
+        # for the identical odometry to take another DDS trip through /tf.
+        # This does not broadcast TF, extrapolate or re-stamp the source pose.
+        mono = time.monotonic()
+        counts['odom_received'] += 1
+        now_ns = node.get_clock().now().nanoseconds
+        sample('odom_source_age_at_callback_s',
+               (now_ns - stamp_nanoseconds(message.header.stamp)) / 1e9)
+        if (message.header.frame_id != 'odom' or message.child_frame_id != 'base_link'
+                or not valid_pose(message.pose.pose)
+                or not odom_guard.accept(message.header.stamp, now_ns, mono)):
+            counts['odom_rejected'] += 1
+            return
+        value = TransformStamped()
+        value.header, value.child_frame_id = message.header, message.child_frame_id
+        pose = message.pose.pose
+        value.transform.translation.x = pose.position.x
+        value.transform.translation.y = pose.position.y
+        value.transform.translation.z = pose.position.z
+        value.transform.rotation = pose.orientation
+        buffer.set_transform(value, 'shadow_validated_odometry')
+        counts['odom_cached'] += 1
+
+    subscriptions.append(node.create_subscription(Odometry, topics['odom'], receive_odom, qos))
 
     def driver_check():
         expected = profile['driver_parameters']
