@@ -166,7 +166,11 @@ def run(args, output):
 
     def driver_check():
         expected = profile['driver_parameters']
-        deadline = time.monotonic() + 3
+        # Participant endpoint discovery can precede ROS node-name discovery
+        # by several seconds on the hardware DDS graph. Waiting longer here
+        # does not admit unnamed publishers or relax any sensor age limit.
+        discovery_started = time.monotonic()
+        deadline = discovery_started + 8
         endpoints = []
         while time.monotonic() < deadline:
             endpoints = node.get_publishers_info_by_topic(topics['depth'])
@@ -177,7 +181,8 @@ def run(args, output):
             rclpy.spin_once(node, timeout_sec=.02)
         if (len(endpoints) != 1 or endpoints[0].node_name.startswith('_NODE_')
                 or endpoints[0].node_namespace.startswith('_NODE_')):
-            return dict(matches=False, reason='unique named depth publisher not discovered')
+            return dict(matches=False, reason='unique named depth publisher not discovered',
+                        discovery_wait_s=time.monotonic() - discovery_started)
         endpoint = endpoints[0]
         owner = endpoint.node_namespace.rstrip('/') + '/' + endpoint.node_name
         client = node.create_client(GetParameters, owner + '/get_parameters')
@@ -199,6 +204,7 @@ def run(args, output):
                        and all(type(observed[name]) is type(wanted) and observed[name] == wanted
                                for name, wanted in expected.items()))
             return dict(owner=owner, observed=observed, matches=matches,
+                        discovery_wait_s=time.monotonic() - discovery_started,
                         stamp_ns=node.get_clock().now().nanoseconds)
         finally:
             node.destroy_client(client)
