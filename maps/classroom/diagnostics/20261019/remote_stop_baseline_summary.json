@@ -1,0 +1,150 @@
+{
+  "scope": "Read-only stationary baseline. No remote button trial or motion issued.",
+  "runtime_commit": "21aaef1",
+  "hardware_stop_verified": false,
+  "operator_report": {
+    "stop_combination": "L2+R2+Create",
+    "distance_reference": "visual only; no ruler or known tile dimensions"
+  },
+  "future_trial": {
+    "authorization": "pending; not granted at baseline",
+    "executed": false,
+    "objective": "one stationary damping mode transition under fixed fall protection; no nonzero SDK commands",
+    "script": "/tmp/sztu_remote_stop_observe_20261019_01.sh",
+    "script_syntax_checked": true
+  },
+  "software_validation": {
+    "robot_isolated_domain_42": "1 passed in 9.77s with current robot AimDK",
+    "developer": "1 skipped: installed AimDK lacks McCommonState; not a pass"
+  },
+  "baseline": {
+    "duration_s": 6.013639458000398,
+    "counts": {
+      "state": 50,
+      "command": 246,
+      "odom": 47
+    },
+    "fresh_state_count": 50,
+    "action_descriptions": [
+      "STAND_DEFAULT"
+    ],
+    "raw_action_values": [
+      0
+    ],
+    "fsm_values": [
+      4
+    ],
+    "input_sources": [
+      "rc"
+    ],
+    "nonzero_wire_count": 0
+  },
+  "state_checks": {
+    "before_baseline": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 185,
+        "cmd_vel": 123
+      },
+      "commit": "21aaef1caec0bab9b3a6d5517789e5300ff40bfc",
+      "stamp_ns": 1792422340807028874
+    },
+    "after_baseline": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 152,
+        "hardware_rc": 164
+      },
+      "commit": "21aaef1caec0bab9b3a6d5517789e5300ff40bfc",
+      "stamp_ns": 1792422359874865357
+    }
+  },
+  "source_sha256": {
+    "tools/observe_mc_state.py": "3ba38c578cf60736370dd2d39a0c8f67c8383bf8b96d57948467802d6af11d72",
+    "src/sztu_navigation/test/test_mc_state_observer_runtime.py": "4b9b718503c5f251220dfa6cb52ae00569fe34b4b47af5f7b3e5c13ee404a52d"
+  },
+  "artifacts": [
+    {
+      "name": "after_baseline.json",
+      "bytes": 3660,
+      "sha256": "0a7681e22f4e22fd24f9bd3d70f7ff86ae8cd7b9f495d4e2a9cc983deca3ae1a"
+    },
+    {
+      "name": "after_baseline.log",
+      "bytes": 325889,
+      "sha256": "d5641605f515bd089771c41f0d933e45c21feb0a3288d7d5743ce35c7c430275"
+    },
+    {
+      "name": "aimdk_shutdown.html",
+      "bytes": 65009,
+      "sha256": "6ac18ded2e5b748cfd7940e478b790093710bebc5951a58f821460a3181ece18"
+    },
+    {
+      "name": "baseline.log",
+      "bytes": 310765,
+      "sha256": "a23bc6685bc2f1087fb297dcd9713fa75589b546262933bc6083f40f7ac24ed2"
+    },
+    {
+      "name": "before_baseline.json",
+      "bytes": 3497,
+      "sha256": "552f8b097578bef0a67919501be5ee9b185d4adaadd346928088f5d287e484c9"
+    },
+    {
+      "name": "before_baseline.log",
+      "bytes": 333510,
+      "sha256": "00ae4b2df12e5a061535d26ae6ae6dd88741335296259a9aab806f94453eee79"
+    },
+    {
+      "name": "mc_state_baseline.json",
+      "bytes": 429042,
+      "sha256": "d4843d155b4566eac1806aaf54a0267d9048d59307dd7668bb81f1285b76dfed"
+    },
+    {
+      "name": "sztu_mc_observer_baseline_20261019.sh",
+      "bytes": 1174,
+      "sha256": "e6aa04963100aa0554839181d92b29477020c512cf84fc8f9f09b2809052e1f2"
+    },
+    {
+      "name": "sztu_mc_state_schema_20261019.sh",
+      "bytes": 934,
+      "sha256": "d2f3ec75d9044cca885b1b1379fc77d03135d7c8b05d9a1413f4dda67e18b9a5"
+    },
+    {
+      "name": "sztu_mc_stop_baseline_20261019.log",
+      "bytes": 320057,
+      "sha256": "0d6773f2a844c6c7e3ad1fb0069ff608d4309a7843d627fb231381ad6b13ce0a"
+    },
+    {
+      "name": "sztu_mc_stop_baseline_20261019.sh",
+      "bytes": 1678,
+      "sha256": "7ebfdb5388adf3bc0e6f9bb7336ac7943e3e623ff5a56703e63f6d60d513d77e"
+    },
+    {
+      "name": "sztu_remote_controller_20261019.html",
+      "bytes": 59055,
+      "sha256": "fe676c5e458503877f06760f6ffd5e6810dcb9fdadf8a8b855672fdf6ae2864b"
+    },
+    {
+      "name": "sztu_remote_stop_observe_20261019_01.sh",
+      "bytes": 1709,
+      "sha256": "ef0798f8ecd81b8db55c4597c0381b259707bc4b4c50adad31902d33d8c30847"
+    },
+    {
+      "name": "validation.log",
+      "bytes": 413,
+      "sha256": "59a08008817956c1e9c5a42c736b89de11944a6f14612b54e37b89d049aed07f"
+    }
+  ]
+}
