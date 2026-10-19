@@ -1,0 +1,127 @@
+{
+  "origin": "20261020_guarded_handoff_01 actual MC state changes; input source changes excluded; last pre-pulse baseline retained before arming",
+  "raw_sha256": "587f8095cf0d7ad57d7825df6d9dd89cdb1f91a6337153cedf2230a13fd543f4",
+  "clock_note": "Receive offsets are real; ROS receipt time was not saved. Replay tests use source stamp +20ms and do not test original source freshness.",
+  "states": [
+    {
+      "relative_s": -0.06734930800303118,
+      "source_stamp": {
+        "sec": 1792426689,
+        "nanosec": 768499256
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.22655202399619156,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 68475506
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.3260808279956109,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 168417714
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.4265265419962816,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 268416798
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.2260907929958194,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 68462715
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.729399657997419,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 568436424
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.8276986119963112,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 668448633
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.126925328993821,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 968445300
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.225833407996106,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 68436508
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 5.025470332999248,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 868417508
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    }
+  ]
+}

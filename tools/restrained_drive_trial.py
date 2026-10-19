@@ -362,9 +362,11 @@ def main():
         report['phase'] = trial.phase
         report['reason'] = trial.reason
         report['mc_guard_latched_reason'] = mode_guard.reason if mode_guard else None
+        report['mc_guard_first_fault'] = mode_guard.first_fault if mode_guard else None
         args.output.write_text(json.dumps(report, indent=2, allow_nan=False))
         summary = {key: value for key, value in report.items()
-                   if key not in ('wire_records', 'mc_state_records')}
+                   if key not in ('wire_records', 'mc_state_records', 'input_source_observations')}
+        summary['input_source_observation_count'] = len(report['input_source_observations'])
         print(json.dumps(summary), flush=True)
         node.destroy_node()
         rclpy.try_shutdown()

@@ -1,6 +1,8 @@
 """Mode loss cannot replay an old command after a later standing message."""
 
 from types import SimpleNamespace as NS
+import json
+from pathlib import Path
 
 import pytest
 
@@ -68,3 +70,50 @@ def test_fresh_message_after_executor_gap_cannot_hide_mode_loss():
     assert not guard.arm(10**9, 1.)
     guard.receive(state(2.), 2_000_000_000, 2.)
     assert guard.check(2_000_000_000, 2.) == 'mc_state_stale'
+
+
+def test_actual_handoff_trace_preserves_first_transition_fault_through_damping():
+    fixture = json.loads((Path(__file__).parent / 'fixtures'
+                          / 'guarded_handoff_20261020_modes.json').read_text())
+    guard = McStateGuard()
+    first_fault = None
+    for row in fixture['states']:
+        stamp = NS(**row['source_stamp'])
+        msg = state(description=row['action_desc'], value=row['action_value'],
+                    fsm=row['fsm_state'], body=row['body_status'], status=row['action_status'])
+        msg.header.stamp = stamp
+        # Synthetic 20ms delivery age: original callback ROS time was not recorded.
+        now_ns = stamp.sec * 10**9 + stamp.nanosec + 20_000_000
+        monotonic_now = 20. + row['relative_s']
+        guard.receive(msg, now_ns, monotonic_now)
+        if not guard.armed:
+            assert guard.arm(now_ns, monotonic_now) == ''
+        if guard.reason and first_fault is None:
+            first_fault = guard.first_fault
+            assert first_fault['reason'] == 'mc_state_invalid'
+            assert first_fault['observation']['action_status'] == 200
+            assert first_fault['observation']['action_desc'] == 'STAND_DEFAULT'
+            assert first_fault['observation']['timestamp_accepted']
+    assert first_fault is not None
+    assert guard.first_fault == first_fault
+    assert guard.arm(now_ns, monotonic_now) == 'mc_state_invalid'
+    assert not guard.valid
+
+
+def test_special_fsm_is_not_silently_promoted_to_normal_locomotion():
+    guard = McStateGuard()
+    guard.receive(state(), 10**9, 1.)
+    assert guard.arm(10**9, 1.) == ''
+    guard.receive(state(1.1, 'LOCOMOTION_DEFAULT', fsm=5), 1_100_000_000, 1.1)
+    assert guard.reason == 'mc_state_invalid'
+    assert guard.first_fault['observation']['fsm_state'] == 5
+
+
+def test_gap_fault_keeps_previous_observation_and_detection_time():
+    guard = McStateGuard()
+    guard.receive(state(), 10**9, 1.)
+    assert not guard.arm(10**9, 1.)
+    guard.receive(state(2.), 2_000_000_000, 2.)
+    assert guard.first_fault['reason'] == 'mc_state_stale'
+    assert guard.first_fault['detected_monotonic_s'] == 2.
+    assert guard.first_fault['observation']['received_monotonic_s'] == 1.

@@ -1,0 +1,199 @@
+{
+  "scope": "One operator-executed restrained pulse with damping; first software fault precedes recorded damping.",
+  "deployed_commit": "c169caa",
+  "speed_m_s": 0.1,
+  "requested_duration_s": 1.0,
+  "nonzero_wire_frames": 12,
+  "first_nonzero_monotonic_s": 35395.384502849,
+  "last_nonzero_offset_s": 0.21903833999385824,
+  "first_zero_offset_s": 0.23851699899387313,
+  "state_changes": [
+    {
+      "relative_s": -9.070772506005596,
+      "source_stamp": {
+        "sec": 1792426680,
+        "nanosec": 768417835
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.22655202399619156,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 68475506
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.3260808279956109,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 168417714
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 0.4265265419962816,
+      "source_stamp": {
+        "sec": 1792426690,
+        "nanosec": 268416798
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 2.2260907929958194,
+      "source_stamp": {
+        "sec": 1792426692,
+        "nanosec": 68462715
+      },
+      "action_desc": "LOCOMOTION_DEFAULT",
+      "action_value": 0,
+      "action_status": 200,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.729399657997419,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 568436424
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 5,
+      "body_status": 1
+    },
+    {
+      "relative_s": 3.8276986119963112,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 668448633
+      },
+      "action_desc": "STAND_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.126925328993821,
+      "source_stamp": {
+        "sec": 1792426693,
+        "nanosec": 968445300
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 4,
+      "body_status": 1
+    },
+    {
+      "relative_s": 4.225833407996106,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 68436508
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 1
+    },
+    {
+      "relative_s": 5.025470332999248,
+      "source_stamp": {
+        "sec": 1792426694,
+        "nanosec": 868417508
+      },
+      "action_desc": "DAMPING_DEFAULT",
+      "action_value": 0,
+      "action_status": 100,
+      "fsm_state": 6,
+      "body_status": 4
+    }
+  ],
+  "first_fault_inference": {
+    "relative_s": 0.22655202399619156,
+    "reason": "mc_state_invalid",
+    "field": "action_status",
+    "value": 200,
+    "sdk_definition": "TRANSITION (切换中)",
+    "provenance": "Inferred from saved raw samples and deployed guard; old tool did not record callback ROS time/first-fault snapshot."
+  },
+  "hardware_stop_verified": false,
+  "wire_test_passed": false,
+  "operator_report": "出现步态，期间按 L2+R2+创建键，已停住并保持阻尼；未恢复站立。",
+  "button_edge_recorded": false,
+  "stop_distance_measured": false,
+  "command_overlap_with_button": "Unknown; first DAMPING_DEFAULT arrives after software already switched to zero.",
+  "acceptance": "Observed operator damping from gait and no nonzero restart; not a pass for damping interruption of a continuing SDK pulse or ground stopping distance.",
+  "next_mode_policy": "Keep current allow set; do not promote FSM SPECIAL=5 to allowed locomotion from this trace alone.",
+  "raw_files_sha256": {
+    "McAction.idl": "0c586874291d2e9dc493b28ff132ce5cb1e77f1b75abe7d4cdd58041ff88f20e",
+    "McActionStatus.idl": "39c10376550c31014dc214c6e0fdb66a6db55bf8a486c294cfca5dadeca08fa6",
+    "McBodyPoseStatus.idl": "32cadc6277e7cac22f11bdb10d2f64d19c2f7416c694166b60a65da62de7eb27",
+    "McFsmState.idl": "01fece566578db137652a2aa92b6b9adf5b6d2b5ec28b5c9780bf426710e4d79",
+    "post_trial_flags.json": "970637b392547079299749c0345d95690bc649b510effdd92dfcc1a29ec411ad",
+    "post_trial_state.json": "b9d4da38937c78794d0167fea8f2c413b7bc72f56f6eeca75249faa30bb3685e",
+    "sztu_handoff_guarded_20261020_01.json": "587f8095cf0d7ad57d7825df6d9dd89cdb1f91a6337153cedf2230a13fd543f4",
+    "sztu_handoff_guarded_20261020_01.log": "80b607323d0e08c51ba9e95e393511ff7ad23fb5fc6511e06ad1a533e3bdefa1",
+    "sztu_handoff_guarded_20261020_01.sh": "15da079c8f8ea932f72dbcbc359ba3a671264fc3f88f44d54bb7f150b5bca934"
+  },
+  "post_trial": {
+    "state_counts": {
+      "state": 37,
+      "command": 0,
+      "odom": 33
+    },
+    "last_state": {
+      "action_info": {
+        "current_action": {
+          "value": 0
+        },
+        "action_desc": "DAMPING_DEFAULT",
+        "status": {
+          "value": 100
+        }
+      },
+      "fsm_state": {
+        "current_state": 6
+      },
+      "body_status": {
+        "value": 4
+      }
+    },
+    "flags": {
+      "live": false,
+      "surround_coverage_verified": false,
+      "front_only_coverage": false,
+      "front_arc_coverage": false
+    },
+    "bridge": "inactive",
+    "command_counts": {
+      "cmd_vel": 160
+    },
+    "hardware_command_note": "No hardware commands received in this window; absence is not zero-command proof."
+  },
+  "verification": {
+    "developer_domain_42": "62 passed (MC guard, restrained trial, gateway); navigation package build passed",
+    "robot_actual_sdk_domain_42": "pending, to be recorded after deployment",
+    "fixture_scope": "Actual mode-transition subset replay with synthetic 20ms source age; not a reconstruction of original source freshness."
+  }
+}

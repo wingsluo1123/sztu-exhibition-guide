@@ -196,7 +196,8 @@ def test_contained_trial_runtime_on_isolated_domain(tmp_path, mode):
         rclpy.try_shutdown()
 
 
-@pytest.mark.parametrize('fault', ['healthy', 'damping', 'lost', 'missing', 'invalid', 'countdown'])
+@pytest.mark.parametrize('fault', ['healthy', 'damping', 'lost', 'missing', 'invalid',
+                                  'transition', 'countdown'])
 def test_mc_supervised_trial_never_restarts_after_mode_loss(tmp_path, fault):
     try:
         from aimdk_msgs.msg import McCommonState
@@ -252,7 +253,8 @@ def test_mc_supervised_trial_never_restarts_after_mode_loss(tmp_path, fault):
                 state.header.stamp = fixture.get_clock().now().to_msg()
                 state.action_info.action_desc = ('DAMPING_DEFAULT' if injecting and fault in ('damping', 'countdown')
                                                   else 'STAND_DEFAULT')
-                state.action_info.status.value = 0 if injecting and fault == 'invalid' else 100
+                state.action_info.status.value = (200 if injecting and fault == 'transition'
+                                                  else 0 if injecting and fault == 'invalid' else 100)
                 state.fsm_state.current_state = 4
                 state.body_status.value = 1
                 publisher.publish(state)
@@ -269,9 +271,17 @@ def test_mc_supervised_trial_never_restarts_after_mode_loss(tmp_path, fault):
             after = [m for t,m in own if t > active[-1][0]]
             assert len(after) >= 20 and all(m.forward_velocity == 0 for m in after)
         expected = dict(healthy='', damping='mc_damping_observed', lost='mc_state_stale',
-                        missing='', invalid='mc_state_invalid', countdown='mc_damping_observed')
+                        missing='', invalid='mc_state_invalid', transition='mc_state_invalid',
+                        countdown='mc_damping_observed')
         assert report['mc_guard_latched_reason'] == expected[fault]
         assert report['hardware_stop_verified'] is False
+        if fault in ('invalid', 'transition'):
+            first_fault = report['mc_guard_first_fault']
+            assert first_fault['reason'] == 'mc_state_invalid'
+            assert first_fault['observation']['action_status'] == (200 if fault == 'transition' else 0)
+            assert first_fault['observation']['timestamp_accepted']
+        if fault == 'healthy':
+            assert report['mc_guard_first_fault'] is None
         if fault not in ('healthy', 'missing'):
             # Later fresh standing data is recorded, yet the stop stays latched.
             assert report['mc_state_records'][-1]['message']['action_info']['action_desc'] == 'STAND_DEFAULT'
