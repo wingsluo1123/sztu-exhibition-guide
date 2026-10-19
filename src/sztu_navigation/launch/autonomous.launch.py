@@ -80,6 +80,7 @@ def build_nodes(context):
                           ('cmd_vel_smoothed', '/cmd_vel_nav')]
         if name == 'amcl':
             remappings.append(('initialpose', '/sztu/initialpose_retimed'))
+            remappings.append(('map', '/sztu/map'))
         environment = {}
         if name == 'map_server':
             map_dds_profile = os.path.join(

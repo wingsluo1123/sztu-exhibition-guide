@@ -10,6 +10,10 @@ FAST-LIO2 -> lio_odom_bridge -> /slam/lidar_odom
 
 使用仓库自研的 FAST-LIO 和 Nav2。厂商 `/agibot/software/nav/` 自主包没有采购，不是本流程的一部分。
 
+自研静态地图使用独立话题 `/sztu/map`。厂商 `costmap_ros_node` 也会发布
+`/map`；AMCL、全局代价地图和 RViz 必须订阅 `/sztu/map`，避免混入厂商地图。
+地图坐标系仍叫 `map`。
+
 ## 先记住五条
 
 1. **每次真机启动都先停 `sztu-bridge`。** 它会带起另一套 `navigation_manager`，可能和本项目争抢控制输入。
