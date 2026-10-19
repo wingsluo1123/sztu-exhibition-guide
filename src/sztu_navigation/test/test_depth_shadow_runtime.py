@@ -129,6 +129,19 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
         assert len(healthy) >= 5
         assert max(np.diff(healthy)) / 1e9 < .5
         assert len(report['captures']) >= 1
+        # The fixture delays TF by 100ms. Attribute a measurable wait to TF,
+        # rather than misreporting it as geometry computation or DDS latency.
+        assert any(row['timing']['observed_exact_tf_wait_s'] > .02 for row in report['rows'])
+        assert report['exact_tf_missing_poll_counts']['shadow_camera'] > 0
+        stages = ('validation_s', 'transforms_s', 'cloud_projection_s',
+                  'ground_fit_s', 'summarize_s')
+        for row in report['rows']:
+            timing = row['timing']
+            assert sum(timing[key] for key in stages) == pytest.approx(timing['processing_s'])
+            assert all(value >= 0 for value in timing['queue_residence_at_selection_s'])
+            assert len(timing['source_ages_at_callback_s']) == 3
+        assert report['timing_summary_s']['processing_s']['count'] >= len(report['rows'])
+        assert report['timing_summary_s']['capture_write_and_hash_s']['count'] == len(report['captures'])
     finally:
         if process is not None and process.poll() is None:
             process.kill()

@@ -19,6 +19,15 @@ import numpy as np
 import analyze_depth_lidar_pairs as geometry
 
 
+def timing_summary(values):
+    """Bounded-run timing samples; empty stages remain explicitly unmeasured."""
+    if not values:
+        return dict(count=0)
+    data = np.asarray(values, dtype=float)
+    return dict(count=len(data), median=float(np.median(data)),
+                p90=float(np.percentile(data, 90)), max=float(data.max()))
+
+
 def image_array(image):
     """Validate the 16UC1 layout, including padded rows and byte order."""
     if (image.encoding != '16UC1' or image.width <= 0 or image.height <= 0
@@ -148,6 +157,11 @@ def run(args, output):
     queues = {key: deque(maxlen=6) for key in ('depth', 'cloud', 'info')}
     guards = {key: MessageFreshness(.5) for key in queues}
     counts, rows, errors, captures = Counter(), [], [], []
+    timings, missing_tf = {}, Counter()
+    tf_wait_started = {}
+
+    def sample(name, value):
+        timings.setdefault(name, []).append(value)
     topics = dict(depth='/aima/hal/sensor/rgbd_head_front/depth_image',
                   info='/aima/hal/sensor/rgbd_head_front/depth_camera_info', cloud='/lio/points')
     qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -155,6 +169,9 @@ def run(args, output):
     def receive(message, key):
         counts[key + '_received'] += 1
         mono = time.monotonic()
+        sample(key + '_source_age_at_callback_s',
+               (node.get_clock().now().nanoseconds
+                - stamp_nanoseconds(message.header.stamp)) / 1e9)
         if not guards[key].accept(message.header.stamp, node.get_clock().now().nanoseconds, mono):
             counts[key + '_timestamp_rejected'] += 1
             return
@@ -239,6 +256,7 @@ def run(args, output):
             # Retry exact-TF availability without spending the 5Hz observation
             # budget on a pair whose TF has not arrived yet. Never block spin.
             next_check = mono + .02
+            selection_started = time.monotonic()
             for queue in queues.values():
                 while queue and age(queue[0]) > .5:
                     queue.popleft()
@@ -260,6 +278,8 @@ def run(args, output):
                     if gap <= 50_000_000:
                         candidates.append((depth_ns, gap, info_gap, image_entry, cloud_entry, info_entry))
             candidates.sort(key=lambda row: (-row[0], row[1]))
+            fresh_keys = {(row[0], stamp_nanoseconds(row[4][0].header.stamp)) for row in candidates}
+            tf_wait_started = {key: value for key, value in tf_wait_started.items() if key in fresh_keys}
             selected = None
             for candidate in candidates:
                 image, cloud = candidate[3][0], candidate[4][0]
@@ -268,15 +288,27 @@ def run(args, output):
                           ('base_link', image.header.frame_id,
                            'left_ankle_roll_link', 'right_ankle_roll_link')]
                 checks.append((cloud.header.frame_id, Time.from_msg(cloud.header.stamp)))
-                if all(buffer.can_transform('odom', frame, stamp) for frame, stamp in checks):
+                missing = [frame for frame, stamp in checks
+                           if not buffer.can_transform('odom', frame, stamp)]
+                pair_key = (candidate[0], stamp_nanoseconds(cloud.header.stamp))
+                if not missing:
                     selected = candidate
                     break
+                missing_tf.update(missing)
+                tf_wait_started.setdefault(pair_key, time.monotonic())
+            sample('selection_s', time.monotonic() - selection_started)
             if selected is None:
                 counts['waiting_exact_tf' if candidates else 'waiting_timestamp_pair'] += 1
                 continue
             depth_ns, gap, info_gap, image_entry, cloud_entry, info_entry = selected
             image, cloud, info = image_entry[0], cloud_entry[0], info_entry[0]
             entries = (image_entry, cloud_entry, info_entry)
+            processing_started = time.monotonic()
+            row_timing = dict(source_ages_at_callback_s=[entry[2] for entry in entries],
+                              queue_residence_at_selection_s=[processing_started - entry[1]
+                                                              for entry in entries],
+                              observed_exact_tf_wait_s=processing_started - tf_wait_started.get(
+                                  (depth_ns, stamp_nanoseconds(cloud.header.stamp)), processing_started))
             try:
                 k = validate_camera(image, info, profile)
                 depth = image_array(image)
@@ -288,6 +320,7 @@ def run(args, output):
                                        and f.count == 1 for f in cloud.fields)
                                    for name, pos in [('x', 0), ('y', 4), ('z', 8)])):
                     raise ValueError('unsupported XYZ cloud layout')
+                validated_at = time.monotonic()
                 _, base, quat = transform('odom', 'base_link', image)
                 camera_rotation, camera, _ = transform('odom', image.header.frame_id, image)
                 lidar_rotation, lidar_translation, _ = transform('odom', cloud.header.frame_id, cloud)
@@ -295,16 +328,30 @@ def run(args, output):
                 level = rotation_matrix((0, 0, math.sin(yaw / 2), math.cos(yaw / 2))).T
                 ankles = np.array([(transform('odom', frame, image)[1] - base) @ level.T
                                    for frame in ('left_ankle_roll_link', 'right_ankle_roll_link')])
+                transformed_at = time.monotonic()
                 points = xyz_points(cloud.data, cloud.point_step)
                 points = points[np.linalg.norm(points, axis=1) > 1e-6]
                 points = (points @ lidar_rotation.T + lidar_translation - base) @ level.T
+                points_at = time.monotonic()
                 ground = estimate_ground(points, ankles)
+                ground_at = time.monotonic()
+                sample('ground_fit_s', ground_at - points_at)
                 if ground is None:
                     counts['ground_rejected'] += 1
                     continue
                 rotation, translation = level @ camera_rotation, (camera - base) @ level.T
                 result = summarize(depth, k, rotation, translation, points,
                                    ground.normal, ground.offset, scale)
+                summarized_at = time.monotonic()
+                row_timing.update(validation_s=validated_at - processing_started,
+                                  transforms_s=transformed_at - validated_at,
+                                  cloud_projection_s=points_at - transformed_at,
+                                  ground_fit_s=ground_at - points_at,
+                                  summarize_s=summarized_at - ground_at,
+                                  processing_s=summarized_at - processing_started)
+                for key in ('validation_s', 'transforms_s', 'cloud_projection_s',
+                            'summarize_s', 'processing_s'):
+                    sample(key, row_timing[key])
             except ValueError as error:
                 counts['validation_rejected'] += 1
                 if len(errors) < 8:
@@ -320,16 +367,18 @@ def run(args, output):
                 counts['expired_after_processing'] += 1
                 continue
             last_used = depth_ns
-            next_check = mono + .2  # at most 5 completed observations/s
+            next_check = mono + .2  # successful processing starts at least 200ms apart
             counts['pairs_observed'] += 1
             result.update(depth_stamp_ns=depth_ns,
                           cloud_stamp_ns=stamp_nanoseconds(cloud.header.stamp),
                           depth_cloud_gap_s=gap / 1e9, depth_info_gap_s=info_gap,
                           input_ages_at_record_s=ages,
+                          timing=row_timing,
                           elapsed_s=time.monotonic() - started,
                           ground_residual_p95_m=ground.residual_p95)
             rows.append(result)
             if len(captures) < 3 and mono - last_capture >= 5:
+                capture_started = time.monotonic()
                 path = output.parent / ('pair_' + str(len(captures)) + '.npz')
                 with path.open('xb') as stream:
                     np.savez_compressed(stream, depth=depth, k=k, camera_rotation=rotation,
@@ -338,6 +387,8 @@ def run(args, output):
                                         depth_stamp_ns=depth_ns,
                                         cloud_stamp_ns=stamp_nanoseconds(cloud.header.stamp))
                 captures.append(dict(name=path.name, sha256=hashlib.sha256(path.read_bytes()).hexdigest()))
+                captures[-1]['write_and_hash_s'] = time.monotonic() - capture_started
+                sample('capture_write_and_hash_s', captures[-1]['write_and_hash_s'])
                 last_capture = mono
         driver_checks.append(driver_check())
         publishers = {key: [dict(name=p.node_name, namespace=p.node_namespace)
@@ -353,6 +404,13 @@ def run(args, output):
                     profile_stable_at_checks=all(check['matches'] for check in driver_checks),
                     duration_s=time.monotonic() - started, ros_distro=os.environ.get('ROS_DISTRO'),
                     counts=dict(counts), first_errors=errors, rows=rows, captures=captures,
+                    timing_summary_s={name: timing_summary(values) for name, values in timings.items()},
+                    exact_tf_missing_poll_counts=dict(missing_tf),
+                    timing_scope='Callback source age includes driver/transport/executor delay; '
+                                 'these components are not separately observable here. TF wait is '
+                                 'first failed poll to selection for the selected pair, not arrival latency. '
+                                 'Stage summaries include completed stages of rejected attempts too. '
+                                 'Capture writing follows row freshness validation and blocks this executor.',
                     profile=profile, publishers=publishers,
                     diagnostic_model=dict(radius_m=.55, advance_with_stopping_margin_m=.85,
                                           target_spacing_m=.025, surface_cell_size_m=.05,
