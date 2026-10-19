@@ -157,6 +157,7 @@ def run(args, output):
     queues = {key: deque(maxlen=6) for key in ('depth', 'cloud', 'info')}
     guards = {key: MessageFreshness(.5) for key in queues}
     counts, rows, errors, captures = Counter(), [], [], []
+    pending_captures = []  # at most three retained pairs; persist after observing
     timings, missing_tf = {}, Counter()
     tf_wait_started = {}
 
@@ -377,20 +378,25 @@ def run(args, output):
                           elapsed_s=time.monotonic() - started,
                           ground_residual_p95_m=ground.residual_p95)
             rows.append(result)
-            if len(captures) < 3 and mono - last_capture >= 5:
-                capture_started = time.monotonic()
-                path = output.parent / ('pair_' + str(len(captures)) + '.npz')
-                with path.open('xb') as stream:
-                    np.savez_compressed(stream, depth=depth, k=k, camera_rotation=rotation,
-                                        camera_translation=translation, lidar_points=points,
-                                        normal=ground.normal, offset=ground.offset, ankles=ankles,
-                                        depth_stamp_ns=depth_ns,
-                                        cloud_stamp_ns=stamp_nanoseconds(cloud.header.stamp))
-                captures.append(dict(name=path.name, sha256=hashlib.sha256(path.read_bytes()).hexdigest()))
-                captures[-1]['write_and_hash_s'] = time.monotonic() - capture_started
-                sample('capture_write_and_hash_s', captures[-1]['write_and_hash_s'])
+            if len(pending_captures) < 3 and mono - last_capture >= 5:
+                # These arrays own or retain their source buffers. No callback
+                # mutates them; bounded retention avoids compression in spin.
+                pending_captures.append(dict(depth=depth, k=k, camera_rotation=rotation,
+                                             camera_translation=translation, lidar_points=points,
+                                             normal=ground.normal, offset=ground.offset, ankles=ankles,
+                                             depth_stamp_ns=depth_ns,
+                                             cloud_stamp_ns=stamp_nanoseconds(cloud.header.stamp)))
                 last_capture = mono
+        observation_window_s = time.monotonic() - started
         driver_checks.append(driver_check())
+        for index, arrays in enumerate(pending_captures):
+            capture_started = time.monotonic()
+            path = output.parent / ('pair_' + str(index) + '.npz')
+            with path.open('xb') as stream:
+                np.savez_compressed(stream, **arrays)
+            captures.append(dict(name=path.name, sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                                 write_and_hash_s=time.monotonic() - capture_started))
+            sample('capture_write_and_hash_s', captures[-1]['write_and_hash_s'])
         publishers = {key: [dict(name=p.node_name, namespace=p.node_namespace)
                             for p in node.get_publishers_info_by_topic(topic)]
                       for key, topic in topics.items()}
@@ -403,6 +409,7 @@ def run(args, output):
                     driver_checks=driver_checks,
                     profile_stable_at_checks=all(check['matches'] for check in driver_checks),
                     duration_s=time.monotonic() - started, ros_distro=os.environ.get('ROS_DISTRO'),
+                    observation_window_s=observation_window_s,
                     counts=dict(counts), first_errors=errors, rows=rows, captures=captures,
                     timing_summary_s={name: timing_summary(values) for name, values in timings.items()},
                     exact_tf_missing_poll_counts=dict(missing_tf),
@@ -410,7 +417,8 @@ def run(args, output):
                                  'these components are not separately observable here. TF wait is '
                                  'first failed poll to selection for the selected pair, not arrival latency. '
                                  'Stage summaries include completed stages of rejected attempts too. '
-                                 'Capture writing follows row freshness validation and blocks this executor.',
+                                 'At most three raw pairs are retained; compression/writes occur after '
+                                 'the observation window and final driver check, outside input processing.',
                     profile=profile, publishers=publishers,
                     diagnostic_model=dict(radius_m=.55, advance_with_stopping_margin_m=.85,
                                           target_spacing_m=.025, surface_cell_size_m=.05,

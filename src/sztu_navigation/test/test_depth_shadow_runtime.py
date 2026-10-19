@@ -39,11 +39,22 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
     points = np.column_stack((x.ravel(), y.ravel(), np.full(x.size, -.8))).astype('<f4')
     process = None
     try:
+        # Simulate a slow disk/compressor. It must not stall TF/sensor handling
+        # during the observation window; the old in-loop writes break continuity.
+        launcher = tmp_path / 'slow_storage.py'
+        launcher.write_text('import numpy as np, time, runpy\n'
+                            'original = np.savez_compressed\n'
+                            'def slow(*args, **kwargs):\n'
+                            '    time.sleep(.6)\n'
+                            '    return original(*args, **kwargs)\n'
+                            'np.savez_compressed = slow\n'
+                            f'runpy.run_path({str(root / "tools/depth_obstacle_shadow.py")!r}, run_name="__main__")\n')
         with (tmp_path / 'log').open('w') as log:
             process = subprocess.Popen(
-                [sys.executable, str(root / 'tools/depth_obstacle_shadow.py'),
+                [sys.executable, str(launcher),
                  '--duration', '10', '--profile', str(profile), '--output-dir', str(tmp_path / 'result')],
-                env=dict(os.environ, ROS_DOMAIN_ID='42', OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1'),
+                env=dict(os.environ, ROS_DOMAIN_ID='42', OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1',
+                         PYTHONPATH=str(root / 'tools') + os.pathsep + os.environ.get('PYTHONPATH', '')),
                 stdout=log, stderr=log)
             deadline = time.monotonic() + 5
             while not all(p.get_subscription_count() for p in publishers.values()):
@@ -142,6 +153,8 @@ def test_shadow_observes_and_rejects_faults_without_control_publishers(tmp_path,
             assert len(timing['source_ages_at_callback_s']) == 3
         assert report['timing_summary_s']['processing_s']['count'] >= len(report['rows'])
         assert report['timing_summary_s']['capture_write_and_hash_s']['count'] == len(report['captures'])
+        assert report['timing_summary_s']['capture_write_and_hash_s']['median'] >= .6
+        assert max(row['elapsed_s'] for row in report['rows']) <= report['observation_window_s']
     finally:
         if process is not None and process.poll() is None:
             process.kill()
