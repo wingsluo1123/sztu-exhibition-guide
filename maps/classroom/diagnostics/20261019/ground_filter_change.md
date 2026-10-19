@@ -130,3 +130,7 @@ SHA256 为 `887a5ea62a7b59e2902fdd4b8cb20df6ef09511ce89d5d29a58a66349f8b09f0`。
 [脚本清单](candidate_capture_scripts_manifest.json) 及各摘要记录 SHA256。
 候选有界任务结束后只剩原 adapter PID 99595；LIO、主导航服务保持运行，
 `sztu-bridge` 未运行。此次没有重启 LIO 或切换主导航。
+
+随后完成了 [同一超时帧的链路追踪及逐输出发布检查](consumer_age_trace.md)，
+其中保留失败帧、消息交付时长及软件接收拒绝回归；不把新增检查写成 DDS
+长尾已经消除。

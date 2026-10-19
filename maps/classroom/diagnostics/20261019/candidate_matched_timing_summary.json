@@ -1,0 +1,220 @@
+{
+  "scope": "Static background carried forward after operator chair removal; conventional installed Humble SingleThreadedExecutor with identical take path plus metadata retention. Subscriptions reproduce earlier scan+raw-cloud observer workload. Main adapter unchanged; no commands/goals emitted.",
+  "source_commit": "565703e (operational adapter unchanged from d2ca68f)",
+  "trace_scope": "Instrumented independent candidate with existing installed filtering and freshness unchanged; remapped outputs, publish_odometry false. Added memory tracing changes CPU load; no claim of uninstrumented latency equivalence.",
+  "duration": 40.006318226001895,
+  "abort": null,
+  "parameters": {
+    "live": {
+      "type": 1,
+      "bool": false
+    },
+    "surround_coverage_verified": {
+      "type": 1,
+      "bool": false
+    },
+    "front_only_coverage": {
+      "type": 1,
+      "bool": false
+    },
+    "front_arc_coverage": {
+      "type": 1,
+      "bool": false
+    }
+  },
+  "command_count": 1846,
+  "maximum_abs_command": 0.0,
+  "cloud_publishers": [
+    {
+      "name": "cloud_to_velodyne",
+      "namespace": "/",
+      "gid": [
+        1,
+        15,
+        189,
+        96,
+        203,
+        121,
+        205,
+        193,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        17,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "topic_metrics": {
+    "/lio/points": {
+      "frames": 398,
+      "max_age": 0.758184338,
+      "over_0_5": 7,
+      "zero_stamps": 0,
+      "frames_after_5s": 350,
+      "max_age_after_5s": 0.179389152,
+      "over_0_5_after_5s": 0
+    },
+    "/sztu/safety_scan": {
+      "frames": 379,
+      "max_age": 0.541696403,
+      "over_0_5": 2,
+      "zero_stamps": 0,
+      "frames_after_5s": 350,
+      "max_age_after_5s": 0.388571334,
+      "over_0_5_after_5s": 0
+    },
+    "/sztu/candidate_safety_scan": {
+      "frames": 373,
+      "max_age": 0.534804171,
+      "over_0_5": 1,
+      "zero_stamps": 0,
+      "frames_after_5s": 350,
+      "max_age_after_5s": 0.391764475,
+      "over_0_5_after_5s": 0
+    }
+  },
+  "candidate_over_age_cases": [
+    {
+      "observation": {
+        "topic": "/sztu/candidate_safety_scan",
+        "t": 3.457907004001754,
+        "clock_ns": 1792412660350898171,
+        "stamp_ns": 1792412659816094000,
+        "dds_source_ns": 1792412660229077223,
+        "dds_received_ns": 1792412660350182357,
+        "age": 0.534804171,
+        "near_returns": []
+      },
+      "raw_cloud_observer": {
+        "topic": "/lio/points",
+        "t": 3.06881862299997,
+        "clock_ns": 1792412659961776763,
+        "stamp_ns": 1792412659816094000,
+        "dds_source_ns": 1792412659926508157,
+        "dds_received_ns": 1792412659954587016,
+        "age": 0.145682763,
+        "frame": "lidar_chest_front",
+        "width": 25688,
+        "height": 1,
+        "point_step": 32,
+        "data_bytes": 822016
+      },
+      "candidate_cloud_callback": {
+        "kind": "cloud_callback",
+        "stamp_ns": 1792412659816094000,
+        "clock_ns": 1792412659977164861,
+        "accepted": true,
+        "frame": "lidar_chest_front",
+        "width": 25688,
+        "height": 1,
+        "point_step": 32,
+        "data_bytes": 822016
+      },
+      "successful_attempt": {
+        "kind": "attempt",
+        "stamp_ns": 1792412659816094000,
+        "start_ns": 1792412660189717036,
+        "queue_wait": 0.21223383899996406,
+        "source_age_at_callback": 0.161158413,
+        "tf": [
+          {
+            "target": "sztu_nav_odom",
+            "source": "sztu_nav_base",
+            "ok": true,
+            "seconds": 0.0009804460023588035
+          },
+          {
+            "target": "base_link",
+            "source": "lidar_chest_front",
+            "ok": true,
+            "seconds": 0.0003608959996199701
+          },
+          {
+            "target": "odom",
+            "source": "base_link",
+            "ok": true,
+            "seconds": 9.423899973626249e-05
+          },
+          {
+            "target": "base_link",
+            "source": "left_ankle_roll_link",
+            "ok": true,
+            "seconds": 0.0006071989992051385
+          },
+          {
+            "target": "base_link",
+            "source": "right_ankle_roll_link",
+            "ok": true,
+            "seconds": 0.001039038001181325
+          }
+        ],
+        "ground_seconds": [
+          0.010729739999078447
+        ],
+        "projection_seconds": [
+          0.0012679020001087338,
+          0.0072032069983833935
+        ],
+        "consumed": true,
+        "result": "published",
+        "age_at_publish_check": 0.412647731,
+        "processing_seconds": 0.039100591999158496,
+        "end_ns": 1792412660235846906
+      },
+      "safety_publish_call": {
+        "kind": "publish",
+        "topic": "candidate_safety_scan",
+        "stamp_ns": 1792412659816094000,
+        "start_ns": 1792412660229033355,
+        "end_ns": 1792412660235690375
+      },
+      "tf_wait_attempts": 10,
+      "first_tf_failure": {
+        "kind": "attempt",
+        "stamp_ns": 1792412659816094000,
+        "start_ns": 1792412659978908794,
+        "queue_wait": 0.001430972999514779,
+        "source_age_at_callback": 0.161158413,
+        "tf": [
+          {
+            "target": "sztu_nav_odom",
+            "source": "sztu_nav_base",
+            "ok": false,
+            "error": "Lookup would require extrapolation into the future.  Requested time 1792412659.816094 but the latest data is at time 1792412659.615942, when looking up transform from frame [sztu_nav_base] to frame [sztu_nav_odom]",
+            "seconds": 0.0003996149971499108
+          }
+        ],
+        "consumed": false,
+        "result": "tf_wait",
+        "end_ns": 1792412659980939190
+      },
+      "dds_write_to_receive_seconds": 0.121105134,
+      "receive_to_callback_seconds": 0.000715814
+    }
+  ],
+  "interpretation": "This observed failure combines 212ms waiting for exact navigation TF with 121ms DDS write-to-receive delay. Ground fitting 10.73ms did not account for the long delivery interval. Does not establish root cause of DDS scheduling/transport delay or explain all older failures. Consumer freshness rejection is essential; publication-time checks alone cannot ensure delivery age.",
+  "raw_files": [
+    {
+      "name": "candidate_matched_timing.json",
+      "bytes": 416514,
+      "sha256": "3af5022959ecd4e04dc36396bd2332ac636f4306f330ebd6a23498280bacada8"
+    },
+    {
+      "name": "candidate_frame_trace.json",
+      "bytes": 2272629,
+      "sha256": "d8c8e5a8cd8452b0065f58a57175dfb1961765473ccae7e5f0c2a868afd8ef35"
+    }
+  ]
+}

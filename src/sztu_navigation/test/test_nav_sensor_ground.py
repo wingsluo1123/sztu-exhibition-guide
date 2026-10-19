@@ -148,3 +148,43 @@ def test_rechecks_age_after_ground_estimation(monkeypatch):
     assert NavSensorAdapter._publish_cloud(node, message, 100.0, 0.1)
     assert not scans and not localization
     assert node.status['last_result'] == 'expired_after_processing'
+
+
+def test_safety_scan_is_sent_before_localization(monkeypatch):
+    node, message, scans, localization, _ = adapter_scene(monkeypatch)
+    order = []
+    node.safety_pub.publish = lambda msg: (order.append('safety'), scans.append(msg))
+    node.scan_pub.publish = lambda msg: (order.append('localization'), localization.append(msg))
+    NavSensorAdapter._publish_cloud(node, message, 100.0, 0.1)
+    assert order == ['safety', 'localization']
+    assert node.status['safety_scans_published'] == 1
+    assert node.status['localization_scans_published'] == 1
+    assert node.status['scans_published'] == 1
+
+
+@pytest.mark.parametrize('clock_jump', ['wall_forward', 'wall_backward', 'monotonic'])
+def test_first_publish_cannot_send_second_scan_after_it_expires(monkeypatch, clock_jump):
+    node, message, scans, localization, clock = adapter_scene(monkeypatch)
+    monotonic = [100.1]
+    monkeypatch.setattr('sztu_navigation.nav_sensor_adapter.time.monotonic',
+                        lambda: monotonic[0])
+
+    def delayed_write(scan):
+        scans.append(scan)
+        if clock_jump == 'wall_forward':
+            clock[0] = 10.6
+        elif clock_jump == 'wall_backward':
+            clock[0] = 9.9
+        else:
+            monotonic[0] = 100.6
+
+    node.safety_pub.publish = delayed_write
+    assert NavSensorAdapter._publish_cloud(node, message, 100.0, 0.1)
+    assert len(scans) == 1
+    assert not localization
+    assert scans[0].header.stamp == message.header.stamp
+    assert node.status['clouds_expired'] == 1
+    assert node.status['last_result'] == 'expired_before_publication'
+    assert node.status['scans_published'] == 0
+    assert node.status['safety_scans_published'] == 1
+    assert node.status.get('localization_scans_published', 0) == 0

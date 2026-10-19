@@ -39,7 +39,8 @@ class NavSensorAdapter(Node):
         self.settings = {name: self.get_parameter(name).value for name in defaults}
         self.status = {'clouds_received': 0, 'clouds_expired': 0,
                        'scans_published': 0, 'tf_waits': 0, 'ground_rejected': 0,
-                       'clouds_superseded': 0}
+                       'clouds_superseded': 0, 'safety_scans_published': 0,
+                       'localization_scans_published': 0}
         self.status_pub = self.create_publisher(String, '/sztu/sensor_status', 1)
         self.create_timer(1.0, self.publish_status)
         self.odom_freshness = MessageFreshness(self.settings['max_age'])
@@ -225,9 +226,11 @@ class NavSensorAdapter(Node):
         prepared = []
         # Preserve the localization slice until its AMCL/map alignment is
         # independently rechecked. Safety uses floor distance, never pelvis Z.
+        # Send safety first: a delayed localization write must not hold back
+        # an otherwise fresh safety observation.
         for publisher, minimum, selected in (
-                (self.scan_pub, self.settings['localization_min_height'], points),
-                (self.safety_pub, self.settings['safety_min_height'], safety_points)):
+                (self.safety_pub, self.settings['safety_min_height'], safety_points),
+                (self.scan_pub, self.settings['localization_min_height'], points)):
             scan = LaserScan()
             scan.header = copy.deepcopy(message.header)
             scan.header.frame_id = 'sztu_nav_base'
@@ -250,7 +253,21 @@ class NavSensorAdapter(Node):
             self.status['last_result'] = 'expired_after_processing'
             return True
         for publisher, scan in prepared:
+            # A publish call can block or this thread can be descheduled after
+            # the preceding check. Recheck each output, preserving the sensor
+            # stamp. Consumers must still check age after DDS delivery.
+            clock_age = (self.get_clock().now().nanoseconds - stamp_ns) / 1e9
+            age = max(clock_age, source_age + time.monotonic() - received_at)
+            self.status['age_at_publish_check'] = age
+            if clock_age < -self.cloud_freshness.future_tolerance or age > self.settings['max_age']:
+                self.status['clouds_expired'] += 1
+                self.status['last_result'] = 'expired_before_publication'
+                return True
             publisher.publish(scan)
+            counter = ('safety_scans_published' if publisher is self.safety_pub
+                       else 'localization_scans_published')
+            self.status[counter] = self.status.get(counter, 0) + 1
+        # Count complete pairs; individual counters expose partial publication.
         self.status['scans_published'] += 1
         self.status['last_result'] = 'published'
         return True

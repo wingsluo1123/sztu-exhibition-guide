@@ -7,6 +7,7 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 import rclpy
 from rclpy.parameter import Parameter
+from rclpy.time import Time
 
 from sztu_navigation.nav_geometry import (
     collision_reason, limit_front_arc_command, localization_valid, project_scan,
@@ -200,6 +201,34 @@ def test_gateway_rejects_delayed_scan_and_invalid_pose(gateway):
     message.pose.covariance[0] = 1.0
     gateway.localization_callback(message)
     assert gateway.localization is None
+
+
+@pytest.mark.parametrize('now_ns,accepted', [
+    # Same real observation: timely at DDS write, expired at consumer callback.
+    (1792412660229077223, True),
+    (1792412660350898171, False),
+])
+def test_gateway_checks_consumer_age_for_observed_dds_delay(
+        gateway, monkeypatch, now_ns, accepted):
+    monkeypatch.setattr(gateway, 'get_clock',
+                        lambda: type('Clock', (), {
+                            'now': lambda self: Time(nanoseconds=now_ns)})())
+    scan = LaserScan()
+    scan.header.frame_id = 'sztu_nav_base'
+    scan.header.stamp = Time(nanoseconds=1792412659816094000).to_msg()
+    scan.angle_increment = 0.01
+    scan.ranges = [2.0, 2.0]
+    gateway.scan_callback(scan)
+    assert (gateway.scan is not None) is accepted
+    if not accepted:
+        captured = []
+        gateway.output = type('Capture', (), {
+            'publish': lambda unused, msg: captured.append(msg)})()
+        command = Twist()
+        command.linear.x = 0.25
+        gateway.command_callback(command)
+        gateway.tick()
+        assert captured[-1] == Twist()
 
 
 def test_gateway_no_map_tf_keeps_output_zero(gateway):

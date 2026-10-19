@@ -39,6 +39,16 @@
       "bytes": 4572
     },
     {
+      "file": "sztu_candidate_frame_trace_20261019.py",
+      "sha256": "b15db003aab39e3e15a417cc85d107a988d12cec095ea953b0004ab937b42aa3",
+      "bytes": 4315
+    },
+    {
+      "file": "sztu_candidate_frame_trace_20261019.sh",
+      "sha256": "890140d8c8599f6ee6861d07e634483154a19fb829fa61f46d6a32ad7d0c2731",
+      "bytes": 749
+    },
+    {
       "file": "sztu_candidate_ground_observer_20261019.py",
       "sha256": "67edd67a1db3506d9bca7adf2a0c86ed46ea4ea32bf58377969706e0e08db36b",
       "bytes": 4518
@@ -72,6 +82,11 @@
       "file": "sztu_lio_points_publishers_20261019.txt",
       "sha256": "1e17194c0e8fc03ada83bb4bc009f8d0b30c0de5dbbfe68de5cc9ee64ca7e23b",
       "bytes": 312974
+    },
+    {
+      "file": "sztu_matched_timing_observer_20261019.py",
+      "sha256": "70c4001ea4ee2357f9ccb832791a53e891861d542ab90ec66b998a80dd1c1f2d",
+      "bytes": 4145
     },
     {
       "file": "sztu_scan_timing_20261019.py",
