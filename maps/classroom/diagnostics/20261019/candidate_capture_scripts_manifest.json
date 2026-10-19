@@ -1,0 +1,107 @@
+{
+  "scope": "Read-only ad hoc measurement script archive on developer and robot; scripts are not installed operational nodes. First DDS timing attempt failed against old Humble callback API; failure preserved, not a pass.",
+  "archive_path_robot": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage",
+  "archive_path_developer": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage",
+  "files": [
+    {
+      "file": "sztu_analyze_chair_20261019.py",
+      "sha256": "bd57bad5d358edcd7065cda609a2c3f800c1a2b0572cd66fd5cc1d71f2b587d5",
+      "bytes": 5629
+    },
+    {
+      "file": "sztu_background_noise_capture_20261019.py",
+      "sha256": "ba7cfc9c42003896a4254c9675c89bafdcb6310232110c0d7570fbbdbc02e43d",
+      "bytes": 3617
+    },
+    {
+      "file": "sztu_candidate_adapter_20261019.sh",
+      "sha256": "700b60707452a5cb57b741d4274f7fca0f2c36e7f368354166010f002436a586",
+      "bytes": 767
+    },
+    {
+      "file": "sztu_candidate_chair_front_adapter_20261019.sh",
+      "sha256": "abce1af6375cf3749dc6e3213ad81a900d800d49ae28708fac112a2f819c83c1",
+      "bytes": 769
+    },
+    {
+      "file": "sztu_candidate_chair_front_observer_20261019.py",
+      "sha256": "d44e9cefc205d8efd6346b9513cbd4895dc5e76f86101c85cc950b088c5ab849",
+      "bytes": 4533
+    },
+    {
+      "file": "sztu_candidate_chair_removed_adapter_20261019.sh",
+      "sha256": "4e6540ae857e8b5ff834a8443f41dcfa83f7f2ead59999b0a3cb9c3568b0a7a3",
+      "bytes": 771
+    },
+    {
+      "file": "sztu_candidate_chair_removed_observer_20261019.py",
+      "sha256": "2242d83fd79ae67366e53bc61375c2c1dbea4fe24e3d97e391ed7ef949d996f1",
+      "bytes": 4572
+    },
+    {
+      "file": "sztu_candidate_ground_observer_20261019.py",
+      "sha256": "67edd67a1db3506d9bca7adf2a0c86ed46ea4ea32bf58377969706e0e08db36b",
+      "bytes": 4518
+    },
+    {
+      "file": "sztu_candidate_timingprobe_adapter_20261019.sh",
+      "sha256": "40d0c9c460eaabd3747505bfc568891481c28af635c1bc25609d0cc0474d3bbd",
+      "bytes": 769
+    },
+    {
+      "file": "sztu_coverage_capture_20261019.py",
+      "sha256": "a544054ec7763cad5dbc9f247d4fd34994ae6bd876b62a530a6b20931f0628ae",
+      "bytes": 6113
+    },
+    {
+      "file": "sztu_exact_ground_capture_20261019.py",
+      "sha256": "6bb0193c95eb21b846dd3e13dbb884e211ba9d5c4bf9eec76485fe4f4530b60c",
+      "bytes": 3481
+    },
+    {
+      "file": "sztu_ground_replay_20261019.py",
+      "sha256": "98124a4f97ca6a1c0e4b97078e759c2dad2f186a567e576168955da3bd1cb8f8",
+      "bytes": 2338
+    },
+    {
+      "file": "sztu_height_probe_20261019.py",
+      "sha256": "7c13dfade5bd2a337d793ea609ec70b03dd041a53ef89a57791a936c5faaa1e9",
+      "bytes": 4055
+    },
+    {
+      "file": "sztu_lio_points_publishers_20261019.txt",
+      "sha256": "1e17194c0e8fc03ada83bb4bc009f8d0b30c0de5dbbfe68de5cc9ee64ca7e23b",
+      "bytes": 312974
+    },
+    {
+      "file": "sztu_scan_timing_20261019.py",
+      "sha256": "a1782e0ac8ca02bf975933c0e3f78d9a61900e5469858e7c0ac43c399111ae19",
+      "bytes": 3865
+    },
+    {
+      "file": "sztu_scan_timing_probe_20261019.py",
+      "sha256": "fd02d214da73faefebdd4523c202909dc4f460db8b29949d7468149d96cc2b14",
+      "bytes": 2575
+    },
+    {
+      "file": "sztu_scan_timing_probe_20261019_failed.log",
+      "sha256": "dd7d8d3cb1f591dd079c1cdd88cbd3d85f55d5ff8e89ffbea65dd4616974914f",
+      "bytes": 327451
+    },
+    {
+      "file": "sztu_scan_timing_probe_20261019_failed.py",
+      "sha256": "3e54993b0f666dc3222041916ca4672aabb12a920c1477993d54746e65f45e91",
+      "bytes": 2168
+    },
+    {
+      "file": "sztu_scan_timing_probe_v2_20261019.log",
+      "sha256": "2645250f5b76d65fc68bbee791ef3aa093be3040ec716c0b5490d15e82ad6ef1",
+      "bytes": 330343
+    },
+    {
+      "file": "sztu_static_cloud_capture_20261019.py",
+      "sha256": "b2e45b2f37c97839d403690df1d6f07d6ab6a6879e167340823e2e2642e24285",
+      "bytes": 6510
+    }
+  ]
+}

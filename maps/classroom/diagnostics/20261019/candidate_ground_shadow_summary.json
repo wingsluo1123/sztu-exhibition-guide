@@ -1,0 +1,198 @@
+{
+  "scope": "Independent candidate output only; main navigation and TF broadcaster unchanged. Scene not independently reconfirmed; near returns are observations, not an empty-scene test or a motion certification.",
+  "started_utc": "2026-10-19T12:05:32.440430+00:00",
+  "duration": 45.023481831001845,
+  "abort": null,
+  "parameters": {
+    "sztu_safety_gateway": {
+      "live": {
+        "type": 1,
+        "bool": false,
+        "string": "",
+        "double": 0.0
+      },
+      "surround_coverage_verified": {
+        "type": 1,
+        "bool": false,
+        "string": "",
+        "double": 0.0
+      },
+      "front_only_coverage": {
+        "type": 1,
+        "bool": false,
+        "string": "",
+        "double": 0.0
+      },
+      "front_arc_coverage": {
+        "type": 1,
+        "bool": false,
+        "string": "",
+        "double": 0.0
+      }
+    },
+    "nav_sensor_adapter_candidate": {
+      "cloud_topic": {
+        "type": 4,
+        "bool": false,
+        "string": "/lio/points",
+        "double": 0.0
+      },
+      "publish_odometry": {
+        "type": 1,
+        "bool": false,
+        "string": "",
+        "double": 0.0
+      },
+      "max_age": {
+        "type": 3,
+        "bool": false,
+        "string": "",
+        "double": 0.5
+      }
+    }
+  },
+  "maximum_abs_command": 0.0,
+  "command_count": 2039,
+  "summary": {
+    "/lio/points": {
+      "frames": 439,
+      "frames_after_5s": 400,
+      "max_age_all": 0.340656463,
+      "max_age_after_5s": 0.180728427,
+      "over_0_5_all": 0,
+      "over_0_5_after_5s": 0,
+      "max_receive_gap_after_5s": 0.1652609120028501
+    },
+    "/sztu/safety_scan": {
+      "frames": 420,
+      "frames_after_5s": 401,
+      "max_age_all": 0.495735073,
+      "max_age_after_5s": 0.476836957,
+      "over_0_5_all": 0,
+      "over_0_5_after_5s": 0,
+      "max_receive_gap_after_5s": 0.3355015959969023
+    },
+    "/sztu/candidate_safety_scan": {
+      "frames": 407,
+      "frames_after_5s": 393,
+      "max_age_all": 0.493552414,
+      "max_age_after_5s": 0.454548379,
+      "over_0_5_all": 0,
+      "over_0_5_after_5s": 0,
+      "max_receive_gap_after_5s": 0.31049053500100854
+    }
+  },
+  "status_samples": 45,
+  "first_status": {
+    "t": 1.2406356079991383,
+    "status": {
+      "clouds_received": 131,
+      "clouds_expired": 10,
+      "scans_published": 120,
+      "tf_waits": 427,
+      "ground_rejected": 0,
+      "clouds_superseded": 0,
+      "cloud_age_at_callback": 0.190106686,
+      "cloud_stamp_ns": 1792411530915161000,
+      "ground": null,
+      "ankles_in_leveled_base": null,
+      "last_result": "tf_wait",
+      "processing_seconds": 0.024086451001494424,
+      "queue_wait_seconds": 0.20881830000143964,
+      "age_at_publish_check": 0.345116955,
+      "status_stamp_ns": 1792411532249431839
+    }
+  },
+  "last_status": {
+    "t": 44.783059227000194,
+    "status": {
+      "clouds_received": 555,
+      "clouds_expired": 28,
+      "scans_published": 525,
+      "tf_waits": 2020,
+      "ground_rejected": 0,
+      "clouds_superseded": 2,
+      "cloud_age_at_callback": 0.143412481,
+      "cloud_stamp_ns": 1792411575917825000,
+      "ground": {
+        "normal": [
+          0.05684505660158151,
+          -0.09911773191669995,
+          0.9934507107852166
+        ],
+        "offset": -0.6645082803127398,
+        "inliers": 8532,
+        "residual_p95": 0.01671856692816893
+      },
+      "ankles_in_leveled_base": [
+        [
+          -0.04645009386611261,
+          0.17255539943049203,
+          -0.5642301561091115
+        ],
+        [
+          -0.10925593093175154,
+          -0.06649958414493287,
+          -0.5835501267244543
+        ]
+      ],
+      "last_result": "published",
+      "processing_seconds": 0.016843238998262677,
+      "queue_wait_seconds": 0.016629423000267707,
+      "age_at_publish_check": 0.17688136699871393,
+      "status_stamp_ns": 1792411576119684388
+    }
+  },
+  "status_sample_percentiles": {
+    "queue_wait_seconds": {
+      "p0_p50_p95_p100": [
+        0.016629423000267707,
+        0.06626611100000446,
+        0.20881830000143964,
+        0.26469352999993134
+      ],
+      "scope": "1 Hz snapshots, not exhaustive per-cloud maxima"
+    },
+    "processing_seconds": {
+      "p0_p50_p95_p100": [
+        0.013786026000161655,
+        0.022242027000174858,
+        0.05381698260025585,
+        0.061638722003408475
+      ],
+      "scope": "1 Hz snapshots, not exhaustive per-cloud maxima"
+    },
+    "age_at_publish_check": {
+      "p0_p50_p95_p100": [
+        0.176395692,
+        0.228962611,
+        0.345116955,
+        0.476231909
+      ],
+      "scope": "1 Hz snapshots, not exhaustive per-cloud maxima"
+    },
+    "cloud_age_at_callback": {
+      "p0_p50_p95_p100": [
+        0.110621739,
+        0.142428708,
+        0.17107690559999997,
+        0.200982463
+      ],
+      "scope": "1 Hz snapshots, not exhaustive per-cloud maxima"
+    }
+  },
+  "near_front_observation": {
+    "/sztu/safety_scan": {
+      "frames": 401,
+      "frames_with_returns": 0,
+      "max_returns_in_frame": 0,
+      "scope": "+-45 degrees, .7-1.7m; scene was not independently reconfirmed as empty"
+    },
+    "/sztu/candidate_safety_scan": {
+      "frames": 393,
+      "frames_with_returns": 3,
+      "max_returns_in_frame": 1,
+      "scope": "+-45 degrees, .7-1.7m; scene was not independently reconfirmed as empty"
+    }
+  }
+}

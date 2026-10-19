@@ -1,0 +1,64 @@
+{
+  "scope": "Read-only candidate scan-only observer; DDS writer time separates age before write from transport/take wait, assuming system clock alignment. No raw-cloud observer during this window. Same-host timing; take_message manually polled every 5ms using this installed Humble API, no executor callback queue; not motion proof.",
+  "abort": null,
+  "duration": 30.004136950999964,
+  "command_count": 1362,
+  "maximum_abs_command": 0.0,
+  "frames": 259,
+  "age_violations": 0,
+  "percentiles": {
+    "age": {
+      "p0_p50_p95_p100": [
+        0.152672179,
+        0.235755979,
+        0.3609254219,
+        0.475654136
+      ]
+    },
+    "age_at_dds_write": {
+      "p0_p50_p95_p100": [
+        0.151733917,
+        0.230567078,
+        0.35714585399999993,
+        0.472095184
+      ]
+    },
+    "write_to_callback": {
+      "p0_p50_p95_p100": [
+        0.000368176,
+        0.003444822,
+        0.0081441123,
+        0.068617233
+      ]
+    },
+    "write_to_rmw_receive": {
+      "p0_p50_p95_p100": [
+        7.4589e-05,
+        0.000139962,
+        0.002811574399999999,
+        0.06520501
+      ]
+    },
+    "rmw_receive_to_take": {
+      "p0_p50_p95_p100": [
+        0.000274964,
+        0.002968412,
+        0.0069573967,
+        0.012085864
+      ]
+    }
+  },
+  "source_receive_clock_sanity": {
+    "source_nonzero": 259,
+    "receive_nonzero": 259,
+    "negative_delivery": 0,
+    "negative_take_wait": 0
+  },
+  "raw_file": {
+    "name": "candidate_scan_dds_timing_v2.json",
+    "sha256": "bf2953efeb68f8090e88cc7723b8b7ca14c88781655be7d47af1c4ef9a465673",
+    "bytes": 90130
+  },
+  "interpretation": "This lighter scan-only window did not reproduce an age violation. Most source-to-take age accumulated before DDS write. Older scan+cloud observer violations remain valid; this is a different load and manual polling, so it does not identify the unique cause or prove ordinary executor behavior. No threshold relaxed.",
+  "initial_attempt_failure": "Original two-argument rclpy callback failed TypeError before timing data: installed old Humble executor discards MessageInfo. Failure log/script archived; revised read-only probe polls handle.take_message and retains metadata."
+}

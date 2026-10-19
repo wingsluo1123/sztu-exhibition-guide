@@ -1,0 +1,678 @@
+{
+  "scope": "Static chair placement/removal with independent remapped candidate; main old adapter, LIO and safety gateway unchanged. No autonomous goals or actuation. Raw ROI fixed before captures. Consecutive same-pose frames are repeatability, not independent pose trials.",
+  "source_commit": "d2ca68f",
+  "installed_adapter_sha256": "887a5ea62a7b59e2902fdd4b8cb20df6ef09511ce89d5d29a58a66349f8b09f0",
+  "stages": {
+    "candidate_chair_front": {
+      "scope": "Independent candidate output only; main navigation and TF broadcaster unchanged. Operator confirmed chair approx 1.2m in front, then retreated; static candidate test only, not motion or coverage certification.",
+      "started_utc": "2026-10-19T12:10:36.206309+00:00",
+      "duration": 20.00429687400174,
+      "abort": null,
+      "parameters": {
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          }
+        },
+        "nav_sensor_adapter_candidate": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "string": "/lio/points",
+            "double": 0.0
+          },
+          "publish_odometry": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "max_age": {
+            "type": 3,
+            "bool": false,
+            "string": "",
+            "double": 0.5
+          }
+        }
+      },
+      "maximum_abs_command": 0.0,
+      "command_count": 761,
+      "summary": {
+        "/lio/points": {
+          "frames": 175,
+          "frames_after_5s": 151,
+          "max_age_all": 0.451594436,
+          "max_age_after_5s": 0.230472423,
+          "over_0_5_all": 0,
+          "over_0_5_after_5s": 0,
+          "max_receive_gap_after_5s": 0.19569335900087026
+        },
+        "/sztu/safety_scan": {
+          "frames": 169,
+          "frames_after_5s": 150,
+          "max_age_all": 0.777998105,
+          "max_age_after_5s": 0.369046111,
+          "over_0_5_all": 6,
+          "over_0_5_after_5s": 0,
+          "max_receive_gap_after_5s": 0.2436604169997736
+        },
+        "/sztu/candidate_safety_scan": {
+          "frames": 156,
+          "frames_after_5s": 148,
+          "max_age_all": 0.540545955,
+          "max_age_after_5s": 0.34791586,
+          "over_0_5_all": 1,
+          "over_0_5_after_5s": 0,
+          "max_receive_gap_after_5s": 0.19618453000293812
+        }
+      },
+      "near_front_roi": {
+        "angle_degrees": [
+          -45,
+          45
+        ],
+        "range_m": [
+          0.7,
+          1.7
+        ],
+        "statistics": {
+          "/sztu/safety_scan": {
+            "frames": 150,
+            "frames_with_returns": 150,
+            "min_median_max_returns": [
+              39,
+              39.0,
+              40
+            ]
+          },
+          "/sztu/candidate_safety_scan": {
+            "frames": 148,
+            "frames_with_returns": 148,
+            "min_median_max_returns": [
+              59,
+              59.0,
+              63
+            ]
+          }
+        }
+      },
+      "zero_stamp_cloud_observations": [],
+      "over_age_scan_observations": {
+        "/sztu/safety_scan": [
+          {
+            "t": 1.4717415240011178,
+            "stamp_ns": 1792411836618757000,
+            "age": 0.680768888,
+            "frame": "sztu_nav_base",
+            "finite_returns": 179,
+            "near_front_returns": 39,
+            "nearest_front": 0.9258651733398438
+          },
+          {
+            "t": 1.9746699770003033,
+            "stamp_ns": 1792411837115061000,
+            "age": 0.687413886,
+            "frame": "sztu_nav_base",
+            "finite_returns": 179,
+            "near_front_returns": 39,
+            "nearest_front": 0.9266923666000366
+          },
+          {
+            "t": 1.979976410002564,
+            "stamp_ns": 1792411837221642000,
+            "age": 0.586136631,
+            "frame": "sztu_nav_base",
+            "finite_returns": 179,
+            "near_front_returns": 39,
+            "nearest_front": 0.926831841468811
+          },
+          {
+            "t": 2.565397054000641,
+            "stamp_ns": 1792411837615166000,
+            "age": 0.777998105,
+            "frame": "sztu_nav_base",
+            "finite_returns": 179,
+            "near_front_returns": 40,
+            "nearest_front": 0.9297547340393066
+          },
+          {
+            "t": 4.327280557001359,
+            "stamp_ns": 1792411839615059000,
+            "age": 0.540039683,
+            "frame": "sztu_nav_base",
+            "finite_returns": 179,
+            "near_front_returns": 39,
+            "nearest_front": 0.9221476316452026
+          },
+          {
+            "t": 4.688954798999475,
+            "stamp_ns": 1792411840015045000,
+            "age": 0.5017006,
+            "frame": "sztu_nav_base",
+            "finite_returns": 179,
+            "near_front_returns": 40,
+            "nearest_front": 0.9317069053649902
+          }
+        ],
+        "/sztu/candidate_safety_scan": [
+          {
+            "t": 4.327780940999219,
+            "stamp_ns": 1792411839615059000,
+            "age": 0.540545955,
+            "frame": "sztu_nav_base",
+            "finite_returns": 181,
+            "near_front_returns": 59,
+            "nearest_front": 0.9221476316452026
+          }
+        ]
+      },
+      "status_sampling_scope": "1Hz snapshots; counters include time before observer; not exhaustive processing/TF maxima",
+      "first_status": {
+        "t": 1.472729632001574,
+        "status": {
+          "clouds_received": 77,
+          "clouds_expired": 13,
+          "scans_published": 60,
+          "tf_waits": 263,
+          "ground_rejected": 0,
+          "clouds_superseded": 3,
+          "cloud_age_at_callback": 0.148244927,
+          "cloud_stamp_ns": 1792411836727849000,
+          "ground": null,
+          "ankles_in_leveled_base": null,
+          "last_result": "tf_wait",
+          "processing_seconds": 0.021531717997277156,
+          "queue_wait_seconds": 0.114642864002235,
+          "age_at_publish_check": 0.310468748,
+          "status_stamp_ns": 1792411837063073877
+        }
+      },
+      "last_status": {
+        "t": 19.2469596200026,
+        "status": {
+          "clouds_received": 251,
+          "clouds_expired": 34,
+          "scans_published": 211,
+          "tf_waits": 877,
+          "ground_rejected": 0,
+          "clouds_superseded": 5,
+          "cloud_age_at_callback": 0.155236489,
+          "cloud_stamp_ns": 1792411854815260000,
+          "ground": {
+            "normal": [
+              0.057410922812761826,
+              -0.09918266452013638,
+              0.9934116895831624
+            ],
+            "offset": -0.6631144401031354,
+            "inliers": 7518,
+            "residual_p95": 0.01668114816489521
+          },
+          "ankles_in_leveled_base": [
+            [
+              -0.04694503474836428,
+              0.17297236720715323,
+              -0.564123182601671
+            ],
+            [
+              -0.11003072823869438,
+              -0.06604059665605927,
+              -0.5834530990930137
+            ]
+          ],
+          "last_result": "published",
+          "processing_seconds": 0.032973889999993844,
+          "queue_wait_seconds": 0.05768078199980664,
+          "age_at_publish_check": 0.2174575,
+          "status_stamp_ns": 1792411855073780414
+        }
+      },
+      "exact_cloud_time_tf": {
+        "label": "candidate_chair_front",
+        "scope": "Read-only raw cloud with exact cloud-time base and both ankle TF; fixed front ROI +-20deg, range .7-1.7m; low means .05-.60m above estimated plane, not independent floor measurement.",
+        "frames": [
+          {
+            "stamp_ns": 1792411868815857000,
+            "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_chair_front_exact_frame_0.npz",
+            "source_frame": "lidar_chest_front",
+            "ankles": [
+              [
+                -0.04695180041299741,
+                0.17304262172476767,
+                -0.5641010731757269
+              ],
+              [
+                -0.11004179327287696,
+                -0.06596691216566125,
+                -0.5834593478874811
+              ]
+            ],
+            "normal": [
+              0.05717544921188879,
+              -0.09947859759978386,
+              0.9933956797907866
+            ],
+            "offset": -0.6633764939444239,
+            "residual_p95": 0.01700425963518677,
+            "inliers": 7537,
+            "roi_low_points": 686,
+            "roi_low_excluded_by_old": 686,
+            "roi_low_nearest": 0.972014643801807
+          },
+          {
+            "stamp_ns": 1792411869816043000,
+            "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_chair_front_exact_frame_1.npz",
+            "source_frame": "lidar_chest_front",
+            "ankles": [
+              [
+                -0.04697729245814861,
+                0.1727435174064653,
+                -0.564190617115132
+              ],
+              [
+                -0.11005084006919914,
+                -0.06628059288743955,
+                -0.5834220907809546
+              ]
+            ],
+            "normal": [
+              0.05747609918604359,
+              -0.0994891377560482,
+              0.9933772744989258
+            ],
+            "offset": -0.6631838585656925,
+            "residual_p95": 0.016670485595442503,
+            "inliers": 7520,
+            "roi_low_points": 687,
+            "roi_low_excluded_by_old": 687,
+            "roi_low_nearest": 0.9784474862423432
+          },
+          {
+            "stamp_ns": 1792411870917957000,
+            "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_chair_front_exact_frame_2.npz",
+            "source_frame": "lidar_chest_front",
+            "ankles": [
+              [
+                -0.046773726468770295,
+                0.1724753151265279,
+                -0.5642895758718561
+              ],
+              [
+                -0.10982484850618242,
+                -0.06656180672523988,
+                -0.5834326601594508
+              ]
+            ],
+            "normal": [
+              0.05713221815956365,
+              -0.09806042677031757,
+              0.9935391599478055
+            ],
+            "offset": -0.6625620741414234,
+            "residual_p95": 0.01664773165282438,
+            "inliers": 7495,
+            "roi_low_points": 685,
+            "roi_low_excluded_by_old": 685,
+            "roi_low_nearest": 0.9723941966578987
+          }
+        ],
+        "failures": [
+          "Lookup would require extrapolation into the past.  Requested time 1792411865.602179 but the earliest data is at time 1792411867.666307, when looking up transform from frame [lidar_chest_front] to frame [base_link]",
+          "Lookup would require extrapolation into the future.  Requested time 1792411866.760617 but the latest data is at time 1792411866.715405, when looking up transform from frame [lidar_chest_front] to frame [base_link]",
+          "Lookup would require extrapolation into the past.  Requested time 1792411867.129695 but the earliest data is at time 1792411867.666307, when looking up transform from frame [lidar_chest_front] to frame [base_link]"
+        ]
+      }
+    },
+    "candidate_chair_removed": {
+      "scope": "Independent candidate output only; main navigation and TF broadcaster unchanged. Operator confirmed test chair removed to rear-side and person retreated; robot remained stationary; static candidate test only, not motion or coverage certification.",
+      "started_utc": "2026-10-19T12:12:16.405729+00:00",
+      "duration": 20.00725090099877,
+      "abort": null,
+      "parameters": {
+        "sztu_safety_gateway": {
+          "live": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "surround_coverage_verified": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "front_only_coverage": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "front_arc_coverage": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          }
+        },
+        "nav_sensor_adapter_candidate": {
+          "cloud_topic": {
+            "type": 4,
+            "bool": false,
+            "string": "/lio/points",
+            "double": 0.0
+          },
+          "publish_odometry": {
+            "type": 1,
+            "bool": false,
+            "string": "",
+            "double": 0.0
+          },
+          "max_age": {
+            "type": 3,
+            "bool": false,
+            "string": "",
+            "double": 0.5
+          }
+        }
+      },
+      "maximum_abs_command": 0.0,
+      "command_count": 733,
+      "summary": {
+        "/lio/points": {
+          "frames": 182,
+          "frames_after_5s": 151,
+          "max_age_all": 1792411938.0570767,
+          "max_age_after_5s": 0.341222972,
+          "over_0_5_all": 9,
+          "over_0_5_after_5s": 0,
+          "max_receive_gap_after_5s": 0.16123206200063578
+        },
+        "/sztu/safety_scan": {
+          "frames": 144,
+          "frames_after_5s": 144,
+          "max_age_all": 0.495912965,
+          "max_age_after_5s": 0.495912965,
+          "over_0_5_all": 0,
+          "over_0_5_after_5s": 0,
+          "max_receive_gap_after_5s": 0.23733496899876627
+        },
+        "/sztu/candidate_safety_scan": {
+          "frames": 135,
+          "frames_after_5s": 135,
+          "max_age_all": 0.517376742,
+          "max_age_after_5s": 0.517376742,
+          "over_0_5_all": 1,
+          "over_0_5_after_5s": 1,
+          "max_receive_gap_after_5s": 0.575897624999925
+        }
+      },
+      "near_front_roi": {
+        "angle_degrees": [
+          -45,
+          45
+        ],
+        "range_m": [
+          0.7,
+          1.7
+        ],
+        "statistics": {
+          "/sztu/safety_scan": {
+            "frames": 144,
+            "frames_with_returns": 0,
+            "min_median_max_returns": [
+              0,
+              0.0,
+              0
+            ]
+          },
+          "/sztu/candidate_safety_scan": {
+            "frames": 135,
+            "frames_with_returns": 35,
+            "min_median_max_returns": [
+              0,
+              0.0,
+              3
+            ]
+          }
+        }
+      },
+      "zero_stamp_cloud_observations": [
+        {
+          "t": 1.6789061889976438,
+          "stamp_ns": 0,
+          "age": 1792411937.9304113
+        },
+        {
+          "t": 1.805577707997145,
+          "stamp_ns": 0,
+          "age": 1792411938.0570767
+        }
+      ],
+      "over_age_scan_observations": {
+        "/sztu/safety_scan": [],
+        "/sztu/candidate_safety_scan": [
+          {
+            "t": 6.387698383998213,
+            "stamp_ns": 1792411942121833000,
+            "age": 0.517376742,
+            "frame": "sztu_nav_base",
+            "finite_returns": 181,
+            "near_front_returns": 1,
+            "nearest_front": 1.0689740180969238
+          }
+        ]
+      },
+      "status_sampling_scope": "1Hz snapshots; counters include time before observer; not exhaustive processing/TF maxima",
+      "first_status": {
+        "t": 4.686766457998601,
+        "status": {
+          "clouds_received": 3,
+          "clouds_expired": 1,
+          "scans_published": 0,
+          "tf_waits": 1,
+          "ground_rejected": 0,
+          "clouds_superseded": 0,
+          "cloud_age_at_callback": 0.209153805,
+          "cloud_stamp_ns": 1792411939816243000,
+          "ground": null,
+          "ankles_in_leveled_base": null,
+          "last_result": "tf_wait",
+          "status_stamp_ns": 1792411940932722281
+        }
+      },
+      "last_status": {
+        "t": 19.67983087599714,
+        "status": {
+          "clouds_received": 149,
+          "clouds_expired": 11,
+          "scans_published": 132,
+          "tf_waits": 577,
+          "ground_rejected": 0,
+          "clouds_superseded": 5,
+          "cloud_age_at_callback": 0.146276133,
+          "cloud_stamp_ns": 1792411955719674000,
+          "ground": null,
+          "ankles_in_leveled_base": null,
+          "last_result": "tf_wait",
+          "processing_seconds": 0.0524232799980382,
+          "queue_wait_seconds": 0.03573840700119035,
+          "age_at_publish_check": 0.238032832,
+          "status_stamp_ns": 1792411955925736640
+        }
+      },
+      "exact_cloud_time_tf": {
+        "label": "candidate_chair_removed",
+        "scope": "Read-only raw cloud with exact cloud-time base and both ankle TF; fixed front ROI +-20deg, range .7-1.7m; low means .05-.60m above estimated plane, not independent floor measurement.",
+        "frames": [
+          {
+            "stamp_ns": 1792411962615930000,
+            "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_chair_removed_exact_frame_0.npz",
+            "source_frame": "lidar_chest_front",
+            "ankles": [
+              [
+                -0.047081291333391534,
+                0.17307670902687444,
+                -0.5640798224118787
+              ],
+              [
+                -0.11017639943121589,
+                -0.06582368179585062,
+                -0.5834246932140074
+              ]
+            ],
+            "normal": [
+              0.056171239259238205,
+              -0.09958005481845622,
+              0.9934428038706782
+            ],
+            "offset": -0.6652512510360233,
+            "residual_p95": 0.016633606980828032,
+            "inliers": 8558,
+            "roi_low_points": 0,
+            "roi_low_excluded_by_old": 0,
+            "roi_low_nearest": null
+          },
+          {
+            "stamp_ns": 1792411963615902000,
+            "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_chair_removed_exact_frame_1.npz",
+            "source_frame": "lidar_chest_front",
+            "ankles": [
+              [
+                -0.046864302138278746,
+                0.17325950338245147,
+                -0.5640417740967135
+              ],
+              [
+                -0.1099625332103616,
+                -0.0656319445442807,
+                -0.5834866389849415
+              ]
+            ],
+            "normal": [
+              0.05678466621817564,
+              -0.09947360932681203,
+              0.9934185939119455
+            ],
+            "offset": -0.6630345723683191,
+            "residual_p95": 0.01678545974581052,
+            "inliers": 8524,
+            "roi_low_points": 0,
+            "roi_low_excluded_by_old": 0,
+            "roi_low_nearest": null
+          },
+          {
+            "stamp_ns": 1792411964716309000,
+            "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_chair_removed_exact_frame_2.npz",
+            "source_frame": "lidar_chest_front",
+            "ankles": [
+              [
+                -0.046983096046719235,
+                0.17325473775610567,
+                -0.5640333552054678
+              ],
+              [
+                -0.11008514506455327,
+                -0.06563694364902165,
+                -0.5834629561447566
+              ]
+            ],
+            "normal": [
+              0.056854411266161385,
+              -0.09908635603987974,
+              0.9934533053779208
+            ],
+            "offset": -0.6632959006192163,
+            "residual_p95": 0.016614645419673224,
+            "inliers": 8546,
+            "roi_low_points": 0,
+            "roi_low_excluded_by_old": 0,
+            "roi_low_nearest": null
+          }
+        ],
+        "failures": [
+          "Lookup would require extrapolation into the past.  Requested time 1792411960.360199 but the earliest data is at time 1792411961.945308, when looking up transform from frame [lidar_chest_front] to frame [base_link]",
+          "Lookup would require extrapolation into the past.  Requested time 1792411961.515182 but the earliest data is at time 1792411961.945308, when looking up transform from frame [lidar_chest_front] to frame [base_link]"
+        ]
+      }
+    }
+  },
+  "raw_archive": {
+    "developer": "/home/sztu/.local/state/sztu-nav-diagnosis/20261019_coverage",
+    "robot": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage",
+    "files": [
+      {
+        "name": "candidate_chair_front_exact_frame_0.npz",
+        "bytes": 591494,
+        "sha256": "c1deff8d60d749ce164ab0b7a7c05148a1608395907c37f3167e433f6100bc30"
+      },
+      {
+        "name": "candidate_chair_front_exact_frame_1.npz",
+        "bytes": 591494,
+        "sha256": "91f144e800997c6678e8a45ea134739b30c457373c5c354c141c367b98e6d3f5"
+      },
+      {
+        "name": "candidate_chair_front_exact_frame_2.npz",
+        "bytes": 591530,
+        "sha256": "dd62ea45076965cefee62c5cf415131cef6567b51343e6420a7c6909614e64e6"
+      },
+      {
+        "name": "candidate_chair_front_exact_ground.json",
+        "bytes": 3315,
+        "sha256": "953ea6c764c1606315406c81d61c047dada060f0ac1df7a2916d481cfb7a3c2b"
+      },
+      {
+        "name": "candidate_chair_front_shadow.json",
+        "bytes": 173516,
+        "sha256": "390cda216e85f2d0473c2bb8ed093f9eb39820e6c3137992babd2b67ba4e75ed"
+      },
+      {
+        "name": "candidate_chair_removed_exact_frame_0.npz",
+        "bytes": 593401,
+        "sha256": "9def7cf2ff16f401b7456d183bc12ffc6d9cee97f6f8f5bcf71c469931ecdea6"
+      },
+      {
+        "name": "candidate_chair_removed_exact_frame_1.npz",
+        "bytes": 592948,
+        "sha256": "0ed673381c491aebd4e09f5427a5057d7aeb2f1e792f39b887d309ce984b768e"
+      },
+      {
+        "name": "candidate_chair_removed_exact_frame_2.npz",
+        "bytes": 593254,
+        "sha256": "8f23f6427cc8a78717ac96ef93f7bd6351041c27649934cfd45c9b1548ba2d9d"
+      },
+      {
+        "name": "candidate_chair_removed_exact_ground.json",
+        "bytes": 3056,
+        "sha256": "f01cd392cfb4d727a00013301b4b09bcd0240fdec61a9966ed6f571b881e9dc2"
+      },
+      {
+        "name": "candidate_chair_removed_shadow.json",
+        "bytes": 154805,
+        "sha256": "6bffd775f4a9d08f5b149fdb9db9faa686dad2fa87eb3c5e91960b086786bec3"
+      }
+    ]
+  },
+  "decision": "Low-return recovery observed in this static chair condition. Do not promote main adapter: background sparse near returns and observed scan-age violations remain unresolved; no motion/coverage proof."
+}

@@ -1,0 +1,391 @@
+{
+  "scope": "Read-only raw cloud with exact cloud-time base and both ankle TF; fixed front ROI +-45deg, range .7-1.7m; retained heights .05-1.80m above estimated plane, not independent floor measurement.",
+  "frames": 60,
+  "frames_with_returns": 8,
+  "max_points_per_frame": 2,
+  "height_min_max": [
+    0.056568945956340544,
+    0.18711787589254752
+  ],
+  "hits": [
+    {
+      "stamp_ns": 1792412048016874000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_7.npz",
+      "near_points": [
+        [
+          1.0974518465172622,
+          -0.8086143658005622,
+          -0.734664836344683
+        ]
+      ],
+      "near_heights": [
+        0.07712075222836534
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.04696672409508494,
+          0.17349061273764588,
+          -0.563962210944228
+        ],
+        [
+          -0.11008186981682726,
+          -0.06538949153329156,
+          -0.5834913581736199
+        ]
+      ],
+      "normal": [
+        0.057203484440189536,
+        -0.10051488750080145,
+        0.9932897456223949
+      ],
+      "offset": -0.662799949002811,
+      "residual_p95": 0.016586090946213106,
+      "inliers": 8516,
+      "roi_low_points": 1,
+      "roi_low_excluded_by_old": 1,
+      "roi_low_nearest": 1.3631792794798467
+    },
+    {
+      "stamp_ns": 1792412048116944000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_8.npz",
+      "near_points": [
+        [
+          0.7772488951477372,
+          -0.6658808261059336,
+          -0.7229694988391736
+        ]
+      ],
+      "near_heights": [
+        0.056568945956340544
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.04721529395654396,
+          0.17306681332219584,
+          -0.5640716580333629
+        ],
+        [
+          -0.11031442118675501,
+          -0.0658340608926469,
+          -0.5833974405439754
+        ]
+      ],
+      "normal": [
+        0.05662094519456044,
+        -0.0991701198762275,
+        0.9934582809001137
+      ],
+      "offset": -0.6647649329734232,
+      "residual_p95": 0.016407719323295624,
+      "inliers": 8534,
+      "roi_low_points": 1,
+      "roi_low_excluded_by_old": 1,
+      "roi_low_nearest": 1.0234808838390186
+    },
+    {
+      "stamp_ns": 1792412052018551000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_24.npz",
+      "near_points": [
+        [
+          0.8944839314346745,
+          0.8588166732953685,
+          -0.5723571139963116
+        ]
+      ],
+      "near_heights": [
+        0.05979242976985588
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.04694626874103988,
+          0.17298553050638055,
+          -0.5641190435893206
+        ],
+        [
+          -0.11003146813710835,
+          -0.06591931139868468,
+          -0.583441247370258
+        ]
+      ],
+      "normal": [
+        0.05774882775405567,
+        -0.09973080877338791,
+        0.9933372230388018
+      ],
+      "offset": -0.662331138904081,
+      "residual_p95": 0.01664872075699243,
+      "inliers": 8563,
+      "roi_low_points": 1,
+      "roi_low_excluded_by_old": 1,
+      "roi_low_nearest": 1.2400272504767609
+    },
+    {
+      "stamp_ns": 1792412052615688000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_27.npz",
+      "near_points": [
+        [
+          0.8097127409169262,
+          -0.4578022755098106,
+          -0.6926793324115396
+        ]
+      ],
+      "near_heights": [
+        0.06694191652626147
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.047162512731840744,
+          0.1729107340295755,
+          -0.5641239373609154
+        ],
+        [
+          -0.1102507743910314,
+          -0.06599775442807843,
+          -0.5833909768630946
+        ]
+      ],
+      "normal": [
+        0.05733369215601235,
+        -0.09900846443073422,
+        0.9934335265707653
+      ],
+      "offset": -0.6633226671728863,
+      "residual_p95": 0.016451567631980874,
+      "inliers": 8539,
+      "roi_low_points": 1,
+      "roi_low_excluded_by_old": 1,
+      "roi_low_nearest": 0.9301707618846993
+    },
+    {
+      "stamp_ns": 1792412052817452000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_28.npz",
+      "near_points": [
+        [
+          0.704259724179005,
+          0.5406472708912968,
+          -0.5769129234364033
+        ]
+      ],
+      "near_heights": [
+        0.07685787739420613
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.04722192832260687,
+          0.1734424311636931,
+          -0.563955719725345
+        ],
+        [
+          -0.11034310497148574,
+          -0.06544004144029239,
+          -0.5834363451913082
+        ]
+      ],
+      "normal": [
+        0.05731011425221585,
+        -0.10048029297427163,
+        0.9932870992458335
+      ],
+      "offset": -0.6638612325507499,
+      "residual_p95": 0.016690254824635018,
+      "inliers": 8533,
+      "roi_low_points": 1,
+      "roi_low_excluded_by_old": 1,
+      "roi_low_nearest": 0.8878520319416381
+    },
+    {
+      "stamp_ns": 1792412056718609000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_47.npz",
+      "near_points": [
+        [
+          0.7027629133730822,
+          0.1903752737558083,
+          -0.5013905541946659
+        ],
+        [
+          0.7643363558220179,
+          0.22627645000772362,
+          -0.5922280461695679
+        ]
+      ],
+      "near_heights": [
+        0.18711787589254752,
+        0.09678605502037307
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.04686748088628863,
+          0.173123772888203,
+          -0.5640831851329526
+        ],
+        [
+          -0.10995797306518104,
+          -0.06577431788948965,
+          -0.5834714663068076
+        ]
+      ],
+      "normal": [
+        0.056839402872123156,
+        -0.10025920962447717,
+        0.9933364853696937
+      ],
+      "offset": -0.6643096569158411,
+      "residual_p95": 0.016693823639896882,
+      "inliers": 8556,
+      "roi_low_points": 2,
+      "roi_low_excluded_by_old": 2,
+      "roi_low_nearest": 0.7280923411698691
+    },
+    {
+      "stamp_ns": 1792412057115264000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_49.npz",
+      "near_points": [
+        [
+          1.441567607824787,
+          0.5349159816792651,
+          -0.6077664750288134
+        ]
+      ],
+      "near_heights": [
+        0.089693886742789
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.04710213677004795,
+          0.1727153567614459,
+          -0.5641888296518036
+        ],
+        [
+          -0.11017701063696654,
+          -0.06620263650210145,
+          -0.5833816983553043
+        ]
+      ],
+      "normal": [
+        0.05694326171228165,
+        -0.09900440692690751,
+        0.9934563867400613
+      ],
+      "offset": -0.6643548509602232,
+      "residual_p95": 0.016594126140796917,
+      "inliers": 8556,
+      "roi_low_points": 1,
+      "roi_low_excluded_by_old": 1,
+      "roi_low_nearest": 1.5376125244630297
+    },
+    {
+      "stamp_ns": 1792412057315283000,
+      "path": "/home/agi/.local/state/sztu-nav-diagnosis/20261019_coverage/candidate_removed_noise_probe_exact_frame_50.npz",
+      "near_points": [
+        [
+          1.258975584220723,
+          -0.17315525083896852,
+          -0.701779657775129
+        ]
+      ],
+      "near_heights": [
+        0.056790166546887844
+      ],
+      "source_frame": "lidar_chest_front",
+      "ankles": [
+        [
+          -0.04730955934618139,
+          0.17321009234014412,
+          -0.5640197786952144
+        ],
+        [
+          -0.1104202473412703,
+          -0.0656837754870004,
+          -0.583394360054597
+        ]
+      ],
+      "normal": [
+        0.057282997507151524,
+        -0.10038759361825114,
+        0.9932980364644506
+      ],
+      "offset": -0.6643659884390485,
+      "residual_p95": 0.01655066255258652,
+      "inliers": 8549,
+      "roi_low_points": 1,
+      "roi_low_excluded_by_old": 1,
+      "roi_low_nearest": 1.2708273929047238
+    }
+  ],
+  "tf_lookup_failures": [
+    "Lookup would require extrapolation into the past.  Requested time 1792412045.427067 but the earliest data is at time 1792412046.131314, when looking up transform from frame [lidar_chest_front] to frame [base_link]",
+    "Lookup would require extrapolation into the past.  Requested time 1792412045.618818 but the earliest data is at time 1792412046.131314, when looking up transform from frame [lidar_chest_front] to frame [base_link]",
+    "Lookup would require extrapolation into the past.  Requested time 1792412045.919906 but the earliest data is at time 1792412046.131314, when looking up transform from frame [lidar_chest_front] to frame [base_link]",
+    "Lookup would require extrapolation into the past.  Requested time 1792412046.126409 but the earliest data is at time 1792412046.131314, when looking up transform from frame [lidar_chest_front] to frame [base_link]"
+  ],
+  "interpretation": "Sparse retained raw returns at varying positions; physical cause not independently identified. Do not label as proved floor false positives or raise safety minimum height. No candidate scan timing claim from this heavier raw-capture window.",
+  "raw_files": [
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_24.npz",
+      "sha256": "87f266b5b56ee86aeeaa543deed64e911ee84ed463fb4bd0561f62100aa3bde6",
+      "bytes": 593419
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_50.npz",
+      "sha256": "99644f4cc23bd043b8284e2ca1d275e5d0106f249ed82b9b349f55b1fbff4ce2",
+      "bytes": 593388
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_7.npz",
+      "sha256": "f8500e5b52dcc7d6480a3eaaf6984be8fefb16b272922e5e51a0fd778ef1d60b",
+      "bytes": 593649
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_27.npz",
+      "sha256": "5ee18bddcd31a6543d84419cc492af8c15a180d22d7dfeebca9f93934f7c8182",
+      "bytes": 593665
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_47.npz",
+      "sha256": "a89b502753318133b99da017ea9175f9068c6ac60403a2867ab94293dd6a6455",
+      "bytes": 593765
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_1.npz",
+      "sha256": "976151da39c7fa43be65e3ead78e4d0f53f7f9d739ce789c9f0534502d082690",
+      "bytes": 593743
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_28.npz",
+      "sha256": "b163e0caa7b4df4fb3ef8d713cb02d938c9a2a90d5bff0c25a949cf18e82b964",
+      "bytes": 593673
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_ground.json",
+      "sha256": "c9a4eeb8447af6e6a07ea45b9d9f0ed6ac9823a59986d3413b530b5c291803d6",
+      "bytes": 47596
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_49.npz",
+      "sha256": "69c9e26c654fc89fce1606130b301c1cc934d42acb5a56f5a55d88d647e99471",
+      "bytes": 593363
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_0.npz",
+      "sha256": "f4e119558c4a3dcac1da77fb0fa7b9cb0fde7881779bf0119299f74c7b1dc7a5",
+      "bytes": 593606
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_8.npz",
+      "sha256": "4e5ed78f99f89c94d5cce5b9e0092cb4378eac74e1fa4a1df8656332a35a0840",
+      "bytes": 593445
+    },
+    {
+      "name": "candidate_removed_noise_probe_exact_frame_2.npz",
+      "sha256": "3a1b2acf2a32ca8a136decaafb01467413b56d76bfc1db3dea28a0c0615a4f8e",
+      "bytes": 593560
+    }
+  ]
+}
