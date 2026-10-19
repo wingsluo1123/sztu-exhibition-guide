@@ -1,0 +1,94 @@
+{
+  "kind": "ComputePathToPose only; no motion goals",
+  "live": false,
+  "current_start_xy": [
+    -1.2707180558922122,
+    0.7354714180996069
+  ],
+  "start_static": {
+    "value": 0,
+    "grid_center_clearance": 0.88600227053593
+  },
+  "start_cost": 0,
+  "goals": [
+    {
+      "name": "classroom_test_02",
+      "xy": [
+        -1.516,
+        1.394
+      ],
+      "static": {
+        "value": 0,
+        "grid_center_clearance": 1.0965856263134643
+      },
+      "accepted": true,
+      "status": 4,
+      "poses": 28,
+      "length": 0.7197348127977301,
+      "start_xy": [
+        -1.255099751895667,
+        0.7400002808868891
+      ],
+      "end_xy": [
+        -1.516,
+        1.394
+      ],
+      "minimum_static_grid_clearance": 0.9013878322977225,
+      "static_invalid_samples": 0,
+      "dynamic_invalid_samples": 0,
+      "maximum_dynamic_cost": 0,
+      "costmap_update_age": 0.01429786944055176
+    },
+    {
+      "name": "classroom_test_03",
+      "xy": [
+        -0.483,
+        1.533
+      ],
+      "static": {
+        "value": 0,
+        "grid_center_clearance": 1.274754897393524
+      },
+      "accepted": true,
+      "status": 4,
+      "poses": 43,
+      "length": 1.1199374047642607,
+      "start_xy": [
+        -1.255099751895667,
+        0.7400002808868891
+      ],
+      "end_xy": [
+        -0.483,
+        1.533
+      ],
+      "minimum_static_grid_clearance": 0.9486833121869965,
+      "static_invalid_samples": 0,
+      "dynamic_invalid_samples": 0,
+      "maximum_dynamic_cost": 0,
+      "costmap_update_age": 0.006287096610839843
+    },
+    {
+      "name": "outside_map_negative_control",
+      "xy": [
+        14.594900469386577,
+        0.7354714180996069
+      ],
+      "static": null,
+      "accepted": true,
+      "status": 6,
+      "poses": 0
+    }
+  ],
+  "map_hashes": {
+    "map.pgm": "8f743962d34a4b32276c28d2a7b2f5cc600b708679ee1ecf6c1d9054eb47a5cb",
+    "map.yaml": "b5cdac79c8ca741a32398aaa3effca7dca9eed1af5d5a1d8933cd0bee6c3bfbe"
+  },
+  "scan_matching": {
+    "endpoints_in_map": 178,
+    "scan_age": 0.29663555586242674,
+    "median_obstacle_distance": 0.0,
+    "fraction_within_0_15m": 0.848314606741573
+  },
+  "maximum_abs_cmd_vel_observed": 0.0,
+  "amcl_age_at_end": 0.2801561752624512
+}

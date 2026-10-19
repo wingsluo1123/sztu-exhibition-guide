@@ -1,0 +1,29 @@
+{
+  "read_only": true,
+  "parameters": {
+    "live": false,
+    "robot_radius": 0.4,
+    "stopping_margin": 0.25,
+    "surround_coverage_verified": false,
+    "front_only_coverage": false,
+    "front_arc_coverage": false
+  },
+  "samples": 63,
+  "all_five_sector_samples": 63,
+  "last": {
+    "age_at_receive": 0.2042474429321289,
+    "finite_ranges": 177,
+    "min_angle_degrees": -44.812248423300424,
+    "max_angle_degrees": 43.81083644951845,
+    "front_sector_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "nearest_return": 1.7466353178024292,
+    "counterfactual_front_mode_forward_0_1_reason": "",
+    "current_mode_forward_0_1_reason": "surround_coverage_unverified"
+  }
+}
