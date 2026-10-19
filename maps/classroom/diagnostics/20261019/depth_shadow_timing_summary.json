@@ -1,0 +1,789 @@
+{
+  "scope": "Sequential bounded read-only diagnostics; timing comparison with unchanged age limits, not a controlled sensor benchmark or coverage certification.",
+  "runtime_commit": "b248cb7",
+  "software_validation": "32 passed in 11.19s, isolated ROS domain 42",
+  "scheduler": "Newest image with exact-time TF available; for same image prefer smaller cloud timestamp gap. Retry readiness every20ms, complete observations at most5Hz; max age0.5s unchanged.",
+  "runs": {
+    "run_02": {
+      "duration_s": 30.057219909002015,
+      "counts": {
+        "cloud_received": 296,
+        "info_received": 703,
+        "info_timestamp_rejected": 9,
+        "depth_received": 719,
+        "depth_timestamp_rejected": 9,
+        "waiting_inputs": 3,
+        "pairs_observed": 58,
+        "tf_or_processing_rejected": 79,
+        "waiting_new_pair": 1,
+        "expired_after_processing": 2,
+        "pair_gap_rejected": 2
+      },
+      "driver_checks": [
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "stamp_ns": 1792419779193348221
+        },
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "stamp_ns": 1792419809263264879
+        }
+      ],
+      "source_sha256": {
+        "depth_obstacle_shadow.py": "b8591c528062be33ec14387ac01417c69081eb6a8d5e3bc23872fc725de98ea1",
+        "analyze_depth_lidar_pairs.py": "31752cc4aa79d2896626336660b38f2d6fcfffeca22f7761fd2cb4f93df02770",
+        "depth_shadow_head_front.json": "021c5297b8a0404c6486737fc58a90938f5d8fecad1d5ba7a74c01b881b6ca27",
+        "ground_plane.py": "263a8ea2dc45ea3ff17885418d191651c7f0997e19d8407fa03a3c72a392fa7b",
+        "nav_geometry.py": "ed12ffefd118566d56feca917f334a5f685d4a8bbaab28a70b2812b692ff6932",
+        "message_validation.py": "75eefe7fc334ce94e3bcda2342e331c94f6c6c448628c504b9ce405ebf1eaea1"
+      },
+      "first_errors": [
+        "Lookup would require extrapolation into the future.  Requested time 1792419779.917222 but the latest data is at time 1792419779.910628, when looking up transform from frame [lidar_chest_front] to frame [odom]",
+        "Lookup would require extrapolation into the future.  Requested time 1792419780.120122 but the latest data is at time 1792419780.113803, when looking up transform from frame [lidar_chest_front] to frame [odom]",
+        "Lookup would require extrapolation into the future.  Requested time 1792419780.319950 but the latest data is at time 1792419780.310481, when looking up transform from frame [lidar_chest_front] to frame [odom]",
+        "Lookup would require extrapolation into the future.  Requested time 1792419780.808792 but the latest data is at time 1792419780.710316, when looking up transform from frame [base_link] to frame [odom]",
+        "Lookup would require extrapolation into the future.  Requested time 1792419781.015109 but the latest data is at time 1792419781.011299, when looking up transform from frame [lidar_chest_front] to frame [odom]",
+        "Lookup would require extrapolation into the future.  Requested time 1792419781.816825 but the latest data is at time 1792419781.811447, when looking up transform from frame [lidar_chest_front] to frame [odom]",
+        "Lookup would require extrapolation into the future.  Requested time 1792419783.511816 but the latest data is at time 1792419783.511102, when looking up transform from frame [base_link] to frame [odom]",
+        "Lookup would require extrapolation into the future.  Requested time 1792419783.916847 but the latest data is at time 1792419783.913806, when looking up transform from frame [lidar_chest_front] to frame [odom]"
+      ],
+      "observations": 58,
+      "sensor_stamp_interval_s": {
+        "min": 0.100111872,
+        "median": 0.36707712,
+        "p90": 1.2013433856,
+        "max": 2.669651968
+      },
+      "record_interval_s": {
+        "min": 0.11716814600004,
+        "median": 0.3680091180031013,
+        "p90": 1.1150612818004446,
+        "max": 2.751343342999462
+      },
+      "effective_input_age_s": {
+        "min": 0.19691818099818192,
+        "median": 0.3023554104984214,
+        "p90": 0.39545951259970025,
+        "max": 0.4470269669982372
+      },
+      "near_roi_depth_points": {
+        "min": 0.0,
+        "median": 1.0,
+        "p90": 2.0,
+        "max": 3.0
+      },
+      "near_roi_lidar_cells": {
+        "min": 0.0,
+        "median": 0.0,
+        "p90": 0.0,
+        "max": 0.0
+      },
+      "fraction_below_plane_5cm": {
+        "min": 0.03792523139800457,
+        "median": 0.04278480952442811,
+        "p90": 0.046216520259914885,
+        "max": 0.047682439791843154
+      },
+      "depth_cloud_gap_s": {
+        "min": 0.000456088,
+        "median": 0.007316032,
+        "p90": 0.01630605200000001,
+        "max": 0.028709944
+      },
+      "target_ray_states": [
+        {
+          "height_m": 0.05,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 123.0,
+              "median": 130.0,
+              "p90": 133.0,
+              "max": 135.0
+            },
+            "outside_diagnostic_range": {
+              "min": 1.0,
+              "median": 3.0,
+              "p90": 3.0,
+              "max": 3.0
+            },
+            "outside_image": {
+              "min": 60.0,
+              "median": 62.0,
+              "p90": 63.0,
+              "max": 63.0
+            },
+            "ray_reaches_target": {
+              "min": 480.0,
+              "median": 541.5,
+              "p90": 583.3,
+              "max": 626.0
+            },
+            "surface_band": {
+              "min": 675.0,
+              "median": 757.5,
+              "p90": 791.6,
+              "max": 817.0
+            }
+          }
+        },
+        {
+          "height_m": 0.2,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 106.0,
+              "median": 113.5,
+              "p90": 118.0,
+              "max": 124.0
+            },
+            "outside_diagnostic_range": {
+              "min": 1.0,
+              "median": 4.5,
+              "p90": 5.0,
+              "max": 5.0
+            },
+            "outside_image": {
+              "min": 46.0,
+              "median": 46.0,
+              "p90": 46.0,
+              "max": 46.0
+            },
+            "ray_reaches_target": {
+              "min": 1324.0,
+              "median": 1331.0,
+              "p90": 1335.0,
+              "max": 1339.0
+            }
+          }
+        },
+        {
+          "height_m": 0.6,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 66.0,
+              "median": 79.0,
+              "p90": 86.30000000000001,
+              "max": 90.0
+            },
+            "outside_diagnostic_range": {
+              "min": 5.0,
+              "median": 8.0,
+              "p90": 10.0,
+              "max": 12.0
+            },
+            "outside_image": {
+              "min": 23.0,
+              "median": 24.0,
+              "p90": 24.0,
+              "max": 24.0
+            },
+            "ray_reaches_target": {
+              "min": 1375.0,
+              "median": 1384.0,
+              "p90": 1388.3,
+              "max": 1395.0
+            }
+          }
+        },
+        {
+          "height_m": 1.0,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 57.0,
+              "median": 71.0,
+              "p90": 78.30000000000001,
+              "max": 85.0
+            },
+            "outside_diagnostic_range": {
+              "min": 4.0,
+              "median": 8.0,
+              "p90": 10.0,
+              "max": 13.0
+            },
+            "outside_image": {
+              "min": 996.0,
+              "median": 1005.5,
+              "p90": 1012.0,
+              "max": 1017.0
+            },
+            "ray_reaches_target": {
+              "min": 390.0,
+              "median": 412.0,
+              "p90": 419.3,
+              "max": 426.0
+            }
+          }
+        }
+      ]
+    },
+    "run_03": {
+      "duration_s": 1.1805059270009224,
+      "counts": {
+        "cloud_received": 10,
+        "depth_received": 2,
+        "depth_timestamp_rejected": 2,
+        "info_received": 1,
+        "info_timestamp_rejected": 1
+      },
+      "driver_checks": [
+        {
+          "matches": false,
+          "reason": "unique named depth publisher not discovered"
+        },
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "stamp_ns": 1792420185051232008
+        }
+      ],
+      "source_sha256": {
+        "depth_obstacle_shadow.py": "1463310b705e0e67adbb1ab20f13a3a90ea5cfb8dfb2c25bc1a45726f3f756e8",
+        "analyze_depth_lidar_pairs.py": "31752cc4aa79d2896626336660b38f2d6fcfffeca22f7761fd2cb4f93df02770",
+        "depth_shadow_head_front.json": "021c5297b8a0404c6486737fc58a90938f5d8fecad1d5ba7a74c01b881b6ca27",
+        "ground_plane.py": "263a8ea2dc45ea3ff17885418d191651c7f0997e19d8407fa03a3c72a392fa7b",
+        "nav_geometry.py": "ed12ffefd118566d56feca917f334a5f685d4a8bbaab28a70b2812b692ff6932",
+        "message_validation.py": "75eefe7fc334ce94e3bcda2342e331c94f6c6c448628c504b9ce405ebf1eaea1"
+      },
+      "first_errors": [],
+      "observations": 0,
+      "note": "No observations; initial unique named publisher discovery timed out after3s. Final driver query matched. Preserved; startup discovery wait changed to8s for run04."
+    },
+    "run_04": {
+      "duration_s": 30.134388360998855,
+      "counts": {
+        "cloud_received": 303,
+        "cloud_timestamp_rejected": 4,
+        "depth_received": 620,
+        "info_received": 608,
+        "waiting_exact_tf": 154,
+        "expired_after_processing": 2,
+        "pairs_observed": 122,
+        "waiting_inputs": 3,
+        "waiting_timestamp_pair": 8
+      },
+      "driver_checks": [
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 3.210746605996974,
+          "stamp_ns": 1792420300915992927
+        },
+        {
+          "owner": "/camera/camera",
+          "observed": {
+            "rgbd_depth_frame_id": "rgbd_depth_head_front",
+            "depth_width": 1280,
+            "depth_height": 720,
+            "depth_flip": false,
+            "depth_mirror": false,
+            "depth_rotation": -1,
+            "depth_precision": "",
+            "enable_depth_scale": true,
+            "depth_registration": false
+          },
+          "matches": true,
+          "discovery_wait_s": 0.03734767599962652,
+          "stamp_ns": 1792420331040799847
+        }
+      ],
+      "source_sha256": {
+        "depth_obstacle_shadow.py": "173c599d9014c40f12690b008a42503aee669ef15fbe152e885feda5952bf9f4",
+        "analyze_depth_lidar_pairs.py": "31752cc4aa79d2896626336660b38f2d6fcfffeca22f7761fd2cb4f93df02770",
+        "depth_shadow_head_front.json": "021c5297b8a0404c6486737fc58a90938f5d8fecad1d5ba7a74c01b881b6ca27",
+        "ground_plane.py": "263a8ea2dc45ea3ff17885418d191651c7f0997e19d8407fa03a3c72a392fa7b",
+        "nav_geometry.py": "ed12ffefd118566d56feca917f334a5f685d4a8bbaab28a70b2812b692ff6932",
+        "message_validation.py": "75eefe7fc334ce94e3bcda2342e331c94f6c6c448628c504b9ce405ebf1eaea1"
+      },
+      "first_errors": [],
+      "observations": 122,
+      "sensor_stamp_interval_s": {
+        "min": 0.06674176,
+        "median": 0.200224,
+        "p90": 0.367077888,
+        "max": 0.734154752
+      },
+      "record_interval_s": {
+        "min": 0.1339004159999604,
+        "median": 0.21945527599746129,
+        "p90": 0.3161946830005036,
+        "max": 0.7141192519993638
+      },
+      "effective_input_age_s": {
+        "min": 0.2032596499993815,
+        "median": 0.31763636250070704,
+        "p90": 0.41060662650088486,
+        "max": 0.4988417029999255
+      },
+      "near_roi_depth_points": {
+        "min": 0.0,
+        "median": 1.0,
+        "p90": 3.0,
+        "max": 15.0
+      },
+      "near_roi_lidar_cells": {
+        "min": 0.0,
+        "median": 0.0,
+        "p90": 0.0,
+        "max": 0.0
+      },
+      "fraction_below_plane_5cm": {
+        "min": 0.037949026690748545,
+        "median": 0.043394762615021794,
+        "p90": 0.046375532646870915,
+        "max": 0.05301461570937456
+      },
+      "depth_cloud_gap_s": {
+        "min": 0.000405056,
+        "median": 0.029727488,
+        "p90": 0.0454661824,
+        "max": 0.049571128
+      },
+      "target_ray_states": [
+        {
+          "height_m": 0.05,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 121.0,
+              "median": 129.0,
+              "p90": 133.0,
+              "max": 135.0
+            },
+            "outside_diagnostic_range": {
+              "min": 1.0,
+              "median": 3.0,
+              "p90": 3.0,
+              "max": 3.0
+            },
+            "outside_image": {
+              "min": 61.0,
+              "median": 62.0,
+              "p90": 63.0,
+              "max": 63.0
+            },
+            "ray_reaches_target": {
+              "min": 443.0,
+              "median": 530.5,
+              "p90": 578.6,
+              "max": 650.0
+            },
+            "surface_band": {
+              "min": 654.0,
+              "median": 769.5,
+              "p90": 819.7,
+              "max": 857.0
+            }
+          }
+        },
+        {
+          "height_m": 0.2,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 109.0,
+              "median": 116.0,
+              "p90": 119.0,
+              "max": 122.0
+            },
+            "outside_diagnostic_range": {
+              "min": 1.0,
+              "median": 4.0,
+              "p90": 5.0,
+              "max": 5.0
+            },
+            "outside_image": {
+              "min": 46.0,
+              "median": 46.0,
+              "p90": 46.0,
+              "max": 46.0
+            },
+            "ray_reaches_target": {
+              "min": 1325.0,
+              "median": 1329.0,
+              "p90": 1332.9,
+              "max": 1336.0
+            }
+          }
+        },
+        {
+          "height_m": 0.6,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 71.0,
+              "median": 82.0,
+              "p90": 89.0,
+              "max": 98.0
+            },
+            "outside_diagnostic_range": {
+              "min": 5.0,
+              "median": 8.0,
+              "p90": 10.0,
+              "max": 13.0
+            },
+            "outside_image": {
+              "min": 23.0,
+              "median": 24.0,
+              "p90": 24.0,
+              "max": 24.0
+            },
+            "ray_reaches_target": {
+              "min": 1364.0,
+              "median": 1381.0,
+              "p90": 1385.0,
+              "max": 1391.0
+            }
+          }
+        },
+        {
+          "height_m": 1.0,
+          "total": 1495,
+          "states": {
+            "invalid_depth": {
+              "min": 55.0,
+              "median": 70.0,
+              "p90": 76.0,
+              "max": 82.0
+            },
+            "outside_diagnostic_range": {
+              "min": 5.0,
+              "median": 8.0,
+              "p90": 10.0,
+              "max": 12.0
+            },
+            "outside_image": {
+              "min": 992.0,
+              "median": 1004.5,
+              "p90": 1011.0,
+              "max": 1019.0
+            },
+            "ray_reaches_target": {
+              "min": 391.0,
+              "median": 412.0,
+              "p90": 423.9,
+              "max": 431.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  "state_checks": {
+    "before_03.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 153,
+        "hardware_rc": 150
+      },
+      "commit": "5782c6c853e2ef7559a650d6f31648c547329b05",
+      "stamp_ns": 1792420177499649433
+    },
+    "after_03.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "cmd_vel": 148,
+        "hardware_rc": 173
+      },
+      "commit": "5782c6c853e2ef7559a650d6f31648c547329b05",
+      "stamp_ns": 1792420193231303325
+    },
+    "before_04.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 196,
+        "cmd_vel": 191
+      },
+      "commit": "b248cb75bf4e693da3ff519eb811c0ea9a2f7ec7",
+      "stamp_ns": 1792420293992855256
+    },
+    "after_04.json": {
+      "flags": {
+        "live": false,
+        "surround_coverage_verified": false,
+        "front_only_coverage": false,
+        "front_arc_coverage": false
+      },
+      "bridge_state": "inactive",
+      "command_counts": {
+        "hardware_rc": 160,
+        "cmd_vel": 119
+      },
+      "commit": "b248cb75bf4e693da3ff519eb811c0ea9a2f7ec7",
+      "stamp_ns": 1792420339109617423
+    }
+  },
+  "raw_pairs_reproduced": [
+    "pair_0.npz",
+    "pair_1.npz",
+    "pair_2.npz"
+  ],
+  "artifacts": [
+    {
+      "name": "after_02.json",
+      "bytes": 4447,
+      "sha256": "856bc1fe7ad427bee5a75058a961877f2c0f88d7676fd25fe14cdcc97dce4f47"
+    },
+    {
+      "name": "after_02.log",
+      "bytes": 327571,
+      "sha256": "73544afb65597ecb8b479217d722389c8da28c51aca536bb635b76ac13942a50"
+    },
+    {
+      "name": "after_03.json",
+      "bytes": 3023,
+      "sha256": "00121fe5c193963f0c827b9078f7900f89e4dc45e918f55247d4810d5dcdd046"
+    },
+    {
+      "name": "after_03.log",
+      "bytes": 327778,
+      "sha256": "995b8701892c4f6e08d613b97489cbfabe14ff07c50c6c08081e7f937f050b06"
+    },
+    {
+      "name": "after_04.json",
+      "bytes": 3015,
+      "sha256": "0dd2cd2c5f4fd2baed931f779990238e391c0d1334be83928149ef5a7a6b6d5b"
+    },
+    {
+      "name": "after_04.log",
+      "bytes": 332336,
+      "sha256": "861b9a7e2c789ca5eecdeab1b2f95c4d399b548d52281e399656f3b64dfdaea0"
+    },
+    {
+      "name": "after_rejected.json",
+      "bytes": 3488,
+      "sha256": "53caabf9f70e5c9b4d5802bc8521fa6a000ef919f8bb40244420f5f7b153a8c2"
+    },
+    {
+      "name": "after_rejected.log",
+      "bytes": 334921,
+      "sha256": "a028483900ce91afa4c0095b7237d0878abf0f0189b88472e408a42581f85b64"
+    },
+    {
+      "name": "before.json",
+      "bytes": 4140,
+      "sha256": "a01c89ee9e3d1064eda6e9b154993df0b4a7e748d9d750e4d6183ac031a0cc54"
+    },
+    {
+      "name": "before.log",
+      "bytes": 329279,
+      "sha256": "82ffc3ad7108114ad243c1514fbfe7d9386d6e50c1fb90b7ad36c3bcf9188a57"
+    },
+    {
+      "name": "before_02.json",
+      "bytes": 3961,
+      "sha256": "cad6f327c41287b18340954e3396b95ca69852ee4968fab6f40a1cdf4d41a29e"
+    },
+    {
+      "name": "before_02.log",
+      "bytes": 329020,
+      "sha256": "8c7eb85f6bea1cb519b329fdd0277dd38df3817bed488cd303cc6d23d0b34da4"
+    },
+    {
+      "name": "before_03.json",
+      "bytes": 4598,
+      "sha256": "0eb4148438b37317ffee762e927cdac49ac833cd63d507efba32ce81e42c7511"
+    },
+    {
+      "name": "before_03.log",
+      "bytes": 327066,
+      "sha256": "d417bc87fd729a506abe5296624978f826dcfea247fe9d217806c6557619c6b6"
+    },
+    {
+      "name": "before_04.json",
+      "bytes": 4774,
+      "sha256": "2bbd68f5dea945102b8249fde326ffe7aa0860eb4cf92fac2e274c67b70b1c9f"
+    },
+    {
+      "name": "before_04.log",
+      "bytes": 332915,
+      "sha256": "03fdb0653d26f42f616379b556bd2092cfa68f97b877f696ee51dce498080fc4"
+    },
+    {
+      "name": "camera_info_layout.json",
+      "bytes": 946,
+      "sha256": "c21ab05e324a97517e42cdc9fcd523118702d57bcc39c73bab34c9e0e1141838"
+    },
+    {
+      "name": "camera_info_layout.log",
+      "bytes": 271828,
+      "sha256": "abab365f5071e0b30653dc949fca9920e7864cc82f8f00e204de4893a58b1b8b"
+    },
+    {
+      "name": "run_01/observations.json",
+      "bytes": 4151,
+      "sha256": "e43934a49c1dd9a33421746a4a2ac8cf22824e843392ffbfa41756ebe433102b"
+    },
+    {
+      "name": "run_01.log",
+      "bytes": 20973239,
+      "sha256": "f18cf057d4bc1afec88ad78b682da52a1009406214c3df9b918a1d9e6a9856b2"
+    },
+    {
+      "name": "run_02/observations.json",
+      "bytes": 117236,
+      "sha256": "d0732c53099de15368429b1306f7287d9315faee0b6846c35e32bda7ab583d58"
+    },
+    {
+      "name": "run_02/pair_0.npz",
+      "bytes": 1122049,
+      "sha256": "b474f56152c2ff2c2d31af013faff2b908b56d9331df45a8500d1988c5c07916"
+    },
+    {
+      "name": "run_02/pair_1.npz",
+      "bytes": 1115341,
+      "sha256": "07c5b03c34cf34b892b736f7fa5b24142f14914a074d26ec4f8fdffa5421f2ab"
+    },
+    {
+      "name": "run_02/pair_2.npz",
+      "bytes": 1118335,
+      "sha256": "639265c4f06d6942e8d5f37218a2a902c057590fc662c3b3d1f4cf6f36731b33"
+    },
+    {
+      "name": "run_02.log",
+      "bytes": 20974514,
+      "sha256": "48245b65524e71e6cdbb0471a053195865643fb982bda8142f8d60e83aa54639"
+    },
+    {
+      "name": "run_03/observations.json",
+      "bytes": 3322,
+      "sha256": "95583055dda06a48f93b836c94aeee2fb993c07b2d00d96627e7670b4a3ee769"
+    },
+    {
+      "name": "run_03.log",
+      "bytes": 2181176,
+      "sha256": "a89723a3c52757e6c7e3d226cf4658672e8785a4c004a81e32d0c9833bc7016e"
+    },
+    {
+      "name": "run_04/observations.json",
+      "bytes": 238595,
+      "sha256": "a693faaf143e89c15023a6e1816458c1dac481388cb1ae8aa1ffca7605dc2252"
+    },
+    {
+      "name": "run_04/pair_0.npz",
+      "bytes": 1116252,
+      "sha256": "d9a474943ec8b11b3fde53f14b6c7ed56b7ad9aa96330d53757838b20b968bc6"
+    },
+    {
+      "name": "run_04/pair_1.npz",
+      "bytes": 1118511,
+      "sha256": "2f3bdb6bb2d638546fc960dbc3beb577a7a06ae1e6d7b41d4e9c904a0c580595"
+    },
+    {
+      "name": "run_04/pair_2.npz",
+      "bytes": 1116002,
+      "sha256": "dd35b82227425def57808e9f52808c30cc5c0fbfa580cf2bb8f29c43bd8f25dc"
+    },
+    {
+      "name": "run_04.log",
+      "bytes": 20972760,
+      "sha256": "fc9f282f51018ea642fd6e041ee6325cb4145ca9f902b0aa4d771cfd772177b9"
+    },
+    {
+      "name": "summarize_depth_shadow.py",
+      "bytes": 7459,
+      "sha256": "39c0e0b9589830e7e6bb390c5e53f2c32ff71e855399a8558ddb4a78f7ac5748"
+    },
+    {
+      "name": "summarize_depth_shadow_timing.py",
+      "bytes": 4513,
+      "sha256": "ac76f7372bbb80d4037384266dfb5a7b0b160cbb90d31ff307ff0debb9023380"
+    },
+    {
+      "name": "sztu_depth_camera_info_layout_20261019.py",
+      "bytes": 865,
+      "sha256": "a9e3dfbfa37f13d2f4291da3a1a344daebaf796322da48722fc6886f749d1708"
+    },
+    {
+      "name": "sztu_run_depth_shadow_20261019_01.sh",
+      "bytes": 1339,
+      "sha256": "2b0e9a4db4c88d2ebf4bcb933954086201b29a85a2412a1a3923a3dde20cc6ea"
+    },
+    {
+      "name": "sztu_run_depth_shadow_20261019_02.sh",
+      "bytes": 1399,
+      "sha256": "1c1fdbade3f675d3566f830a5abac0de4c0eeaee38b18dfb21f070d600b84fac"
+    },
+    {
+      "name": "sztu_run_depth_shadow_20261019_03.sh",
+      "bytes": 1399,
+      "sha256": "5efaf4dfd122776e637d69c7e843d9fa90e8317bf4477378b4cfc05935c6c4e9"
+    },
+    {
+      "name": "sztu_run_depth_shadow_20261019_04.sh",
+      "bytes": 1399,
+      "sha256": "cd4b4da7acb53efc5c20ca1bb28bdacae87aae3810ba7e2de86465135dec59a7"
+    },
+    {
+      "name": "sztu_shadow_state_readonly_20261019.py",
+      "bytes": 2566,
+      "sha256": "83b6451eb99db1bd0b1ff52aa8d0c303d8244a3a37036ed0f88795d88be68de9"
+    }
+  ]
+}
