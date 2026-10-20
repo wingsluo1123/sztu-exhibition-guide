@@ -24,13 +24,43 @@
     "coverage_flags": false
   },
   "raw_files_sha256": {
+    "isolated_sdk_tests.log": "d16b1d0105ecc6debf5d5a0766a0a8159f0df7715cb383df79e9787368c74eb5",
     "mc_status.html": "aa7284b0d6facee3d58877a55176a178bdce5ed3d6e68784fdf1185954edd9df",
     "mc_status.html.txt": "98f74f06c5a94e79f144da7645425f287088e6b2bd2d7386f6bf7d82e6fda97b",
     "modeswitch.html": "4d09c0ea2d3e5a5ae77e2ac8d25dba74699d7dcbdada2681175e3a582824f493",
-    "modeswitch.html.txt": "f05f8bfdd58e12736ba3ee6171847837ff59edabd3efa4eca918fef80dae4fb4"
+    "modeswitch.html.txt": "f05f8bfdd58e12736ba3ee6171847837ff59edabd3efa4eca918fef80dae4fb4",
+    "operator_mode_clarification.json": "f89ec40765dfb98e8aa8ff3af84ca02b9396f9982c72cf824207c8e016db56bd",
+    "post_build_flags.json": "25985d9509d7a52601267fb9aadecc7ffb918d0ac603937b2e149b174fbc97a2",
+    "post_build_flags.log": "d5ddade68a96993399ac467b1b5d2456422539e5aa9c79f57f244299c0a4258c",
+    "post_build_state.json": "3dc564afb5ea1c5620eede0570e9a4c88aca9f92dd5b216926a653b77b02dbcc",
+    "post_build_state.log": "2e102e5929f5cdce72e618c614f9f02e7b3c1181e0697418243116547e1f1500",
+    "sztu_handoff_contract_preview_20261020_02.json": "2325b74945db2469db4a1520bbf0cf07c71641a0ba56da12e08bb0e2d65b3448",
+    "sztu_handoff_guarded_20261020_02.sh": "1098c71d3e0125668755da296b0ffe37c756847e2079b19695eb20bdf8f41f33"
   },
   "verification": {
     "developer_domain42": "72 passed: guard, gateway, restrained-trial logic",
-    "robot_sdk_domain42": "pending"
-  }
+    "robot_sdk_domain42": "34 passed, 15 deselected in 125.37s",
+    "build": "Navigation package succeeded on both hosts; code e24f07a deployed.",
+    "runtime_processes": "Existing LIO/AMCL/navigation services not restarted."
+  },
+  "archive_sync_note": "Raw robot records copied locally before disconnection. Final cross-host hash verification and operator clarification upload blocked by SSH timeout; not claimed complete.",
+  "post_build": {
+    "fresh_state_samples": 33,
+    "mode": "PASSIVE_DEFAULT",
+    "fsm": 6,
+    "body": 4,
+    "operator_clarification": "是的现在是零力矩，我开启的",
+    "flags": {
+      "live": false,
+      "surround_coverage_verified": false,
+      "front_only_coverage": false,
+      "front_arc_coverage": false
+    },
+    "cmd_vel_count": 193,
+    "cmd_vel_nonzero": 0,
+    "hardware_command_samples": 0,
+    "bridge": "inactive",
+    "scope": "Operator-initiated mode change. This snapshot precedes SSH loss; current runtime state cannot be verified."
+  },
+  "remaining": "Robot 192.168.208.19 port22 timeout after earlier successful checks. No new physical test authorized/executed."
 }
