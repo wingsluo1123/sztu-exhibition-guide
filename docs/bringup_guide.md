@@ -83,7 +83,17 @@ pgrep -fc 'nav2_amcl/amcl'                # 必须是 0
 ```bash
 pkill -INT -f 'ros2 launch sztu_navigation'
 sleep 6
-pkill -9 -f 'ros2 launch sztu_navigation|nav2_amcl|nav2_planner|nav2_controller|nav2_behaviors|nav2_bt_navigator|nav2_velocity_smoother|nav2_map_server|nav2_lifecycle_manager|sztu_navigation/'
+# ⚠️ 不要用 'sztu_navigation/' 做匹配！
+# RViz 的启动参数是 .../src/sztu_navigation/config/navigation.rviz，
+# 按这个字符串杀会把开发机上的 RViz 一起杀掉。
+# 用可执行文件路径精确匹配：
+for p in '/install/sztu_navigation/lib/sztu_navigation/' \
+         'nav2_amcl/amcl' 'nav2_planner/planner_server' 'nav2_controller/controller_server' \
+         'nav2_behaviors/behavior_server' 'nav2_bt_navigator/bt_navigator' \
+         'nav2_velocity_smoother/velocity_smoother' 'nav2_map_server/map_server' \
+         'nav2_lifecycle_manager/lifecycle_manager'; do
+  pkill -9 -f "$p" 2>/dev/null
+done
 sleep 3
 ```
 
@@ -231,7 +241,17 @@ pgrep -fc 'ros2 launch sztu_navigation'   # 必须是 0
 不是 0 就补刀：
 
 ```bash
-pkill -9 -f 'ros2 launch sztu_navigation|nav2_amcl|nav2_planner|nav2_controller|nav2_behaviors|nav2_bt_navigator|nav2_velocity_smoother|nav2_map_server|nav2_lifecycle_manager|sztu_navigation/'
+# ⚠️ 不要用 'sztu_navigation/' 做匹配！
+# RViz 的启动参数是 .../src/sztu_navigation/config/navigation.rviz，
+# 按这个字符串杀会把开发机上的 RViz 一起杀掉。
+# 用可执行文件路径精确匹配：
+for p in '/install/sztu_navigation/lib/sztu_navigation/' \
+         'nav2_amcl/amcl' 'nav2_planner/planner_server' 'nav2_controller/controller_server' \
+         'nav2_behaviors/behavior_server' 'nav2_bt_navigator/bt_navigator' \
+         'nav2_velocity_smoother/velocity_smoother' 'nav2_map_server/map_server' \
+         'nav2_lifecycle_manager/lifecycle_manager'; do
+  pkill -9 -f "$p" 2>/dev/null
+done
 ```
 
 ### B-2. 重新启动（注意 `live:=true`）
