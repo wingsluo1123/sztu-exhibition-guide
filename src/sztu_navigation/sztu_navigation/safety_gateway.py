@@ -199,7 +199,7 @@ class SafetyGateway(Node):
                   for i, r in enumerate(scan.ranges) if math.isfinite(r)]
         for speed, turn in ((forward, angular),
                             (max(0., self.measured_forward), self.measured_angular)):
-            if swept_obstacle_reason(points, speed, turn, self.radius + .15,
+            if swept_obstacle_reason(points, speed, turn, self.radius + .05,
                                       self.stopping_margin):
                 # Missing pixels or a later empty image cannot clear a stop.
                 self.depth_stop_reason = 'depth_obstacle_latched'
@@ -266,14 +266,14 @@ class SafetyGateway(Node):
         if not reason:
             reason = collision_reason(
                 self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
-                forward, angular, self.radius + 0.15,
+                forward, angular, self.radius + 0.05,
                 self.stopping_margin, 1.0, self.coverage_verified,
                 self.front_only_coverage, self.front_arc_coverage)
         if not reason and (forward != 0 or angular != 0):
             reason = collision_reason(
                 self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
                 max(0.0, self.measured_forward), self.measured_angular,
-                self.radius + 0.15, self.stopping_margin, 1.0,
+                self.radius + 0.05, self.stopping_margin, 1.0,
                 self.coverage_verified, self.front_only_coverage,
                 self.front_arc_coverage, arc_limits=False)
         if not reason and (forward != 0 or angular != 0):

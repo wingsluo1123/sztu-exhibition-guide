@@ -147,9 +147,9 @@ velocity_smoother:
     scale_velocities: false
     max_velocity: [0.25, 0.0, 0.7]
     min_velocity: [0.0, 0.0, -0.7]
-    max_accel: [0.15, 0.0, 0.5]
+    max_accel: [0.45, 0.0, 1.2]
     max_decel: [-0.25, 0.0, -0.7]
-    velocity_timeout: 0.25
+    velocity_timeout: 0.5
     feedback: OPEN_LOOP
     odom_topic: /sztu/nav_odom
     cmd_vel_in_topic: /cmd_vel_nav_raw
