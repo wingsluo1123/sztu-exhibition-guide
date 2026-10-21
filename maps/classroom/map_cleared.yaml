@@ -1,0 +1,32 @@
+image: map_cleared.pgm
+resolution: 0.05
+origin: [-17.9051, -18.1100, 0.0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+
+# 这张图摊平用的重力方向。实走时必须把它钉给转接层，
+# 否则 bridge 自测的 up 和这个不是一个数，图和位姿整体错开。
+#   tools/run_lio_live.sh --bridge --up 0.998042,-0.017724,0.059981
+sztu_up: [0.998042, -0.017724, 0.059981]
+sztu_up_source: "包里的 /aima/hal/sensor/lidar_chest_front/imu 开头静止段"
+
+# 这张图是哪一趟出的。FAST-LIO 回放不确定（同包两遍最大
+# 差 0.371 m），所以**重出一张不等于这一张** —— 图必须和
+# 点位同一次提交进版本库，这一段是用来事后对账的。
+sztu_lineage:
+  run_dir: "/home/agi/sztu_lio_runs/20261014_153232_live"
+  bag: "/home/agi/sztu_lio_runs/20261014_153232_live/odom/odom_0.db3"
+  bag_sha256_head_tail: "ddd2467137166b303da13b61553a5641b794758ad810d667f3d8f8a004f36688"
+  bag_bytes: 1263816704
+  odom_topic: "/cloud_registered"
+  odom_t0: 1791963156.114659
+  odom_t1: 1791963436.510724
+  odom_count: 2805
+  slab_lo: 0.25
+  slab_hi: 1.8
+  range_m: 15.0
+  stride: 1
+  source_revision: "075691a-dirty"
+  generated_at: "2026-10-14T07:38:49+00:00"
+  invocation: "tools/gridmap.py /home/agi/sztu_lio_runs/20261014_153232_live -o /home/agi/sztu_lio_runs/20261014_153232_live/map"

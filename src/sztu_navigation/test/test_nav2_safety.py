@@ -12,8 +12,8 @@ from rclpy.parameter import Parameter
 from rclpy.time import Time
 
 from sztu_navigation.nav_geometry import (
-    collision_reason, limit_front_arc_command, localization_valid, project_scan,
-    rotation_matrix,
+    FRONT_SCAN_MAX, FRONT_SCAN_MIN, collision_reason, limit_front_arc_command,
+    localization_valid, project_scan, rotation_matrix, scan_fov,
 )
 from sztu_navigation.safety_gateway import SafetyGateway
 
@@ -59,9 +59,8 @@ def test_chest_scan_never_counts_as_surround_coverage():
 
 def front_scan(sectors=5):
     ranges = [math.nan] * 720
-    front_min, front_max = -math.pi / 3, math.pi / 3
     for sector in range(sectors):
-        angle = front_min + (sector + 0.5) * (front_max - front_min) / 5
+        angle = FRONT_SCAN_MIN + (sector + 0.5) * (FRONT_SCAN_MAX - FRONT_SCAN_MIN) / 5
         ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = 5.0
     return ranges
 
@@ -84,9 +83,8 @@ def test_front_only_mode_blocks_missing_sector_and_turning():
 def arc_scan(obstacles=()):
     """A 120-degree chest scan: five populated front sectors, NaN elsewhere."""
     ranges = [math.nan] * 720
-    front_min, front_max = -math.pi / 3, math.pi / 3
     for sector in range(5):
-        angle = front_min + (sector + 0.5) * (front_max - front_min) / 5
+        angle = FRONT_SCAN_MIN + (sector + 0.5) * (FRONT_SCAN_MAX - FRONT_SCAN_MIN) / 5
         ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = 5.0
     for angle, distance in obstacles:
         ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = distance
@@ -120,10 +118,31 @@ def test_front_arc_allows_a_shallow_arc_and_rejects_a_tight_one():
 
 def test_front_arc_requires_all_five_front_sectors():
     ranges = arc_scan()
-    angle = -math.pi / 3 + 0.5 * (math.pi / 3 - -math.pi / 3) / 5
+    angle = FRONT_SCAN_MIN + 0.5 * (FRONT_SCAN_MAX - FRONT_SCAN_MIN) / 5
     ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = math.nan
     assert collision_reason(ranges, -math.pi, 2 * math.pi / 719, 0.25, 0.0,
                             front_arc=True) == 'front_scan_incomplete'
+
+
+def test_front_cone_ignores_returns_beyond_the_measured_arc():
+    """The old +-60 degree cone must not be re-admitted by a stray return."""
+    ranges = [math.nan] * 720
+    angle = math.radians(-55.0)
+    ranges[round((angle + math.pi) / (2 * math.pi) * 719)] = 5.0
+    assert collision_reason(ranges, -math.pi, 2 * math.pi / 719, 0.25, 0.0,
+                            front_arc=True) == 'front_scan_incomplete'
+
+
+def test_scan_declaration_matches_the_120_degree_sensor():
+    angle_min, angle_max, bins = scan_fov(120)
+    assert angle_min == pytest.approx(-math.pi / 3)
+    assert angle_max == pytest.approx(math.pi / 3)
+    assert bins == 241
+    assert (angle_max - angle_min) / (bins - 1) == pytest.approx(math.radians(0.5))
+    with pytest.raises(ValueError):
+        scan_fov(0)
+    with pytest.raises(ValueError):
+        scan_fov(361)
 
 
 def test_coverage_modes_are_mutually_exclusive():

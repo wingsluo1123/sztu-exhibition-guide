@@ -105,6 +105,7 @@ def adapter_scene(monkeypatch, missing_ankle=False):
         buffer=SimpleNamespace(lookup_transform=lookup),
         get_clock=lambda: SimpleNamespace(now=lambda: Time(seconds=clock[0])),
         get_logger=lambda: SimpleNamespace(warn=lambda *args, **kwargs: None),
+        scan_angle_min=-math.pi, scan_angle_max=math.pi, scan_bins=720,
         scan_pub=SimpleNamespace(publish=localization.append),
         safety_pub=SimpleNamespace(publish=scans.append))
     monkeypatch.setattr('sztu_navigation.nav_sensor_adapter.time.monotonic', lambda: 100.1)

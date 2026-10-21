@@ -29,7 +29,7 @@ class SafetyGateway(Node):
         self.declare_parameter('front_only_coverage', False)
         self.declare_parameter('front_arc_coverage', False)
         self.declare_parameter('max_age', 0.5)
-        self.declare_parameter('robot_radius', 0.40)
+        self.declare_parameter('robot_radius', 0.50)
         self.declare_parameter('stopping_margin', 0.25)
         self.declare_parameter('depth_obstacle_veto', False)
         self.depth_veto = bool(self.get_parameter('depth_obstacle_veto').value)

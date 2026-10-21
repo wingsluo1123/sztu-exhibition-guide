@@ -1,4 +1,5 @@
 from collections import deque
+import math
 import struct
 from types import SimpleNamespace
 
@@ -37,6 +38,7 @@ def queued_sensor(clock_seconds=10.2, received_at=100.0, source_age=0.1):
         cloud_freshness=SimpleNamespace(future_tolerance=0.05),
         pending_clouds=deque([(message, received_at, source_age)], maxlen=8),
         get_clock=lambda: SimpleNamespace(now=lambda: Time(seconds=clock_seconds)),
+        scan_angle_min=-math.pi, scan_angle_max=math.pi, scan_bins=720,
         _publish_cloud=lambda cloud, received, age: published.append(cloud) or True)
     return node, message, published
 
@@ -134,6 +136,7 @@ def test_rechecks_freshness_after_scan_projection(
         cloud_freshness=SimpleNamespace(future_tolerance=0.05),
         buffer=SimpleNamespace(lookup_transform=lambda *args: transform),
         _lookup_with_bounded_latest=lambda *args: transform,
+        scan_angle_min=-math.pi, scan_angle_max=math.pi, scan_bins=720,
         get_clock=lambda: SimpleNamespace(now=lambda: Time(seconds=clock_seconds)),
         scan_pub=SimpleNamespace(publish=localization_scans.append),
         safety_pub=SimpleNamespace(publish=safety_scans.append))

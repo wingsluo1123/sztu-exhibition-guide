@@ -80,9 +80,29 @@ def project_scan(points, minimum_height, maximum_height,
     return ranges.tolist(), increment
 
 
-FRONT_SCAN_MIN = -math.pi / 3
-FRONT_SCAN_MAX = math.pi / 3
+# Measured chest-E1R returns on 2026-10-19 spanned -46.3 to +44.3 degrees over
+# 222 static frames.  The coverage cone tracks that evidence rather than the
+# 120-degree datasheet figure, because the outer ring of the datasheet cone has
+# never produced a return on this robot.
+FRONT_SCAN_MIN = -math.pi / 4
+FRONT_SCAN_MAX = math.pi / 4
 FRONT_SCAN_SECTORS = 5
+SCAN_ANGULAR_RESOLUTION = math.radians(0.5)
+
+
+def scan_fov(degrees):
+    """Return (angle_min, angle_max, bins) for a symmetric planar scanner.
+
+    ``bins`` keeps the historical 0.5-degree ray spacing, so a 120-degree
+    declaration yields 241 bins rather than the 720 bins of a full circle.
+    """
+    if not math.isfinite(degrees) or not 0 < degrees <= 360:
+        raise ValueError('scan field of view must be within (0, 360] degrees')
+    half = math.radians(degrees) / 2
+    bins = max(2, int(round(math.radians(degrees) / SCAN_ANGULAR_RESOLUTION)) + 1)
+    return -half, half, bins
+
+
 FRONT_ARC_MAX_TURN_RATE = 0.35
 FRONT_ARC_MAX_CURVATURE = 1.5
 FRONT_ARC_MAX_HEADING_CHANGE = 0.45

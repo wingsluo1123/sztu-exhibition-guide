@@ -115,7 +115,11 @@ def build_nodes(context):
                      'front_only_coverage': ParameterValue(
                          LaunchConfiguration('front_only_coverage'), value_type=bool),
                      'front_arc_coverage': ParameterValue(
-                         LaunchConfiguration('front_arc_coverage'), value_type=bool)}]))
+                         LaunchConfiguration('front_arc_coverage'), value_type=bool),
+                     'robot_radius': ParameterValue(
+                         LaunchConfiguration('robot_radius'), value_type=float),
+                     'stopping_margin': ParameterValue(
+                         LaunchConfiguration('stopping_margin'), value_type=float)}]))
     processes.append(RegisterEventHandler(OnShutdown(on_shutdown=[
         OpaqueFunction(function=lambda unused: remove_parameters(params_path))])))
     return processes
@@ -156,6 +160,10 @@ def generate_launch_description():
         DeclareLaunchArgument('front_arc_coverage', default_value='false',
                               description='Use a validated 120-degree front sensor; '
                                           'rotation and clamped arcs allowed'),
+        DeclareLaunchArgument('robot_radius', default_value='0.50',
+                              description='Footprint radius shared with the Nav2 costmaps'),
+        DeclareLaunchArgument('stopping_margin', default_value='0.25',
+                              description='Coasting distance added beyond the footprint radius'),
         DeclareLaunchArgument('use_sim_time', default_value='false',
                               description='Use a published simulation clock'),
         OpaqueFunction(function=build_nodes),

@@ -20,7 +20,7 @@ from tf2_ros import Buffer, TransformBroadcaster, TransformListener
 from sztu_slam.message_validation import MessageFreshness, valid_pose
 from .ground_plane import estimate_ground
 from .nav_geometry import (ground_relative_points, project_scan, rotation_matrix,
-                           xyz_points, yaw_of)
+                           scan_fov, xyz_points, yaw_of)
 
 
 class NavSensorAdapter(Node):
@@ -32,11 +32,16 @@ class NavSensorAdapter(Node):
             'source_odom_frame': 'odom', 'source_base_frame': 'base_link',
             'max_age': 0.5, 'localization_min_height': 0.25,
             'safety_min_height': 0.05, 'max_height': 1.8,
-            'publish_odometry': True,
+            'publish_odometry': True, 'scan_fov_deg': 120.0,
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
         self.settings = {name: self.get_parameter(name).value for name in defaults}
+        try:
+            self.scan_angle_min, self.scan_angle_max, self.scan_bins = scan_fov(
+                float(self.settings['scan_fov_deg']))
+        except (TypeError, ValueError) as error:
+            raise ValueError(f'invalid scan_fov_deg: {error}') from error
         self.status = {'clouds_received': 0, 'clouds_expired': 0,
                        'scans_published': 0, 'tf_waits': 0, 'ground_rejected': 0,
                        'clouds_superseded': 0, 'safety_scans_published': 0,
@@ -173,13 +178,15 @@ class NavSensorAdapter(Node):
         self.status['last_result'] = 'processing'
         try:
             stamp = Time.from_msg(message.header.stamp)
-            self.buffer.lookup_transform('sztu_nav_odom', 'sztu_nav_base', stamp)
+            self.buffer.lookup_transform('sztu_nav_odom', 'sztu_nav_base', Time())
             # Articulated humanoid: all geometry, including ankles, must be at
             # the cloud time. A recent-but-different posture is not a floor reference.
-            cloud_to_base = self.buffer.lookup_transform(
-                self.settings['source_base_frame'], message.header.frame_id, stamp)
-            base_in_odom = self.buffer.lookup_transform(
-                self.settings['source_odom_frame'], self.settings['source_base_frame'], stamp)
+            cloud_to_base = self._lookup_with_bounded_latest(
+                self.settings['source_base_frame'], message.header.frame_id, stamp,
+                message.header.stamp)
+            base_in_odom = self._lookup_with_bounded_latest(
+                self.settings['source_odom_frame'], self.settings['source_base_frame'],
+                stamp, message.header.stamp)
             cloud_quat = cloud_to_base.transform.rotation
             base_quat = base_in_odom.transform.rotation
             cloud_rotation = rotation_matrix((cloud_quat.x, cloud_quat.y,
@@ -191,8 +198,9 @@ class NavSensorAdapter(Node):
             leveling = planar_rotation.T @ base_rotation
             ankles = []
             for frame in ('left_ankle_roll_link', 'right_ankle_roll_link'):
-                ankle = self.buffer.lookup_transform(
-                    self.settings['source_base_frame'], frame, stamp).transform.translation
+                ankle = self._lookup_with_bounded_latest(
+                    self.settings['source_base_frame'], frame, stamp,
+                    message.header.stamp).transform.translation
                 ankles.append(np.array([ankle.x, ankle.y, ankle.z]) @ leveling.T)
             translation = cloud_to_base.transform.translation
             points = xyz_points(message.data, message.point_step)
@@ -228,19 +236,32 @@ class NavSensorAdapter(Node):
         # independently rechecked. Safety uses floor distance, never pelvis Z.
         # Send safety first: a delayed localization write must not hold back
         # an otherwise fresh safety observation.
+        # The chest cloud can carry a stamp slightly newer than the newest
+        # odom->base TF. AMCL and the Nav2 costmaps run the scan through a
+        # tf2 MessageFilter, which drops any message stamped after the latest
+        # transform. Clamp the published stamp onto the transform timeline;
+        # the sensor stamp stays in the process-age bookkeeping below.
+        cloud_ns = (int(message.header.stamp.sec) * 1_000_000_000
+                    + int(message.header.stamp.nanosec))
+        odom_ns = self.odom_freshness.last_stamp_ns
+        publish_ns = min(cloud_ns, odom_ns) if odom_ns else cloud_ns
+        publish_stamp = Time(nanoseconds=publish_ns).to_msg()
         for publisher, minimum, selected in (
                 (self.safety_pub, self.settings['safety_min_height'], safety_points),
                 (self.scan_pub, self.settings['localization_min_height'], points)):
             scan = LaserScan()
             scan.header = copy.deepcopy(message.header)
             scan.header.frame_id = 'sztu_nav_base'
-            scan.angle_min = -math.pi
-            scan.angle_max = math.pi
+            scan.header.stamp = publish_stamp
+            scan.angle_min = self.scan_angle_min
+            scan.angle_max = self.scan_angle_max
             scan.range_min = 0.05
             scan.range_max = 15.0
             scan.scan_time = 0.1
             scan.ranges, scan.angle_increment = project_scan(
-                selected, minimum, self.settings['max_height'])
+                selected, minimum, self.settings['max_height'],
+                angle_min=self.scan_angle_min, angle_max=self.scan_angle_max,
+                bins=self.scan_bins)
             prepared.append((publisher, scan))
         stamp_ns = int(message.header.stamp.sec) * 1_000_000_000 + int(message.header.stamp.nanosec)
         clock_age = (self.get_clock().now().nanoseconds - stamp_ns) / 1e9
