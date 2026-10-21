@@ -29,7 +29,7 @@ class SafetyGateway(Node):
         self.declare_parameter('front_only_coverage', False)
         self.declare_parameter('front_arc_coverage', False)
         self.declare_parameter('max_age', 0.5)
-        self.declare_parameter('robot_radius', 0.50)
+        self.declare_parameter('robot_radius', 0.30)
         self.declare_parameter('stopping_margin', 0.25)
         self.declare_parameter('depth_obstacle_veto', False)
         self.depth_veto = bool(self.get_parameter('depth_obstacle_veto').value)
@@ -44,7 +44,7 @@ class SafetyGateway(Node):
         self.radius = float(self.get_parameter('robot_radius').value)
         self.stopping_margin = float(self.get_parameter('stopping_margin').value)
         if (not math.isfinite(self.max_age) or not 0 < self.max_age <= 0.5
-                or not math.isfinite(self.radius) or self.radius < 0.40
+                or not math.isfinite(self.radius) or self.radius < 0.25
                 or not math.isfinite(self.stopping_margin) or self.stopping_margin < 0.25):
             raise ValueError('invalid safety geometry or freshness budget')
         modes = (self.coverage_verified, self.front_only_coverage,
@@ -242,9 +242,12 @@ class SafetyGateway(Node):
         elif self.localization is None or pose_age is None or pose_age > 2.0:
             reason = 'localization_stale'
         else:
+            # Only the availability of map->base matters here. Asking for the
+            # exact scan stamp requires AMCL's map->odom to already cover that
+            # instant, but AMCL updates slower than the lidar, so the strict
+            # lookup fails periodically and the robot stalls every few steps.
             try:
-                self.buffer.lookup_transform('map', 'sztu_nav_base',
-                                             Time.from_msg(self.scan.header.stamp))
+                self.buffer.lookup_transform('map', 'sztu_nav_base', Time())
             except Exception:
                 reason = 'map_tf_unavailable'
         if not reason:

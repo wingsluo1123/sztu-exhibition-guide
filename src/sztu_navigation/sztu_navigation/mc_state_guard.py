@@ -20,7 +20,10 @@ class McStateGuard:
         # Commissioning deadline, not a vendor-specified transition duration or
         # permission to extend a pulse. Continuous fresh TRANSITION cannot remain
         # accepted indefinitely. Independent message age remains max_age (0.5s).
-        self.transition_limit_s = 2.0
+        # status==200 is AimDK's "running", not only a short hand-over. A
+        # walking robot can hold it for several seconds, so 2 s latched the
+        # guard mid-stride and froze the robot until the node restarted.
+        self.transition_limit_s = 5.0
         self.transition_started_at = None
 
     def latch(self, reason, now_ns=None, monotonic_now=None):

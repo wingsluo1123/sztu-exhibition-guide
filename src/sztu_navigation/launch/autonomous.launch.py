@@ -160,7 +160,7 @@ def generate_launch_description():
         DeclareLaunchArgument('front_arc_coverage', default_value='false',
                               description='Use a validated 120-degree front sensor; '
                                           'rotation and clamped arcs allowed'),
-        DeclareLaunchArgument('robot_radius', default_value='0.50',
+        DeclareLaunchArgument('robot_radius', default_value='0.30',
                               description='Footprint radius shared with the Nav2 costmaps'),
         DeclareLaunchArgument('stopping_margin', default_value='0.25',
                               description='Coasting distance added beyond the footprint radius'),
