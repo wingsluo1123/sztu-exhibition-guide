@@ -103,9 +103,9 @@ def scan_fov(degrees):
     return -half, half, bins
 
 
-FRONT_ARC_MAX_TURN_RATE = 0.35
-FRONT_ARC_MAX_CURVATURE = 1.5
-FRONT_ARC_MAX_HEADING_CHANGE = 0.45
+FRONT_ARC_MAX_TURN_RATE = 0.55
+FRONT_ARC_MAX_CURVATURE = 2.2
+FRONT_ARC_MAX_HEADING_CHANGE = 0.7
 
 
 def front_scan_sectors(points):

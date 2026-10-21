@@ -152,11 +152,11 @@ def test_coverage_modes_are_mutually_exclusive():
 
 
 def test_front_arc_command_limiter_caps_rotation_and_curvature():
-    assert limit_front_arc_command(0.25, 0.70) == (0.25, 0.35)
-    assert limit_front_arc_command(0.0, -0.70) == (0.0, -0.35)
+    assert limit_front_arc_command(0.25, 0.70) == (0.25, 0.55)
+    assert limit_front_arc_command(0.0, -0.70) == (0.0, -0.55)
     forward, angular = limit_front_arc_command(0.10, 0.50)
     assert forward == pytest.approx(0.10)
-    assert angular == pytest.approx(0.15)
+    assert angular == pytest.approx(0.22)
     assert limit_front_arc_command(-0.2, 0.1) == (0.0, 0.1)
 
 
