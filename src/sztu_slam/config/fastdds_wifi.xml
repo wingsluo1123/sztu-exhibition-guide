@@ -16,7 +16,7 @@
         <transport_id>udp_wifi</transport_id>
         <type>UDPv4</type>
         <interfaceWhiteList>
-          <address>192.168.43.24</address>
+          <address>192.168.208.19</address>
         </interfaceWhiteList>
         <sendBufferSize>8388608</sendBufferSize>
         <receiveBufferSize>8388608</receiveBufferSize>
