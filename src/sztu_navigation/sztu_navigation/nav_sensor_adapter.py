@@ -13,12 +13,13 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.time import Time
-from sensor_msgs.msg import LaserScan, PointCloud2
+from sensor_msgs.msg import Imu, LaserScan, PointCloud2
 from std_msgs.msg import String
 from tf2_ros import Buffer, TransformBroadcaster, TransformListener
 
 from sztu_slam.message_validation import MessageFreshness, valid_pose
 from .ground_plane import estimate_ground
+from .imu_leveller import ImuLeveller, leveling_from_up
 from .nav_geometry import (ground_relative_points, project_scan, rotation_matrix,
                            scan_fov, xyz_points, yaw_of)
 
@@ -30,6 +31,8 @@ class NavSensorAdapter(Node):
             'odom_topic': '/slam/lidar_odom',
             'cloud_topic': '/aima/hal/sensor/lidar_chest_front/lidar_pointcloud',
             'source_odom_frame': 'odom', 'source_base_frame': 'base_link',
+            'imu_topic': '/aima/hal/sensor/lidar_chest_front/imu',
+            'imu_leveling': True,
             'max_age': 0.5, 'localization_min_height': 0.25,
             'safety_min_height': 0.05, 'max_height': 1.8,
             'publish_odometry': True, 'scan_fov_deg': 120.0,
@@ -45,7 +48,9 @@ class NavSensorAdapter(Node):
         self.status = {'clouds_received': 0, 'clouds_expired': 0,
                        'scans_published': 0, 'tf_waits': 0, 'ground_rejected': 0,
                        'clouds_superseded': 0, 'safety_scans_published': 0,
-                       'localization_scans_published': 0}
+                       'localization_scans_published': 0,
+                       'imu_samples': 0, 'imu_tilt_deg': None,
+                       'imu_leveling_used': 0}
         self.status_pub = self.create_publisher(String, '/sztu/sensor_status', 1)
         self.create_timer(1.0, self.publish_status)
         self.odom_freshness = MessageFreshness(self.settings['max_age'])
@@ -67,6 +72,24 @@ class NavSensorAdapter(Node):
         self.pending_clouds = deque(maxlen=8)
         self.create_timer(0.02, self.process_clouds)
         self.previous = None
+        # 雷达 IMU 与雷达刚性连接，184 Hz，能采样到 10 Hz 的
+        # odom->base TF 采不到的躯干俯仰。orientation 字段恒为单位
+        # 四元数，只能用加速度和角速度。
+        self.imu_leveller = ImuLeveller()
+        self.create_subscription(
+            Imu, self.settings['imu_topic'], self.imu_callback,
+            qos_profile_sensor_data)
+
+    def imu_callback(self, message):
+        stamp = Time.from_msg(message.header.stamp).nanoseconds / 1e9
+        accel = message.linear_acceleration
+        gyro = message.angular_velocity
+        self.imu_leveller.update(
+            stamp, (accel.x, accel.y, accel.z), (gyro.x, gyro.y, gyro.z))
+        self.status['imu_samples'] += 1
+        tilt = self.imu_leveller.tilt_degrees()
+        if tilt is not None:
+            self.status['imu_tilt_deg'] = round(tilt, 3)
 
     def odom_callback(self, message):
         if (message.header.frame_id != self.settings['source_odom_frame']
@@ -195,7 +218,23 @@ class NavSensorAdapter(Node):
                                              base_quat.z, base_quat.w))
             yaw = yaw_of((base_quat.x, base_quat.y, base_quat.z, base_quat.w))
             planar_rotation = rotation_matrix((0, 0, math.sin(yaw / 2), math.cos(yaw / 2)))
-            leveling = planar_rotation.T @ base_rotation
+            # 优先用雷达 IMU 的实时重力方向摆平：
+            # odom->base 的 TF 只有 10 Hz，采不到步态引起的躯干俯仰，
+            # 地面平面会被拟合歪，地面点漂到 5 cm 以上就成了幻影障碍。
+            leveling = None
+            # 用 getattr 而不是直接属性访问：单元测试用 SimpleNamespace 构造
+            # 这个节点，没有 __init__ 跑过，不会有 imu_leveller 属性。
+            leveller = getattr(self, 'imu_leveller', None)
+            leveling_enabled = self.settings.get('imu_leveling', False)
+            if leveling_enabled and leveller is not None and leveller.ready:
+                up_base = cloud_rotation @ leveller.up_lidar
+                try:
+                    leveling = leveling_from_up(up_base)
+                    self.status['imu_leveling_used'] += 1
+                except Exception:
+                    leveling = None
+            if leveling is None:
+                leveling = planar_rotation.T @ base_rotation
             ankles = []
             for frame in ('left_ankle_roll_link', 'right_ankle_roll_link'):
                 ankle = self._lookup_with_bounded_latest(
