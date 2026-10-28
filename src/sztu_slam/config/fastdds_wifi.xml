@@ -1,23 +1,33 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!-- Wi-Fi-only DDS transport for the robot host.
-     The robot has four NICs (sensor0, develop0, wifi0, ssh0); the stock
-     profile leaves the UDPv4 transport unpinned, so Fast DDS advertises
-     10.11.1.1 and the dev machine on 192.168.43.x never discovers it.
-     Keep SHM for the large point clouds, pin UDP to the Wi-Fi address. -->
+<!-- DDS transport for the robot host.
+
+     Two lessons from 2026-10-28:
+
+     1. The SHM segment was 64 MB. One chest cloud frame is 800 KB
+        (25611 points x 32 B), so ~82 frames fill it. Once full, Fast DDS
+        silently falls back to UDP for every topic on that participant.
+        With UDP pinned to the Wi-Fi address, loopback traffic such as the
+        vendor IMU stopped arriving: the adapter reported 208 scans but
+        imu_samples 0. Raised to 256 MB.
+
+     2. interfaceWhiteList hard-codes one address. When the hotspot
+        renumbers the robot, or the Wi-Fi drops because the room is crowded,
+        the UDP transport binds nothing and the participant fails to start.
+        The symptom is processes alive near 20% CPU with every topic silent.
+        UDP is now unpinned; SHM still carries the same-host point cloud
+        path, which is what localisation actually depends on. -->
+
 <dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
   <profiles>
     <transport_descriptors>
       <transport_descriptor>
         <transport_id>shm_large</transport_id>
         <type>SHM</type>
-        <segment_size>67108864</segment_size>
+        <segment_size>268435456</segment_size>
       </transport_descriptor>
       <transport_descriptor>
         <transport_id>udp_wifi</transport_id>
         <type>UDPv4</type>
-        <interfaceWhiteList>
-          <address>192.168.208.19</address>
-        </interfaceWhiteList>
         <sendBufferSize>8388608</sendBufferSize>
         <receiveBufferSize>8388608</receiveBufferSize>
       </transport_descriptor>
