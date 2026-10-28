@@ -384,6 +384,8 @@ ros2 topic pub --once /sztu/navigation_stop std_msgs/msg/Bool "{data: false}"
 
 ---
 
+---
+
 # 故障排查
 
 ## 1. 开发机看不到机器人节点
@@ -516,6 +518,143 @@ PY
 Message Filter dropping
 The /sztu/safety_scan observation buffer has not been updated
 ```
+
+---
+
+
+---
+
+## 7. 话题有频率但某些节点收不到（DDS 半瘫）
+
+**症状**
+
+```bash
+ros2 topic hz /aima/hal/sensor/lidar_chest_front/imu   # 202 Hz，正常
+ros2 topic info /aima/hal/sensor/lidar_chest_front/imu -v
+# 订阅者里没有 nav_sensor_adapter
+```
+
+节点日志正常、进程活着、CPU 20% 左右，`sensor_status` 里
+`scans_published` 在涨，但 `imu_samples` 一直是 0。
+
+**根因：SHM 段被点云撑满，Fast DDS 静默回落到 UDP**
+
+一帧胸前点云是 **800 KB**（25611 点 × 32 B）。`fastdds_wifi.xml` 的
+SHM 段原来是 **64 MB**，约 82 帧就满。段满之后 Fast DDS 会把**这个
+participant 的所有话题**改走 UDP；而 UDP 当时硬编码只绑 Wi-Fi 地址，
+承载不了本机回环流量，于是厂商 IMU 到不了适配器。
+
+**判断方法**
+
+```bash
+# 1. 看 SHM 占用
+df -h /dev/shm
+ls -lh /dev/shm | head
+
+# 2. 看配置里的段大小
+grep segment_size ~/sztu/src/sztu_slam/config/fastdds_wifi.xml
+
+# 3. 算一下能装几帧
+#    单帧 800 KB，64 MB = 82 帧，256 MB = 327 帧
+```
+
+**修复**
+
+```xml
+<segment_size>268435456</segment_size>   <!-- 256 MB -->
+```
+
+并且**不要**写 `interfaceWhiteList`：
+
+```xml
+<!-- 不要这样写 -->
+<interfaceWhiteList>
+  <address>192.168.43.24</address>
+</interfaceWhiteList>
+```
+
+硬编码 IP 有两个问题：
+
+- 热点重新分配 IP 后，UDP 绑定失败，**整个 participant 起不来**
+  （现象：进程活着、CPU 20%、所有话题静默）
+- 现场人多导致 Wi-Fi 断开时，同样整个 participant 失效
+
+SHM 本来就能覆盖本机点云路径，UDP 只需要在网络可用时工作，所以
+**不要把它绑死在一个地址上**。
+
+**验证**
+
+```bash
+ros2 topic echo /sztu/sensor_status --once
+# 应该看到 imu_samples 在涨、imu_leveling_used 大于 0
+```
+
+---
+
+## 8. 行走时出现"幻影障碍"
+
+**症状**：机器人走起来后，前方明明没有东西，代价地图上却冒出障碍，
+安全门报 `obstacle_in_swept_footprint`。
+
+**根因**：躯干随步态俯仰，胸前雷达跟着上下摆。`odom -> base_link` 的
+TF 只有 10 Hz，采不到每步几度的俯仰。`estimate_ground` 拟合出一个
+倾斜的平面，地面点被算到 `safety_min_height`（5 cm）以上，就成了障碍。
+
+**修复：用雷达 IMU 摆平点云**
+
+`nav_sensor_adapter` 订阅 `/aima/hal/sensor/lidar_chest_front/imu`
+（184 Hz），`imu_leveller.py` 里做互补滤波：
+
+- 陀螺积分负责快速变化
+- 加速度计以 `alpha=0.01`（约 0.5 s 时间常数）慢慢拉回真实垂线
+
+**这个 IMU 有几个坑**：
+
+| 现象 | 说明 |
+|---|---|
+| `orientation` 恒为 `[0,0,0,1]` | 未融合，**不能用**，只能用加速度和角速度 |
+| 加速度是 `[9.75, ...]` | **X 轴朝上**，不是 ROS 惯例的 Z |
+| 雷达是"躺着"装的 | `lidar_chest_front -> lidar_imu_chest_front` 是 120° 旋转，雷达自身的"上"是 **-Y** |
+| `tilt_degrees()` 静止时约 90° | 正常，那是雷达系的值；传 `cloud_rotation` 才是物理俯仰 |
+
+**验证方法**
+
+```bash
+ros2 topic echo /sztu/sensor_status --once
+# imu_tilt_deg 应该是几度（不是 90 度）
+# imu_leveling_used 应该在涨
+```
+
+如果 `imu_samples` 是 0，先看第 7 节（SHM 段问题）。
+
+**参数开关**
+
+```bash
+# 关掉 IMU 摆平，回退到纯 TF
+ros2 param set /nav_sensor_adapter imu_leveling false
+```
+
+---
+
+## 9. 诊断顺序（现场出问题先跑这四条）
+
+**一律在机器人上执行**，不要在开发机 RViz 上猜：
+
+```bash
+ros2 topic hz /lio/points          # ① 点云
+ros2 topic hz /slam/lidar_odom     # ② 里程计
+ros2 topic hz /sztu/safety_scan    # ③ 扫描
+ros2 run tf2_ros tf2_echo map sztu_nav_base   # ④ 地图坐标系
+```
+
+| 现象 | 结论 |
+|---|---|
+| 机器人上全有，开发机 RViz 空白 | **纯网络问题**，导航正常 |
+| ①有 ②无 | `lio_odom_bridge` 挂了 |
+| ③无 ②有 | 适配器 TF 拿不到（看第 7 节 SHM） |
+| 全无 | DDS 起不来（IP 变了 / 断网） |
+
+**网络断了先别重启**，等 30~60 秒让 DDS 自己重连。反复重启会打断恢复过程。
 
 ---
 
