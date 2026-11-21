@@ -1,0 +1,27 @@
+{
+  "source_bag": "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_154812",
+  "formula": "R_new = R_imu_rect @ R_imu_from_lidar @ R_lidar_rect.T; T_new = R_imu_rect @ T_imu_from_lidar",
+  "rotation": [
+    [
+      0.9999533365735452,
+      0.0015116197042464592,
+      0.009541471652932842
+    ],
+    [
+      -0.0013867988479434046,
+      0.9999135566296135,
+      -0.01307501653046847
+    ],
+    [
+      -0.009560411308585537,
+      0.013061174303500178,
+      0.999868993549367
+    ]
+  ],
+  "translation": [
+    0.011211999692022802,
+    -0.0157517995685339,
+    0.004274399951100343
+  ],
+  "point_timestamp_unit": "nanosecond offsets from header; retained acquisition times through header+t0 and relative time in seconds"
+}

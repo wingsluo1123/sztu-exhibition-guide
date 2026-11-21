@@ -1,0 +1,16 @@
+{
+  "scope": "failure evidence, no new physical trial yet",
+  "rviz_goal_05": "Clicked goal outside agreed area; nonzero_commands=0; no registration",
+  "rviz_goal_06": "No goal; operator reported program crashed; RViz log X11 connection broke, exit1; nonzero_commands=0",
+  "rviz_goal_07": "preflight_not_ready, no registration; localization latched lost",
+  "live03_loss": {
+    "epoch": 1795200488.1458914,
+    "last_processed_stamp": 1795200487.710537,
+    "age_s": 0.4353544,
+    "freshest_buffered_stamp": 1795200488.0103984,
+    "lio_longest_cloud_callback_gap_in_queried_trace_s": 0.232687026,
+    "pending_pairs": "timestamped robot transforms unavailable at time of processing; full cause unresolved"
+  },
+  "gdb": "attach failed due runtime ptrace environment; no stack obtained",
+  "authorization": "one physical attempt confirmed, not consumed by 05/06/07; no motor commands in these sessions"
+}

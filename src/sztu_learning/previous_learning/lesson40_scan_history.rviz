@@ -1,0 +1,38 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 30; 30; 30
+    Fixed Frame: camera_init
+    Frame Rate: 20
+  Displays:
+    - Class: rviz_default_plugins/PointCloud2
+      Name: FAST-LIO registered scan
+      Enabled: true
+      Topic:
+        Value: /learning/lesson34/cloud_registered
+        Depth: 5
+        Reliability Policy: Best Effort
+        Durability Policy: Volatile
+        History Policy: Keep Last
+      Position Transformer: XYZ
+      Color Transformer: FlatColor
+      Color: 80; 220; 255
+      Style: Points
+      Size (Pixels): 3
+      Decay Time: 60
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 8
+      Pitch: 0.6
+      Yaw: 0.8
+      Focal Point:
+        X: 2
+        Y: 0
+        Z: 0
+Window Geometry:
+  Width: 1100
+  Height: 750

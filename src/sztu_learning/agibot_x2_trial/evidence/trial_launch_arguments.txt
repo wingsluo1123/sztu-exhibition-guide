@@ -1,0 +1,25 @@
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'use_sim_time':
+        no description given
+        (default: 'true')
+
+    'reliable_input':
+        no description given
+        (default: 'true')
+
+    'nav2':
+        no description given
+        (default: 'false')
+
+    'map':
+        no description given
+        (default: '/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/share/my_nav2_pointcloud_pkg/maps/projected_map.yaml')
+
+    'params_file':
+        no description given
+        (default: '/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/share/my_nav2_pointcloud_pkg/config/nav2_params.yaml')
+
+    'pointcloud_topic':
+        no description given
+        (default: '/lidar/points_rectified')

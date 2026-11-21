@@ -1,0 +1,50 @@
+{
+  "no_robot_api": true,
+  "results": [
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -2.6864483031,
+      "status": 4,
+      "final_pose": [
+        -0.7005123871966108,
+        -0.5006029209213967,
+        -2.777913753463249
+      ],
+      "distance_m": 0.03853229373778798,
+      "yaw_error_rad": 0.09146545036324882,
+      "nonzero_commands": 99
+    },
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -1.2,
+      "status": 4,
+      "final_pose": [
+        -0.7016654798102523,
+        -0.5013500102694127,
+        -0.9602408199671448
+      ],
+      "distance_m": 0.03967147824705348,
+      "yaw_error_rad": 0.23975918003285512,
+      "nonzero_commands": 152
+    }
+  ],
+  "model": {
+    "linear_gain": 2.0,
+    "linear_response_seconds": 0.65,
+    "angular_response_seconds": 0.5,
+    "synthetic_pose_feedback": true,
+    "source_localization_tested": false
+  },
+  "all_lifecycle_nodes_active": true,
+  "error": "AssertionError(\"{'goal': [-0.6619954705, -0.501691401], 'yaw': -1.2, 'status': 4, 'final_pose': [-0.7016654798102523, -0.5013500102694127, -0.9602408199671448], 'distance_m': 0.03967147824705348, 'yaw_error_rad': 0.23975918003285512, 'nonzero_commands': 152}\")",
+  "process_exit_codes": [
+    0,
+    0
+  ]
+}

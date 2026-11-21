@@ -1,0 +1,57 @@
+{
+  "rotation": [
+    [
+      0.027690238933945767,
+      0.9996154824457667,
+      0.001462163635960734
+    ],
+    [
+      -0.04762328389505282,
+      -0.00014185904059039672,
+      0.9988653576468974
+    ],
+    [
+      0.9984814838036968,
+      -0.027728453450020153,
+      0.047601043795676014
+    ]
+  ],
+  "translation": [
+    0.0,
+    0.0,
+    0.988102172047943
+  ],
+  "height_band": [
+    0.25,
+    1.85
+  ],
+  "floor": {
+    "normal_in_initial_level_frame": [
+      -0.009396773658780687,
+      -0.007736882250654094,
+      0.9999259179048441
+    ],
+    "point_on_plane_in_initial_level_frame_m": [
+      -0.05556685800623625,
+      -2.1947198456275525,
+      -1.0056791130701022
+    ],
+    "candidate_points_after_voxel_sample": 2904,
+    "inliers": 1877,
+    "inlier_absolute_error_p95_m": 0.05279732032990564,
+    "inlier_xy_extent_m": [
+      6.302058350026343,
+      9.014492464646716
+    ],
+    "tilt_from_gravity_hint_degrees": 0.6974240822034681,
+    "method": "Seeded near-horizontal RANSAC followed by SVD; global flat-floor candidate"
+  },
+  "imu_samples": 400,
+  "frames": 20,
+  "maximum_gyro_rad_s": 0.01736372163020947,
+  "acceleration_std_m_s2": 0.005629810566266223,
+  "maximum_imu_displacement_m": 0.007055807058199935,
+  "first_frame_stamp": 1795200742.1127012,
+  "last_frame_stamp": 1795200744.0098703,
+  "source": "Current live startup only; stationary IMU and registered FAST-LIO frames"
+}

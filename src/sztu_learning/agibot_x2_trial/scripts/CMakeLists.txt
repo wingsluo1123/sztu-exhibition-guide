@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(trial_pcd_tools LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 17)
+find_package(PCL REQUIRED COMPONENTS io filters segmentation)
+add_executable(pcd_merge pcd_merge.cpp)
+target_include_directories(pcd_merge PRIVATE ${PCL_INCLUDE_DIRS})
+target_link_libraries(pcd_merge PRIVATE ${PCL_LIBRARIES})

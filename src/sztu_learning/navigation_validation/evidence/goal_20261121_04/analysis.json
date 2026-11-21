@@ -1,0 +1,28 @@
+{
+  "result": "arrived",
+  "goal_map_xy": [
+    -0.5616758390836705,
+    -0.5153396898846554
+  ],
+  "final_map_pose": [
+    -0.5442793731320184,
+    -0.5551192191040372,
+    -2.2387212891736348
+  ],
+  "estimated_map_error_m": 0.043417139156358975,
+  "independent_physical_position_measurement": false,
+  "motion_phases": {
+    "turn": 74,
+    "settle": 193,
+    "drive": 76,
+    "arrived": 1
+  },
+  "observed_nonzero_wire_commands": {
+    "(0.0, -0.7)": 74,
+    "(0.15, 0.0)": 76
+  },
+  "maximum_control_odom_age_s": 0.27045583724975586,
+  "mission_elapsed_s": 9.206444025039673,
+  "operator_confirmation": "mission/operator_observation.json",
+  "subsequent_hold_issue": "input_timeout_requires_reinitialization about 75 seconds after task; live RViz diagnostic blocked; no motor commands"
+}

@@ -1,0 +1,16 @@
+{
+  "operator_reply": "再试一次，已回起点原朝向并停稳，遥控器及净空满足",
+  "release": "rviz_release04",
+  "relative_target_forward_left_m": [
+    0.6,
+    -0.4
+  ],
+  "linear_m_s": 0.15,
+  "angular_rad_s": 0.7,
+  "duration_s": null,
+  "max_distance_m": 2.0,
+  "radius_m": 0.4,
+  "one_attempt": true,
+  "no_automatic_retry": true,
+  "trial": "rviz_goal_20261121_09"
+}

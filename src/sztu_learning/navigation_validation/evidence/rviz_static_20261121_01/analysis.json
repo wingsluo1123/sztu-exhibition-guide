@@ -1,0 +1,19 @@
+{
+  "valid_receive_duration_s": 171.6555314064026,
+  "invalid_after_first_valid": 0,
+  "pose_count": 1716,
+  "last_adapter": {
+    "accepted": 1781,
+    "rejected": 0,
+    "last_reason": "accepted",
+    "input_age_s": 0.10058355331420898,
+    "conversion_wall_s": 0.00227410899969982,
+    "point_time_interpretation": "Candidate relative ns; nominal calibration retained"
+  },
+  "actuation_requested": false,
+  "exit_codes": {
+    "localization": 0,
+    "fastlio": 0,
+    "adapter": 0
+  }
+}

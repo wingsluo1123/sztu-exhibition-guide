@@ -1,0 +1,21 @@
+{
+  "source": "https://github.com/Nova-Valley/agibot-x2-navigation.git",
+  "backup_time": "2026-11-21T05:41:46.574273+08:00",
+  "commit": "9ad1ad8af1b47b1d8fda42c3ca9c828bc5625629",
+  "commit_count": 9,
+  "shallow": "false",
+  "working_tree_clean": true,
+  "lfs_object_count": 29,
+  "lfs_objects_sha256_verified": true,
+  "archive_entries": 746,
+  "artifacts": {
+    "agibot-x2-navigation-full-9ad1ad8.tar.gz": {
+      "size_bytes": 306667900,
+      "sha256": "d2dc8faf46c2fab7fa88646f0cccd16b76278c600d6e211b7ece452bf1970514"
+    },
+    "agibot-x2-navigation-history.bundle": {
+      "size_bytes": 892574,
+      "sha256": "4da69c6db477789ab798e2493337afd6e1666c405ff2d167f4fdb524916a971c"
+    }
+  }
+}

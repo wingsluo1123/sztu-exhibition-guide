@@ -1,0 +1,20 @@
+{
+  "result": "nav2_action_failed",
+  "action_status": 6,
+  "motor_mission_exited": true,
+  "operator_report": "已停稳，向左转了；转向后不动，方向错误",
+  "target_initial_right_turn_deg": -29.42964486561571,
+  "observed_map_yaw_change_deg": 29.749034077296884,
+  "linear_command_min_max": [
+    0.0,
+    0.0
+  ],
+  "angular_command_min_max": [
+    -0.08625301670567216,
+    0.6428851835356613
+  ],
+  "failure_log": "controller_server: Failed to make progress",
+  "physical_distance_not_measured": true,
+  "causal_limits": "反向姿态变化开始于首次正转指令之前；Nav2限加速度可延续反向测得转速，但不能据此解释最早的反向起步。小指令是否低于真机有效起步范围仍未独立测量。",
+  "next": "隔离电脑真实Nav2测得转速注入实验；不自动重试真机。"
+}

@@ -1,0 +1,16 @@
+{
+  "operator_response": "采用，未再移动，路线和目标净空满足",
+  "radius_response": "本次暂用0.40米半径，现场监督净空",
+  "target_relative_forward_left_m": [
+    0.6,
+    0.4
+  ],
+  "speed_m_s": 0.15,
+  "angular_rad_s": 0.7,
+  "duration_s": 30,
+  "observed_travel_limit_m": 2,
+  "radius_m": 0.4,
+  "tolerance_m": 0.15,
+  "cleared_site": "route and goal surrounded by one metre clear, operator with remote",
+  "attempt_count": 1
+}

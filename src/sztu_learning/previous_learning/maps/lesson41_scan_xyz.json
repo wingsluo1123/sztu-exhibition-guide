@@ -1,0 +1,16 @@
+{
+  "topic": "/learning/lesson34/cloud_registered",
+  "frame_id": "camera_init",
+  "stamp": {
+    "sec": 1795012160,
+    "nanosec": 410161018
+  },
+  "points": 12856,
+  "fields_saved": [
+    "x",
+    "y",
+    "z"
+  ],
+  "coordinate_unit": "m",
+  "scope": "single registered scan; candidate timing assumptions; not a validated map"
+}

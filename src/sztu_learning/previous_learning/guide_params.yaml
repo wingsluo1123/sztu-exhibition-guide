@@ -1,0 +1,4 @@
+guide_learning:
+  ros__parameters:
+    status_text: '欢迎来到深圳技术大学展厅！'
+    publish_period: 2.0

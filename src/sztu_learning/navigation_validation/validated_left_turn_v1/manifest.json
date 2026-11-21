@@ -1,0 +1,30 @@
+{
+  "scope": "validated left turn only; general goal navigation unvalidated",
+  "evidence": "../evidence/turn_left_20261121_03",
+  "files_sha256": {
+    "straight_trial.py": "47db367843d581350b789b604f477fae2376e927036a4cf9af4ca4c4ca5c7c74",
+    "navigation_localization.py": "96ccbe9a7a27c03b97557d895da44e7069d5153fa2851fb9da8e4a1793e96479",
+    "planar_math.py": "e0399bda2b2d2d13b496370e0f4d0fd8bf67c0a3e99ed955347119355ff3f880",
+    "matcher_readiness.py": "afa5a40c26add0ecec7b1023c520131f31364b89a04b748293d811309db641b3",
+    "diagnostic_session.py": "109b6bae21ec4716cef5f8cd4fa1a20b506b37067599db554a4c157030c5afdc",
+    "README.md": "07d894e33a1e641da2e2c4391f14ac8083dfe04b9558bc14b30752969f88a8b1",
+    "run_diagnostic.bash": "447cda01298e9f10615a26792243a29b4cdb211103d3e837dea8f0d3ff0e99d2",
+    "straight_trial_core.py": "ea589dcf00444af33613da5cfc123613199bf39884fc549b9fb5de36824ed1c7",
+    "runtime_deps/sztu_navigation/locomotion.py": "73bfb1a3db030d4fdc8c7c95cc13ee6f1522f95778348976e194da4babd402b1",
+    "runtime_deps/sztu_navigation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "runtime_deps/sztu_navigation/wire_audit.py": "b668205531b14c35d63432d7eed0b779f3854edb6e59a7afd059ac7ba0945381",
+    "runtime_deps/sztu_navigation/mc_state_guard.py": "6053c2f09cd99009a5917104407b8ed47953735c337aaa40dd55a7927adc4cb1",
+    "runtime_deps/sztu_slam/message_validation.py": "75eefe7fc334ce94e3bcda2342e331c94f6c6c448628c504b9ce405ebf1eaea1",
+    "runtime_deps/sztu_slam/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "goal_navigation/session.py": "756bacf30554dbc1a57a071280d1c23a63ee9d3b1baaaa1418d911f41f65dc81",
+    "goal_navigation/official_control_notes.md": "58ef67479b7a53a7b6c287d970b17d2424cd7b83bd5e44a0f5e598461adea94f",
+    "goal_navigation/navigate.py": "38e75c0958f8c3e1e6a91853dfd4ac398099fc426141c0f06ca39edbe9e8759d",
+    "goal_navigation/motion_policy.py": "316833814eab1464ad19b69f76e662fb567ad803d20ffdf79322b77f7ad46aa6",
+    "goal_navigation/goal_navigation.rviz": "24f79cec735500b6e17b84958d3cc1948dbbd4996cbad2018af0e0d32bdd7120",
+    "goal_navigation/run_navigate.bash": "8ab871c935e2b65f5884440aa7e75839792fa13647353c7e2a951ed54ef75251",
+    "goal_navigation/README.md": "62bbea4f1979a07ff3e4825c25f445f9fdb7754117f83dd06d244c850adbd02e",
+    "goal_navigation/test_observation_service.py": "3a8fd1d0be703822d0ab8d5cb99000664cc821818692b7e34acb32dac9532d0e",
+    "goal_navigation/test_goal_navigation.py": "f45ebabec11069bb86929d45908e3d89fa8fdfdeea1516f74a25d447b90a9c0e",
+    "goal_navigation/grid_route.py": "014b3e71a19d1214fee706e9a593746f2907076028355e2b60f53a204f0c3454"
+  }
+}

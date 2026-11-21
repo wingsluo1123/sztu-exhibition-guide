@@ -1,0 +1,18 @@
+{
+  "operator_observation": "确实向前走了，现已停稳",
+  "observed_result": "straight motion and closed-loop stop trigger demonstrated; final precision not accepted",
+  "command_duration_s": 1.5863063335418701,
+  "stop_trigger_progress_m": 0.4288877958959615,
+  "last_observed_progress_m": 0.6409229960454943,
+  "last_observed_lateral_m": -0.09277857181672503,
+  "post_command_progress_m": 0.2120352001495328,
+  "own_nonzero_readback_count": 25,
+  "own_nonzero_values": [
+    [
+      0.15,
+      0.0,
+      0.0
+    ]
+  ],
+  "limitation": "final_pose is sampled after 2s, not an independently measured settled endpoint; operator confirms actual stop; no autonomous obstacle avoidance"
+}

@@ -1,0 +1,33 @@
+{
+  "status": "proposal_not_authorized_not_executed",
+  "reference_run": "turn_left_20261121_03",
+  "start_map_pose": [
+    -0.28811613173139083,
+    -0.12174108530985381,
+    -0.33134400288167404
+  ],
+  "relative_goal_forward_left_m": [
+    0.6,
+    0.4
+  ],
+  "goal_map_xy": [
+    0.4093731405353016,
+    0.061312773084007455
+  ],
+  "route_map_xy": [
+    [
+      -0.28811613173139083,
+      -0.12174108530985381
+    ],
+    [
+      0.4093731405353016,
+      0.061312773084007455
+    ]
+  ],
+  "radius_m": 0.4,
+  "duration_s": 30,
+  "max_observed_travel_m": 2,
+  "linear_command_m_s": 0.15,
+  "angular_command_rad_s": 0.7,
+  "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0"
+}

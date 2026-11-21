@@ -1,0 +1,25 @@
+{
+  "physical_trial": "nav2_rviz_20261121_03",
+  "operator": "已运动并停稳，位置和朝向基本正确",
+  "nav2_action_status": 4,
+  "independent_result": "final_position_outside_tolerance",
+  "initial_right_turn_required_deg": -42.23643782266715,
+  "first_position_tolerance_pose": [
+    -0.5739608212598308,
+    -0.28153533885816345,
+    -1.9737167898310588
+  ],
+  "first_position_tolerance_time_s": 3.4080650806427,
+  "first_position_tolerance_distance_m": 0.14160156041132665,
+  "last_command_pose": [
+    -0.42883906587301845,
+    -0.6410397385732296,
+    -3.0461875083711276
+  ],
+  "last_command_distance_m": 0.264944787262906,
+  "last_command_yaw_error_deg": -5.634531399916161,
+  "post_action_estimated_shift_m": 0.05797404396836466,
+  "final_distance_m": 0.31117134389518064,
+  "final_yaw_error_deg": -14.533475702539072,
+  "note": "到官方动作结束前位置已超出容差；不能将所有误差归因于最后2.5秒的滑行。需核对stateful位置判定。数据为自身定位估计，不是外部测量。"
+}

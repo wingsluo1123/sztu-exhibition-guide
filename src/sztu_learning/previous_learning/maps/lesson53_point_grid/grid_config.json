@@ -1,0 +1,5 @@
+{
+  "resolution_m": 0.1,
+  "meaning": "Illustrative XY point-hit grid; True means at least one height-slice point falls in the cell, False remains unresolved.",
+  "parameter_source": "10 cm square cells chosen for this offline teaching view, not tuned navigation clearance or map accuracy"
+}

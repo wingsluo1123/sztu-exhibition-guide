@@ -1,0 +1,162 @@
+{
+  "epoch": 1795202800.3103209,
+  "parameters": {
+    "controller_server": {
+      "FollowPath.plugin": {
+        "type": 4,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.0,
+        "string_value": "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "FollowPath.desired_linear_vel": {
+        "type": 3,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.15,
+        "string_value": "",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "FollowPath.rotate_to_heading_angular_vel": {
+        "type": 3,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.7,
+        "string_value": "",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "goal_checker.plugin": {
+        "type": 4,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.0,
+        "string_value": "nav2_controller::SimpleGoalChecker",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "goal_checker.stateful": {
+        "type": 1,
+        "bool_value": true,
+        "integer_value": 0,
+        "double_value": 0.0,
+        "string_value": "",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "goal_checker.xy_goal_tolerance": {
+        "type": 3,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.15,
+        "string_value": "",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "goal_checker.yaw_goal_tolerance": {
+        "type": 3,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.1,
+        "string_value": "",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      }
+    },
+    "planner_server": {
+      "GridBased.plugin": {
+        "type": 4,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.0,
+        "string_value": "nav2_navfn_planner/NavfnPlanner",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "GridBased.allow_unknown": {
+        "type": 1,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.0,
+        "string_value": "",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      }
+    },
+    "bt_navigator": {
+      "default_nav_to_pose_bt_xml": {
+        "type": 4,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.0,
+        "string_value": "/home/agi/sztu_learning/navigation_validation/nav2_release01/nav2_integration/navigate_once.xml",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      },
+      "default_nav_through_poses_bt_xml": {
+        "type": 4,
+        "bool_value": false,
+        "integer_value": 0,
+        "double_value": 0.0,
+        "string_value": "/home/agi/sztu_learning/navigation_validation/nav2_release01/nav2_integration/navigate_poses_once.xml",
+        "byte_array_value": [],
+        "bool_array_value": [],
+        "integer_array_value": [],
+        "double_array_value": [],
+        "string_array_value": []
+      }
+    }
+  },
+  "lifecycle": {
+    "map_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "planner_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "controller_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "bt_navigator": {
+      "id": 3,
+      "label": "active"
+    }
+  },
+  "motion_nodes_present": []
+}

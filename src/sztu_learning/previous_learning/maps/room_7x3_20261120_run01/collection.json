@@ -1,0 +1,16 @@
+{
+  "frame_id": "camera_init",
+  "child_frame_id": "body",
+  "unit": "m",
+  "frames": 1182,
+  "points": 15241930,
+  "cloud_messages": 1182,
+  "odometry_messages": 1182,
+  "unmatched_cloud_stamps": [],
+  "unmatched_pose_stamps": [],
+  "skipped_nonfinite_points": 0,
+  "matching": "Exact output header(sec,nanosec); reception order irrelevant",
+  "time_meaning": "FAST-LIO output scan reference time; not individual point firing time",
+  "representation": "One NPZ per frame: XYZ in camera_init, body position, orientation xyzw and integer stamp",
+  "limits": "Separate replay origin/estimate. Do not mix these frames with poses/maps from previous runs. No LiDAR-origin or instantaneous-ray reconstruction yet."
+}

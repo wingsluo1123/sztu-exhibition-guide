@@ -1,0 +1,70 @@
+Panels:
+- Class: rviz_common/Displays
+  Name: Displays
+Visualization Manager:
+  Class: ''
+  Global Options:
+    Background Color: 48; 52; 56
+    Fixed Frame: learning_map
+    Frame Rate: 20
+  Displays:
+  - Class: rviz_default_plugins/Map
+    Name: Saved navigation map
+    Enabled: true
+    Topic:
+      Value: /learning/nav/saved_map
+      Depth: 1
+      Reliability Policy: Reliable
+      Durability Policy: Transient Local
+    Color Scheme: map
+    Alpha: 1
+    Use Timestamp: false
+  - Class: rviz_default_plugins/Path
+    Name: Planned route
+    Enabled: true
+    Topic:
+      Value: /learning/nav/planned_path
+      Depth: 1
+      Reliability Policy: Reliable
+      Durability Policy: Transient Local
+    Color: 0; 220; 255
+    Line Style: Lines
+    Line Width: 0.04
+  - Class: rviz_default_plugins/Marker
+    Name: Current robot forward direction
+    Enabled: true
+    Topic:
+      Value: /learning/nav/current_marker
+      Depth: 20
+      Reliability Policy: Best Effort
+      Durability Policy: Volatile
+  - Class: rviz_default_plugins/Pose
+    Name: Accepted goal
+    Enabled: true
+    Topic:
+      Value: /learning/nav/accepted_goal
+      Depth: 1
+      Reliability Policy: Reliable
+      Durability Policy: Transient Local
+    Shape: Arrow
+    Color: 255; 100; 30
+  Tools:
+  - Class: rviz_default_plugins/Interact
+  - Class: rviz_default_plugins/MoveCamera
+  - Class: rviz_default_plugins/SetGoal
+    Topic: /learning/nav/rviz_goal
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Angle: 0
+      Scale: 150
+      X: -0.4
+      Y: -0.4
+      Near Clip Distance: 0.01
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  X: 20
+  Y: 70
+  Width: 1200
+  Height: 920

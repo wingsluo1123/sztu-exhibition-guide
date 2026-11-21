@@ -1,0 +1,13 @@
+{
+  "status": {
+    "valid": true,
+    "waiting": null,
+    "forward_one_goal": true,
+    "goal_sent": false
+  },
+  "map_size": [
+    295,
+    270
+  ],
+  "marker_action": 0
+}

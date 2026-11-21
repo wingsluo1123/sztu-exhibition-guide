@@ -1,0 +1,121 @@
+{
+  "run": "rviz_goal_20261121_09",
+  "result": "input_invalid",
+  "operator_heading_accepted": false,
+  "goal_distance_m": 0.12667629687300686,
+  "goal_yaw_error_deg": -86.79201237901887,
+  "phase_transitions": [
+    {
+      "epoch": 1795201434.5897806,
+      "phase": "turn",
+      "angular": -0.7,
+      "distance_odom_m": 0.8032862353223863,
+      "odom_yaw": -1.5585885677831601
+    },
+    {
+      "epoch": 1795201436.1039968,
+      "phase": "settle",
+      "angular": 0.0,
+      "distance_odom_m": 0.8527493902565593,
+      "odom_yaw": -2.192946636874478
+    },
+    {
+      "epoch": 1795201438.1197586,
+      "phase": "drive",
+      "angular": 0.0,
+      "distance_odom_m": 0.8407390073631679,
+      "odom_yaw": -2.3182007958389743
+    },
+    {
+      "epoch": 1795201439.824899,
+      "phase": "settle",
+      "angular": 0.0,
+      "distance_odom_m": 0.3108775465911444,
+      "odom_yaw": -2.3378562365887388
+    },
+    {
+      "epoch": 1795201441.8236861,
+      "phase": "turn",
+      "angular": -0.7,
+      "distance_odom_m": 0.12418907807095701,
+      "odom_yaw": -2.209525150171584
+    },
+    {
+      "epoch": 1795201442.6882012,
+      "phase": "settle",
+      "angular": 0.0,
+      "distance_odom_m": 0.17503481914661678,
+      "odom_yaw": -2.3997241033714145
+    },
+    {
+      "epoch": 1795201444.6984792,
+      "phase": "turn",
+      "angular": 0.7,
+      "distance_odom_m": 0.15187206822511992,
+      "odom_yaw": -2.4105460634602935
+    },
+    {
+      "epoch": 1795201445.8350253,
+      "phase": "settle",
+      "angular": 0.0,
+      "distance_odom_m": 0.19163134645625585,
+      "odom_yaw": -1.5690247372799453
+    },
+    {
+      "epoch": 1795201447.8337665,
+      "phase": "turn",
+      "angular": 0.7,
+      "distance_odom_m": 0.20065212809659536,
+      "odom_yaw": -1.3461529824753016
+    },
+    {
+      "epoch": 1795201448.7698932,
+      "phase": "settle",
+      "angular": 0.0,
+      "distance_odom_m": 0.2361758900374756,
+      "odom_yaw": -1.202200162125182
+    },
+    {
+      "epoch": 1795201450.781681,
+      "phase": "drive",
+      "angular": 0.0,
+      "distance_odom_m": 0.2586456361976913,
+      "odom_yaw": -1.0544488831316663
+    },
+    {
+      "epoch": 1795201451.422921,
+      "phase": "settle",
+      "angular": 0.0,
+      "distance_odom_m": 0.20041340452078868,
+      "odom_yaw": -1.0519376670046283
+    },
+    {
+      "epoch": 1795201452.4836383,
+      "phase": "stopped",
+      "angular": 0.0,
+      "distance_odom_m": 0.02016100555391151,
+      "odom_yaw": -0.9205509855489621
+    }
+  ],
+  "direct_abort": {
+    "ready": false,
+    "invalid_odometry": false,
+    "mc_reason": "",
+    "status": {
+      "valid": true,
+      "source_valid": true,
+      "stamp": 1795201452.210307,
+      "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+      "reason": "map_match_accepted",
+      "mode": "diagnostic_no_actuator"
+    },
+    "odom_age": 0.27214574813842773,
+    "map_age": 0.37211060523986816,
+    "status_receive_age": 0.0009544220010866411
+  },
+  "findings": [
+    "Controller entered final yaw turn within position tolerance, then returned to positional bearing correction after gait displacement crossed 0.15m tolerance.",
+    "Separate odometry/status/TF deliveries were sampled at inconsistent source timestamps; last map_age 0.3721 exceeded unchanged 0.35s gate.",
+    "These are software findings; atomic observation and terminal-heading latch are local candidates, not physically verified fixes."
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "user_reply": "确实转向并前进，现已停稳",
+  "previous_ui_correction": "正常了，之前是我方向错了",
+  "physical_trial_consumed": true,
+  "automatic_retry": false,
+  "result": "input_invalid",
+  "goal_distance_m": 0.030463760496099578,
+  "goal_yaw_error_deg": -9.404679898574663,
+  "arrival_accepted": false
+}

@@ -1,0 +1,86 @@
+{
+  "no_surveyed_ground_truth": true,
+  "samples": 1517,
+  "temporal_span_sec": 151.600191116333,
+  "gap_sec_percentiles": [
+    0.09999585151672363,
+    0.10113459825515747,
+    0.1022897481918335,
+    0.1056678295135498
+  ],
+  "scan_step_xy_m_percentiles": [
+    0.0033680369929854383,
+    0.07408542203193959,
+    0.10236027657508587,
+    0.16833761674241907
+  ],
+  "ndt_fitness_percentiles": [
+    0.000722323,
+    0.0021500000000000004,
+    0.00422270039999999,
+    0.728918
+  ],
+  "registration_wall_sec_percentiles": [
+    0.0044353,
+    0.007386018000000004,
+    0.016705351999999986,
+    0.0614023
+  ],
+  "start_aligned_lio_xy_difference_m_percentiles": [
+    0.17902736569413466,
+    1.3598306096310417,
+    1.650168350219051,
+    1.6909710887570069
+  ],
+  "moving_samples": 260,
+  "moving_start_aligned_lio_xy_difference_m_percentiles": [
+    0.4960103862528027,
+    1.648956795265088,
+    1.6711065200701078,
+    1.6909710887570069
+  ],
+  "map_odom_translation_step_m_percentiles": [
+    0.00353258285965072,
+    0.058977448003914634,
+    0.1253390071840157,
+    0.25601336676854014
+  ],
+  "map_odom_rotation_step_rad_percentiles": [
+    0.001161852937799448,
+    0.032446439561685234,
+    0.05568257863248079,
+    0.4731290955357031
+  ],
+  "stationary_alignment_window_sec": [
+    2,
+    5
+  ],
+  "stationary_window_xyz_extent_m": [
+    0.0027543158922958694,
+    0.002610739476369004,
+    0.0014751392184406131
+  ],
+  "stationary_window_rotation_extent_rad": 0.0003865338941787457,
+  "settled_start_lio_xy_difference_m_percentiles": [
+    0.010183773070849545,
+    0.2422241148101004,
+    0.32845666877777674,
+    0.36922772927323566
+  ],
+  "post_startup_map_odom_translation_step_m_percentiles": [
+    0.0035851531486512894,
+    0.059076815321160873,
+    0.11956032326887203,
+    0.25601336676854014
+  ],
+  "post_startup_map_odom_rotation_step_rad_percentiles": [
+    0.001161852937799448,
+    0.03252370974127912,
+    0.05510217889705019,
+    0.09140684278361312
+  ],
+  "start_end_xy_distance_m": 0.3587333727546592,
+  "transform_warnings": 0,
+  "bad_fitness_rejections": 0,
+  "convergence_rejections": 0
+}

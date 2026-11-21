@@ -1,0 +1,5 @@
+{
+  "raw_answer": "有，已停稳，没有",
+  "question": "是否先转向再向斜前方走，已停稳，有无明显走过目标或方向不对",
+  "supports": "qualitative turn and translation with stop; no surveyed target error"
+}

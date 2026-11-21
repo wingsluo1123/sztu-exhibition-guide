@@ -1,0 +1,6 @@
+# 学习副本新增的参数，仅用于提供可靠点云的离线输入链路。
+# 不改逐点时间解释、外参或算法计算；默认未加载此文件时仍用原BEST_EFFORT。
+laser_mapping:
+  ros__parameters:
+    common:
+      reliable_lidar_input: true

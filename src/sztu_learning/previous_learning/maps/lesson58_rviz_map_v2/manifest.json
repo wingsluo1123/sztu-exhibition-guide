@@ -1,0 +1,31 @@
+{
+  "input_run": "maps/lesson56_paired_run01",
+  "reference_map": "maps/lesson57_rviz_map",
+  "reference_manifest_sha256": "1597b17b502eff45d5ca68f1b10b475dbd1dd624ec1e257b31144d1fc1d4e777",
+  "input_manifest_sha256": "1454d9b94aa01aaf963895eef043e947c6faea2d8dcb046d7ddcac8acc619baf",
+  "input_index_sha256": "439545a318fc048735618f0a5ef696ec23f3d9df8e2b9c9b3199c1d0db370d1f",
+  "source_sha256": {
+    "build_rviz_map_v2.py": "822bcf4c5cb1793a902eb2c562fcc80bce558eb1a43cad50a3da5ba6ddb8c846",
+    "map_voxel_rays.cpp": "48521175ecfc2c3b43567bd1989a3644611b94ceb7410cfac739a3f06ede60df",
+    "map_pipeline_v2.yaml": "97720901ef7f50136c365acf925c8790eed93489686673ef23777c8a2917c59e",
+    "fastlio_extrinsics_candidate.yaml": "568ad610ee58ff01cb1ae4ef4944489d47f69b1ec3727b7f2229c1026748dffa"
+  },
+  "binary_sha256": "3ffea0a70285d2c26861b2d53cb7cec06562eeca9277c01ff46d450402269d40",
+  "invocation": [
+    "src/sztu_learning/build_rviz_map_v2.py"
+  ],
+  "files_sha256": {
+    "summary.json": "982b62cc72e58e1f2e6365003bb7c163aa161bc49cfb2338adf951f547d3560e",
+    "keyframes.json": "4c85b6578940277b7b0ee0d4d5b8d33c8636d9d8165c18983a6d79901c1013cf",
+    "occupancy.npy": "a49337fa72d76b40fb210a4d49491fb15007b8658f905dc4459cf786fdbcf126",
+    "map_preview.png": "36f0d5dab1118ed6d24ce421f4232dd224fc38853f925c94eaab1ef89c0180eb",
+    "transform.json": "9d64e2c7f3ed6c8cd248faa63d1a4df4942bbf8dc43489c5d1e45944cf78e709",
+    "map.pgm": "e1ea08fd2cfc53f86841ddd540ef95f432172a22bf7dc27633a96ed195f6cf0d",
+    "effective_config.yaml": "fb1456cee7ad9f4b3579d24269294d739a61e3e12864e123651fa34ca2ead9ca",
+    "trajectory.csv": "46a972fd97816154fd0c7c05687be7996262ecc77f6ba75ad678824e1cce1787",
+    "map.yaml": "cee7946e7429740da8488345be02185f77f6571e78126262654feb9a870a4e51",
+    "evidence/raycast.log": "76ee5b27c0fd379207230cf012b2fc5fae391b5a917b32e65f5124b9410970e1",
+    "evidence/rays.bin": "6b5c0ad528d35a9ed5b479f564ff9216dcbcc4e3335563a3bed9734946119125",
+    "evidence/voxel_counts.bin": "503fd2829503102a2f29d7337bd0a36fb4eba311f07e44a4c322cf2ef75fe4d5"
+  }
+}

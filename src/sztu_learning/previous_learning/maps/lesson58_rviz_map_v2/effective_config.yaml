@@ -1,0 +1,31 @@
+source: maps/lesson56_paired_run01
+output: maps/lesson58_rviz_map_v2
+frame_id: learning_map
+up_hint:
+- 0.9978451992825231
+- -0.025845459587543605
+- 0.06030730044969903
+up_hint_record: runtime_logs/lesson48/axis_check.json
+turn_heading_degrees: 180.0
+resolution_xy_m: 0.05
+resolution_z_m: 0.1
+maximum_range_m: 15.0
+minimum_range_m: 0.45
+floor_search_height_m:
+- -1.4
+- -0.6
+floor_inlier_m: 0.05
+floor_seed: 57
+obstacle_height_m:
+- 0.25
+- 1.85
+keyframe_translation_m: 0.1
+keyframe_rotation_degrees: 5.0
+keyframe_maximum_interval_s: 1.0
+minimum_hit_frames: 3
+minimum_free_frames: 2
+occupied_hit_ratio: 0.35
+reference_map: maps/lesson57_rviz_map
+use_all_frames: true
+conflict_minimum_free_frames: 20
+free_maximum_hit_ratio: 0.1

@@ -1,0 +1,32 @@
+{
+  "input_bag": "/home/sztu/sztu/src/sztu_learning/bags/lesson43_move_20261119_231833",
+  "input_transfer_verification": "/home/sztu/sztu/src/sztu_learning/runtime_logs/lesson43/transfer_report.json",
+  "run_evidence": "/home/sztu/sztu/src/sztu_learning/runtime_logs/lesson44/run_report.json",
+  "output_validation": "/home/sztu/sztu/src/sztu_learning/runtime_logs/lesson44/output_check.json",
+  "frame_id": "camera_init",
+  "coordinate_unit": "m",
+  "raw_timestamp_assumption": "Relative ns converted to seconds; reference instant unconfirmed",
+  "artifacts": {
+    "pointcloud_preview.png": {
+      "sha256": "20cf7253e3108e4fa8a801ff72a842ee9fe144bc73f8aaecb49d3b168417a910",
+      "bytes": 906554
+    },
+    "trajectory.png": {
+      "sha256": "329328683811d8d41e2f768fb3d08090c7f00346457908d4afed2766bc740520",
+      "bytes": 110841
+    },
+    "registered_scans_xyz.pcd": {
+      "sha256": "159f9497702684dd665015947db44563224c14ddb4a2542dfb5893d2feeb0f87",
+      "bytes": 107365537
+    },
+    "collection.json": {
+      "sha256": "a63a6ec7d884520c7137280298e9249ee340edfdad04fcf3001591428839b53d",
+      "bytes": 488
+    },
+    "trajectory.csv": {
+      "sha256": "a8227b6b661335a621fb6bc85e8743d724116ffe9895ea06c9156b3b1520e6a8",
+      "bytes": 115627
+    }
+  },
+  "visual_review": "Trajectory projection shows outward movement, turn and return near starting region. Sampled point preview shows planar environmental structures. RViz Global Status: Ok. No geometric accuracy acceptance."
+}

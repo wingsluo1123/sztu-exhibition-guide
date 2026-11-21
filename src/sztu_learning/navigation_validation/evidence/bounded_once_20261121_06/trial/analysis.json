@@ -1,0 +1,28 @@
+{
+  "operator_observation": "已向前走并停稳，大约半米",
+  "start_pose": [
+    -0.025904519007334998,
+    0.14556108838194107,
+    -1.5758300557020142
+  ],
+  "final_observed_pose": [
+    -0.08579546087174743,
+    -0.3279559408902154,
+    -1.6638513486031146
+  ],
+  "forward_progress_m": 0.47381250368874217,
+  "lateral_m": -0.057506636802549665,
+  "stop_trigger_progress_m": 0.26421200544605733,
+  "forward_goal_error_m": -0.02618749631125783,
+  "within_0_5_plus_minus_0_1_by_localization": true,
+  "nonzero_command_duration_s": 1.2651424407958984,
+  "wire_nonzero_values": [
+    [
+      0.15,
+      0.0,
+      0.0
+    ]
+  ],
+  "physical_stop_operator_confirmed": true,
+  "limits": "one short straight test, no autonomous obstacle avoidance, no independent surveyed distance measurement"
+}

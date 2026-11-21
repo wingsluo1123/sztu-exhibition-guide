@@ -1,0 +1,67 @@
+{
+  "operation": "180-degree coordinate rotation about candidate positive Z, same origin",
+  "source_frame": "learning_level_candidate",
+  "target_frame": "learning_level_turned_candidate",
+  "combined_source_frame": "camera_init",
+  "rows": 1428,
+  "unit": "m",
+  "contains_orientation": false,
+  "inputs": [
+    {
+      "path": "maps/lesson49_level_positions/positions.csv",
+      "bytes": 119121,
+      "sha256": "32474ca6cfa3e10b7f9e8a9fb850f7f1873c8cbc04cf119e5b58111b25997e7c"
+    },
+    {
+      "path": "maps/lesson49_level_positions/transform.json",
+      "bytes": 1454,
+      "sha256": "ffd8039b1396740b5f6714dafdf3101a7285119578bbb1a0eeb808ebd4e78c50"
+    },
+    {
+      "path": "maps/lesson49_level_positions/manifest.json",
+      "bytes": 2620,
+      "sha256": "c94593cecd2f11ee953b9c1c476ca79f2eb47d7e5e7c3edace061712cfe8f44d"
+    }
+  ],
+  "code": [
+    {
+      "path": "lesson50_turn_heading.py",
+      "bytes": 2624,
+      "sha256": "f2c78bec43ed84f40d00e66aeba39c72268a0ba2f3deed0fb9cd79c5d5634275"
+    },
+    {
+      "path": "lesson49_level_positions.py",
+      "bytes": 2694,
+      "sha256": "53a3da436b3d300b96bb4ffb69772a7c11978bdbbeb7a87ca4e0e88f762dcd65"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "maps/lesson50_turned_positions/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    {
+      "path": "maps/lesson50_turned_positions/transform.json",
+      "bytes": 1718,
+      "sha256": "3568cfc264a331c1a6900802aaa9644fb465cef21c2e1831f9502c123e71d23c"
+    },
+    {
+      "path": "maps/lesson50_turned_positions/trajectory.png",
+      "bytes": 70233,
+      "sha256": "a4c399445145530f042e2bbf367a676aeefee9e64a310333f363e7437c8da380"
+    },
+    {
+      "path": "maps/lesson50_turned_positions/README.md",
+      "bytes": 1643,
+      "sha256": "319634074836b19f57bf376a4620a7fc5c305d999081d2b9d39fdd4be23bfffd"
+    }
+  ],
+  "verification": {
+    "path": "runtime_logs/lesson50/output_check.json",
+    "bytes": 546,
+    "sha256": "98115a5dd5f8ba19bfcf223a1225ae5eece604497efd4b80abba5845ef2bff3e"
+  },
+  "visual_review": "Reviewed: first marker below route, far turn above; corresponds to requested half turn.",
+  "limits": "Positions only. No point cloud, orientation, covariance, TF or robot operation. Existing approximate gravity and drift limitations remain."
+}

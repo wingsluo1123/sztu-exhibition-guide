@@ -1,0 +1,9 @@
+{
+  "result": "not_arrived",
+  "stop_reason": "source_age_0.25359s_over_commissioning_0.25s",
+  "stop_phase": "settle_zero_command_already_issued",
+  "post_zero_displacement_odom_m": 0.29395982671888543,
+  "final_map_goal_error_m": 0.19357230108473367,
+  "next_criteria": "../../goal_navigation/gate_revision_02.md",
+  "operator_observation_file": "mission/operator_observation.json"
+}

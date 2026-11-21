@@ -1,0 +1,21 @@
+{
+  "state": "local_software_checked_not_deployed_not_physically_tested",
+  "parent_robot_release": "rviz_release04",
+  "latest_physical_trial": "rviz_goal_20261121_09",
+  "physical_result": "input_invalid; operator reported heading wrong",
+  "software_checks": "78 passed in 1.15s",
+  "log": "evidence/rviz_atomic_full_tests_20261121.log",
+  "motion_since_trial09": false,
+  "next_direction": "Nav2 integration recommended; no new custom navigation features or physical retry initiated",
+  "files": {
+    "navigation_observation.py": "be1ef2596dfe0c3eb39e730e52281576298a44ad8b6fc88e8f8bba639745d77b",
+    "navigation_localization.py": "0c7a0f3126c798c1ca1ae2577c13048833a6a83486f80b3f723863e24fd80b20",
+    "straight_trial.py": "80f0eaf6c80f400bddbcf85959a8f536895f2334f640f9be6fa93641236e2907",
+    "diagnostic_session.py": "423919ff9a848f9aae0a9aa11c876b1a4298aeaae410f0d6e24906c1a41db0d9",
+    "test_navigation_observation.py": "370a0028c1b35e65d71da1495ef01f471a67019b8467d8c47e149c54e995349d",
+    "goal_navigation/navigate.py": "cf1b9a9948db24719eb58ef59c4df590e12f9271eb2469a6ca15ac19cc280160",
+    "goal_navigation/motion_policy.py": "7ff7849b7016c0c9a53d5e47359d138a6d35bffc863128e71f0798325db87706",
+    "goal_navigation/test_goal_navigation.py": "4938a4234338fb67fdde0a05915654bcb83b023215bc482d0fc935a300682f83",
+    "goal_navigation/rviz_status_candidate.md": "b1d758a9833724039d44c47f16c0b44cf7c72d5d7ee37021bf7d4869c3adb52a"
+  }
+}

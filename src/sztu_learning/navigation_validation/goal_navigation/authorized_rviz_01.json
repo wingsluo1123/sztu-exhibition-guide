@@ -1,0 +1,18 @@
+{
+  "scope": "one human RViz click followed by one short supervised mission",
+  "operator_reply": "进行一次，遥控器和这条路线的净空满足",
+  "relative_target_forward_left_m": [
+    0.6,
+    -0.4
+  ],
+  "target_heading": "along travel direction",
+  "forward_command_m_s": 0.15,
+  "angular_command_rad_s": 0.7,
+  "mission_duration_s": 30,
+  "max_distance_m": 2,
+  "radius_m": 0.4,
+  "remote_present": true,
+  "route_and_target_clearance_m": 1,
+  "one_attempt": true,
+  "no_automatic_retry": true
+}

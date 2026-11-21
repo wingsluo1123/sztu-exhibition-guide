@@ -1,0 +1,152 @@
+Panels:
+- Class: rviz_common/Displays
+  Name: Displays
+- Class: nav2_rviz_plugins/Navigation 2
+  Name: Navigation 2
+Visualization Manager:
+  Class: ''
+  Displays:
+  - Alpha: 0.5
+    Cell Size: 1
+    Class: rviz_default_plugins/Grid
+    Color: 160; 160; 164
+    Enabled: true
+    Line Style:
+      Line Width: 0.029999999329447746
+      Value: Lines
+    Name: Grid
+    Normal Cell Count: 0
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0
+    Plane: XY
+    Plane Cell Count: 20
+    Reference Frame: <Fixed Frame>
+    Value: true
+  - Alpha: 0.699999988079071
+    Class: rviz_default_plugins/Map
+    Color Scheme: map
+    Draw Behind: false
+    Enabled: true
+    Name: Saved map
+    Topic:
+      Depth: 5
+      Durability Policy: Transient Local
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /map
+    Update Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /projected_map_updates
+    Use Timestamp: false
+    Value: true
+  - Alpha: 1
+    Axes Length: 1
+    Axes Radius: 0.10000000149011612
+    Class: rviz_default_plugins/PoseWithCovariance
+    Color: 255; 25; 0
+    Covariance:
+      Orientation:
+        Alpha: 0.5
+        Color: 255; 255; 127
+        Color Style: Unique
+        Frame: Local
+        Offset: 1
+        Scale: 1
+        Value: true
+      Position:
+        Alpha: 0.30000001192092896
+        Color: 204; 51; 204
+        Scale: 1
+        Value: true
+      Value: true
+    Enabled: true
+    Head Length: 0.30000001192092896
+    Head Radius: 0.10000000149011612
+    Name: NDT base pose
+    Shaft Length: 1
+    Shaft Radius: 0.05000000074505806
+    Shape: Arrow
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /pcl_pose
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 25; 255; 0
+    Enabled: true
+    Head Diameter: 0.30000001192092896
+    Head Length: 0.20000000298023224
+    Length: 0.30000001192092896
+    Line Style: Lines
+    Line Width: 0.029999999329447746
+    Name: Nav2 plan
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.029999999329447746
+    Shaft Diameter: 0.10000000149011612
+    Shaft Length: 0.10000000149011612
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /plan
+    Value: true
+  - Class: rviz_default_plugins/TF
+    Name: Robot frames
+    Enabled: true
+    Frame Timeout: 15.0
+    Show Axes: true
+    Show Arrows: false
+    Show Names: false
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+  - Class: rviz_default_plugins/Interact
+  - Class: rviz_default_plugins/MoveCamera
+  - Class: rviz_default_plugins/SetInitialPose
+    Topic:
+      Value: /initialpose
+      Depth: 5
+      Reliability Policy: Reliable
+      Durability Policy: Volatile
+  - Class: nav2_rviz_plugins/GoalTool
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Target Frame: map
+      Scale: 60.0
+      Angle: 0.0
+      X: 0.0
+      Y: 0.0
+    Saved: []
+Window Geometry:
+  Height: 800
+  Width: 1100
+  X: 50
+  Y: 50

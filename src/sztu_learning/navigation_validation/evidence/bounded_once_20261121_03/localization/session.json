@@ -1,0 +1,110 @@
+{
+  "source_sha256": {
+    "continuous_localizer.py": "37e6acf5360e3a2d1154e5ed0c6c2f00c0e461e2ee38156d9a0900873293da1e",
+    "continuous_localization_node.py": "60f1267d60bd18d50b63abc116bcb29ce82a14c5385e171960f87962ca514714",
+    "online_robot_session.py": "bf1fdc715c7bc8bd45f730caec08dbcc57b09381611fa3c5ef5a91a56b458c4e",
+    "lesson44_collect_mapping.py": "9da058d707cc4807042ff84d170557069040d610b75c94ffd73e64d22e83a62b",
+    "inspect_online_inputs.py": "ba2bcb954d69d69989d2f6528239732497c6dfedce483d56b22b8af1210267e9",
+    "benchmark_online_match.py": "3ffccc06301429df6412b39a8299817bb0c4ac846c6831b14e97a443c5e19630",
+    "robot_base_projection.py": "590e794023ae264ca51189b407741dee199af1bc44e7dc310947904e46ce09c2",
+    "planar_localizer.py": "dd8355cea1db8e22d14a5ce199e8631fc824d313398c145d17e3ee0866ecae32",
+    "build_rviz_map.py": "7f20101f75bc009702ad2aefcb8c9b7de0aec904c052d52cb5aad6183ffd3d7c",
+    "online_sensor_adapter.py": "700582726539f1f5541cf056b7da63c273879941486face333234a91d4a652c6",
+    "spatial_localizer.py": "337556c90ae0c640e09142fcc1dcee3b5df3b24d9ccc79166489ccc4ad757974",
+    "online_bootstrap.py": "57b2efe9b2a1006083ba8f202fc27be1d3209afd4ae8f96d81b95ad7a4cbe05b",
+    "online_display_bridge.py": "954c6db8eb3e14e22c0e7ab29a9bb76981402d14ddce7c26ca585da59a46875b",
+    "online_match_worker.py": "7ca5f6631c25bf0bc978e010a252db12e12f661f2e5cd1ee274d6b6a2abcb96a"
+  },
+  "configuration_sha256": {
+    "online_capture_qos.yaml": "01ed522e34c8ae44de4329a5685d5bcefada5b0c8e8a03d66fc83c2b88daa116",
+    "fastlio_localmap_candidate.yaml": "c5b7d9827c7f5e4f688dbdc4ab6e64f143c717a9a9ec9323ae27495737925bc1",
+    "fastlio_extrinsics_candidate.yaml": "568ad610ee58ff01cb1ae4ef4944489d47f69b1ec3727b7f2229c1026748dffa",
+    "fastlio_inputs_candidate.yaml": "bc4588db964e107af9d366a4d8fe416b71c9f55737d37e74358d668049505443"
+  },
+  "binary_sha256": "a2d0cc2a0fd46a2ef78a0365f7923ddce10d2b193e0d2ba1efdf84f4e6e05fb8",
+  "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+  "validation_sha256": {
+    "run_once_session.py": "116de8bc9fcb93fc0fd4913dad3ef2c75eb8376fc40c31a456667843e0a01e3e",
+    "straight_trial.py": "764437d249ababc626da9aabf358dc6a67ef8b5ea96d84136049c67da7b7165b",
+    "planar_math.py": "e0399bda2b2d2d13b496370e0f4d0fd8bf67c0a3e99ed955347119355ff3f880",
+    "diagnostic_session.py": "109b6bae21ec4716cef5f8cd4fa1a20b506b37067599db554a4c157030c5afdc",
+    "navigation_localization.py": "0b15296d14c32c5e5d1b8c51a4625f8883e10f197bc8d769c6a8880c5d1f9a49",
+    "straight_trial_core.py": "27416e8f8d3d803faa9d8c3da0b21ecb70a826b9ba57f1faff8647e2932c2da0"
+  },
+  "seed_imu_xy_yaw_degrees": [
+    -0.0831023,
+    0.0224282,
+    -18.4414
+  ],
+  "duration_limit_s": 75.0,
+  "started_epoch": 1795193863.4593835,
+  "commands": {
+    "localization": [
+      "python3",
+      "/home/agi/sztu_learning/navigation_validation/release01/navigation_localization.py",
+      "--map-directory",
+      "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01",
+      "--surface-reference",
+      "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_surfaces02",
+      "--seed",
+      "-0.0831023",
+      "0.0224282",
+      "-18.4414",
+      "--run-directory",
+      "/home/agi/sztu_learning/navigation_validation/runs/bounded_once_20261121_03/localization/startup",
+      "--ros-args",
+      "-r",
+      "/learning/lesson44/odometry:=/learning/online/odometry",
+      "-r",
+      "/learning/lesson44/cloud_registered:=/learning/online/cloud_registered"
+    ],
+    "fastlio": [
+      "/home/agi/sztu_learning/online_fastlio_ws/install/fast_lio/lib/fast_lio/fastlio_mapping",
+      "--ros-args",
+      "--params-file",
+      "/home/agi/sztu_learning/live_release01/fastlio_inputs_candidate.yaml",
+      "--params-file",
+      "/home/agi/sztu_learning/live_release01/fastlio_extrinsics_candidate.yaml",
+      "--params-file",
+      "/home/agi/sztu_learning/live_release01/fastlio_localmap_candidate.yaml",
+      "-p",
+      "common.max_input_age_sec:=0.4",
+      "-p",
+      "common.reliable_lidar_input:=false",
+      "-p",
+      "publish.path_en:=false",
+      "-p",
+      "publish.scan_bodyframe_pub_en:=false",
+      "-r",
+      "/learning/fastlio_input:=/learning/online/candidate",
+      "-r",
+      "/Odometry:=/learning/online/odometry",
+      "-r",
+      "/cloud_registered:=/learning/online/cloud_registered",
+      "-r",
+      "/path:=/learning/online/lio_path",
+      "-r",
+      "/cloud_effected:=/learning/online/cloud_effected",
+      "-r",
+      "/Laser_map:=/learning/online/laser_map",
+      "-r",
+      "/cloud_registered_body:=/learning/online/cloud_body",
+      "-r",
+      "/tf:=/learning/online/lio_tf",
+      "-r",
+      "/tf_static:=/learning/online/lio_tf_static"
+    ],
+    "adapter": [
+      "python3",
+      "/home/agi/sztu_learning/live_release01/online_sensor_adapter.py"
+    ]
+  },
+  "pose_count": 240,
+  "ended_by": "operator_or_session_interrupt",
+  "exit_codes": {
+    "localization": 0,
+    "fastlio": 0,
+    "adapter": 0
+  },
+  "ended_epoch": 1795193902.3839083
+}

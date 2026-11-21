@@ -1,0 +1,47 @@
+{
+  "actuation_requested": true,
+  "motor_registered": false,
+  "nonzero_commands": 0,
+  "nav2_nonzero_samples": 0,
+  "controller": "official Nav2 RotationShim + RegulatedPurePursuit",
+  "planner": "official Nav2 Navfn A*",
+  "dynamic_obstacles": false,
+  "total_task_deadline": null,
+  "max_distance_m": 5.0,
+  "parameters": {
+    "rviz_goal": true,
+    "relative_goal": null,
+    "goal_yaw_deg": null,
+    "approved_relative_goal": null,
+    "execute_one_attempt": true,
+    "plan_only": false,
+    "max_distance": 5.0,
+    "observe_seconds": 5.0,
+    "goal_wait_seconds": 180.0,
+    "output": "/home/agi/sztu_learning/navigation_validation/runs/nav2_shim_rviz_20261121_01",
+    "map_directory": "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01"
+  },
+  "source_sha256": {
+    "nav2_integration/mission.py": "adc1aa4e4bc84b998750db705ad8cb19a66e4a1eeec6d08391547935828140c0",
+    "nav2_integration/command_gate.py": "543602cc74709216c93f798957b35ede2099dfdf6d2aafaa7afa5623c874232c",
+    "nav2_integration/goal_selection.py": "561670fe3d67068d0e4a707b9260cac4798e16144082323ef99173d0fd2394f8",
+    "nav2_integration/parameters.py": "c23284db22ee9e43aafe651c9ff978adf0305c2b771c11e8dc402cb773a84ec5",
+    "nav2_integration/input_adapter.py": "66dd5165aaa5382373355ff3f19b587e3a692ab6c6e40a87aca6c731fa5edacc",
+    "nav2_integration/navigate_once.xml": "4de0ccfde21e56edcce79a1f814adfb6931672adbe638b7308ccfd037afa7343",
+    "navigation_observation.py": "be1ef2596dfe0c3eb39e730e52281576298a44ad8b6fc88e8f8bba639745d77b",
+    "navigation_localization.py": "0c7a0f3126c798c1ca1ae2577c13048833a6a83486f80b3f723863e24fd80b20",
+    "straight_trial.py": "80f0eaf6c80f400bddbcf85959a8f536895f2334f640f9be6fa93641236e2907",
+    "goal_navigation/navigate.py": "cf1b9a9948db24719eb58ef59c4df590e12f9271eb2469a6ca15ac19cc280160"
+  },
+  "error": "RuntimeError('preflight_not_ready')",
+  "result": "rejected_before_navigation",
+  "ended_epoch": 1795208464.8700826,
+  "last_localization": {
+    "valid": false,
+    "source_valid": false,
+    "stamp": 1795208449.2105591,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "reason": "input_timeout_requires_reinitialization",
+    "mode": "diagnostic_no_actuator"
+  }
+}

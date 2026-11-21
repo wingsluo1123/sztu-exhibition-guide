@@ -1,0 +1,15 @@
+{
+  "operator_response": "执行，未再移动，遥控器和右侧路线净空满足",
+  "relative_goal_forward_left_m": [
+    0.6,
+    -0.4
+  ],
+  "speed_m_s": 0.15,
+  "angular_rad_s": 0.7,
+  "duration_s": 30,
+  "travel_budget_m": 2,
+  "radius_m": 0.4,
+  "tolerance_m": 0.15,
+  "criteria": "gate_revision_02.md",
+  "attempt_count": 1
+}

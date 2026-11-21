@@ -1,0 +1,9 @@
+{
+  "frame_id": "learning_level_turned_candidate",
+  "z_min_m": 0.0,
+  "z_max_m": 1.0,
+  "bounds": "inclusive",
+  "height_reference": "Current coordinate origin, not measured floor height",
+  "purpose": "Illustrative height slice for offline viewing only; not robot obstacle thresholds",
+  "limits": "Can omit low and high obstacles; slice absence does not establish free space. Floor zero has not been calibrated."
+}

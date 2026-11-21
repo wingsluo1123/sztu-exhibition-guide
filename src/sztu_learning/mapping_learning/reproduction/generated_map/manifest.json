@@ -1,0 +1,33 @@
+{
+  "input_run": "inputs/run",
+  "input_manifest_sha256": "5cb6720b7f14180821fdf897418984306a5e18c18900948cfb14d49a147dd198",
+  "input_index_sha256": "53ed1fdeab4d1aa3bb633899b0d7a94212f85e11ef9c4ec2ca4fadba39ec9ac5",
+  "source_sha256": {
+    "build_room_map.py": "eb8141c87378b6f0f67cf1a19626ff490996cce70fddf1d9c604d3f3bce770a1",
+    "build_rviz_map.py": "7f20101f75bc009702ad2aefcb8c9b7de0aec904c052d52cb5aad6183ffd3d7c",
+    "build_rviz_map_v2.py": "822bcf4c5cb1793a902eb2c562fcc80bce558eb1a43cad50a3da5ba6ddb8c846",
+    "map_voxel_rays.cpp": "48521175ecfc2c3b43567bd1989a3644611b94ceb7410cfac739a3f06ede60df",
+    "reproduce_config.yaml": "bf6c90fc3c6dc6737d86946b369a1dc16c3093484f6de00ad61a70d4f641ad44",
+    "fastlio_extrinsics_candidate.yaml": "568ad610ee58ff01cb1ae4ef4944489d47f69b1ec3727b7f2229c1026748dffa"
+  },
+  "binary_sha256": "3ffea0a70285d2c26861b2d53cb7cec06562eeca9277c01ff46d450402269d40",
+  "invocation": [
+    "/home/sztu/sztu/src/sztu_learning/mapping_learning/reproduction/build_room_map.py",
+    "--config",
+    "/home/sztu/sztu/src/sztu_learning/mapping_learning/reproduction/reproduce_config.yaml"
+  ],
+  "files_sha256": {
+    "summary.json": "d47d4a412298bb9cbdff766e2e35960d58fae9a96da8a392152913a0f0314a9e",
+    "keyframes.json": "2e054c53ebbdd76c28a784569f49d5459390064fcdf4852cbb6588c823866959",
+    "occupancy.npy": "d70ea90a3df1c412d495d68faf3b1bdf804ff0d841ce7dcb7f56bf87508a5103",
+    "map_preview.png": "635bb074d0da4ec42f55337ce19303b2ecbb7e2755164b63a6968807fd45dadf",
+    "transform.json": "12afa55396017c0a548b9fb9b753af57ba74b80f4acc68349d15226d98d55d37",
+    "map.pgm": "c7c7a07c0a153b1401beccff6d4fb4022c8750bdc93df807c5cdd85186e88770",
+    "effective_config.yaml": "b78f1475d1b4cf8b1713c770753a8bf9d2db506feef5b8fe1ca2be3c9e2c6039",
+    "trajectory.csv": "ea6e409763d20a777924ebee3cb7d91b59fe521b7001cd21e797bc3e92b569b9",
+    "map.yaml": "393d7485da374a1bb517270b2da671f4535f2742256999aeb963632391374072",
+    "evidence/raycast.log": "48eb9dc19db5ed012d9cfeece7c86649f0608cb0e047511431461cf870a7a0c3",
+    "evidence/rays.bin": "f4fd248920d09ca4ab71cea17e8baf9fa3079aef161251dc88eca64f39ed786c",
+    "evidence/voxel_counts.bin": "3011adf89e2e56cdbadf6b77628a389e0685227072df670c7a1a4ee582be82ae"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "window_local": [
+    "2026-11-21T05:09:40.635750+08:00",
+    "2026-11-21T05:12:21.891137+08:00"
+  ],
+  "received_frames": 7843,
+  "sources": {
+    "rc": {
+      "frames": 7843,
+      "nonzero_frames": 0
+    }
+  },
+  "observed_goal_received": false,
+  "motor_registered": false,
+  "physical_attribution": "unresolved; operator reports actual robot movement after current RViz goal",
+  "interpretation": "Readback window contains RC zeros only. Does not establish no physical movement; does not identify a motion source."
+}

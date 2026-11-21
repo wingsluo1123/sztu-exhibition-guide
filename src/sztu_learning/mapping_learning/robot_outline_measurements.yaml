@@ -1,0 +1,13 @@
+# 人工近似测量记录，不是可直接加载的Nav2配置。
+units: m
+width: 0.60
+length: 0.40
+measurement_reference: user_identified_lidar_position_floor_projection
+axes: robot_forward_x_left_y
+front_distance: 0.10
+rear_distance: 0.30
+left_distance: 0.30
+right_distance: 0.30
+base_link_offset_xy: null
+includes_arm_swing: null
+status: provisional_not_deployed

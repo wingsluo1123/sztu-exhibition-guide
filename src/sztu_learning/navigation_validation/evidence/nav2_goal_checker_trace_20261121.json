@@ -1,0 +1,15 @@
+{
+  "installed_plugin": "nav2_controller::SimpleGoalChecker",
+  "recorded_samples": 401,
+  "old_stateful_accepts_outside_xy": 2,
+  "first_wrong": [
+    "399",
+    "1",
+    "0",
+    "0.264945"
+  ],
+  "candidate_stateful_false_accepts_outside_xy": 0,
+  "exact_goal_positive_control": true,
+  "scope": "真实安装的官方判定插件，输入实走03地图位姿序列；不是新机器人运动或完整闭环重放",
+  "passed": true
+}

@@ -1,0 +1,72 @@
+{
+  "stop_lead_m": 0.15,
+  "deviation_policy": "observe_only",
+  "actuation_requested": true,
+  "nonzero_command_count": 108,
+  "max_command_mps": 0.15,
+  "limit_s": 5.0,
+  "goal_m": 0.5,
+  "tolerance_m": 0.1,
+  "obstacle_avoidance": false,
+  "site_clearance": "operator-supervised clear-site commissioning only",
+  "preflight_ready": true,
+  "registration_responses": [
+    {
+      "action": 1001,
+      "code": 1,
+      "state": 0,
+      "stamp_sec": 1795194613,
+      "stamp_nanosec": 633973016,
+      "task_id": 16
+    },
+    {
+      "action": 1002,
+      "code": 0,
+      "state": 0,
+      "stamp_sec": 1795194613,
+      "stamp_nanosec": 715670599,
+      "task_id": 17
+    },
+    {
+      "action": 2001,
+      "code": 0,
+      "state": 0,
+      "stamp_sec": 1795194613,
+      "stamp_nanosec": 717495266,
+      "task_id": 18
+    }
+  ],
+  "attempt_started_epoch": 1795194614.2376566,
+  "result": "target_tolerance_reached",
+  "progress_at_stop_command_m": 0.26421200544605733,
+  "final_pose": [
+    -0.08579546087174743,
+    -0.3279559408902154,
+    -1.6638513486031146
+  ],
+  "physical_stop_confirmed": false,
+  "last_localization_status": {
+    "valid": true,
+    "source_valid": true,
+    "stamp": 1795194617.410635,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "reason": "map_match_accepted",
+    "mode": "diagnostic_no_actuator"
+  },
+  "last_odometry_stamp": 1795194617.410635,
+  "invalid_odometry_latched": false,
+  "mc_guard_reason": "",
+  "mc_last_observation": {
+    "received_ros_ns": 1795194617504312564,
+    "received_monotonic_s": 35332.571946176,
+    "source_stamp_ns": 1795194617502667393,
+    "timestamp_accepted": true,
+    "action_desc": "LOCOMOTION_DEFAULT",
+    "action_value": 0,
+    "action_status": 200,
+    "fsm_state": 5,
+    "body_status": 1
+  },
+  "mc_last_source": "sdk_learning_straight",
+  "ended_epoch": 1795194617.6344059
+}

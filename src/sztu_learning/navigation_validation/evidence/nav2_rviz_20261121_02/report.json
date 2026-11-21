@@ -1,0 +1,46 @@
+{
+  "actuation_requested": true,
+  "motor_registered": false,
+  "nonzero_commands": 0,
+  "nav2_nonzero_samples": 0,
+  "controller": "official Nav2 RegulatedPurePursuit",
+  "planner": "official Nav2 Navfn A*",
+  "dynamic_obstacles": false,
+  "total_task_deadline": null,
+  "max_distance_m": 2.0,
+  "parameters": {
+    "rviz_goal": true,
+    "relative_goal": null,
+    "goal_yaw_deg": null,
+    "approved_relative_goal": [
+      0.6,
+      -0.4
+    ],
+    "execute_one_attempt": true,
+    "observe_seconds": 5.0,
+    "goal_wait_seconds": 180.0,
+    "output": "/home/agi/sztu_learning/navigation_validation/runs/nav2_rviz_20261121_02",
+    "map_directory": "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01"
+  },
+  "source_sha256": {
+    "nav2_integration/mission.py": "5ae2377dc1c1979b01f7ec4a932e46f584a12a2600d0281f4e9a5455e17e61fd",
+    "nav2_integration/command_gate.py": "543602cc74709216c93f798957b35ede2099dfdf6d2aafaa7afa5623c874232c",
+    "nav2_integration/parameters.py": "9802334c1ced062734648eca3315738f6a47d8a7ce43fa364861bb905cd82b7d",
+    "nav2_integration/input_adapter.py": "66dd5165aaa5382373355ff3f19b587e3a692ab6c6e40a87aca6c731fa5edacc",
+    "nav2_integration/navigate_once.xml": "4de0ccfde21e56edcce79a1f814adfb6931672adbe638b7308ccfd037afa7343",
+    "navigation_observation.py": "be1ef2596dfe0c3eb39e730e52281576298a44ad8b6fc88e8f8bba639745d77b",
+    "navigation_localization.py": "0c7a0f3126c798c1ca1ae2577c13048833a6a83486f80b3f723863e24fd80b20",
+    "straight_trial.py": "80f0eaf6c80f400bddbcf85959a8f536895f2334f640f9be6fa93641236e2907",
+    "goal_navigation/navigate.py": "cf1b9a9948db24719eb58ef59c4df590e12f9271eb2469a6ca15ac19cc280160"
+  },
+  "error": "RuntimeError('nav2_servers_not_ready')",
+  "ended_epoch": 1795203927.3455796,
+  "last_localization": {
+    "valid": true,
+    "source_valid": true,
+    "stamp": 1795203927.2102568,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "reason": "map_match_accepted",
+    "mode": "diagnostic_no_actuator"
+  }
+}

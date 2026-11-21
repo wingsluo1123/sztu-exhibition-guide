@@ -1,0 +1,127 @@
+{
+  "operation": "Boolean XY point-hit raster of all height-slice points; no free-space inference",
+  "frame_id": "learning_level_turned_candidate",
+  "resolution_m": 0.1,
+  "origin_xy_m": [
+    -32.9,
+    -26.3
+  ],
+  "shape_rows_columns": [
+    378,
+    409
+  ],
+  "source_points": 1592393,
+  "positive_cells": 5012,
+  "unresolved_cells": 149590,
+  "parameter_source": "10 cm cell side selected for teaching visualization; not map accuracy or clearance",
+  "semantics": {
+    "true": "One or more retained slice points project to cell",
+    "false": "Unresolved, not free"
+  },
+  "inputs": [
+    {
+      "path": "maps/lesson52_height_slice/height_slice_xyz.pcd",
+      "bytes": 19108825,
+      "sha256": "7f6cfc1c65519c5a6d0e2f381f44c3b3488076ab962fb16574da7f3a03d6f8dd"
+    },
+    {
+      "path": "maps/lesson52_height_slice/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    {
+      "path": "maps/lesson52_height_slice/transform.json",
+      "bytes": 1718,
+      "sha256": "3568cfc264a331c1a6900802aaa9644fb465cef21c2e1831f9502c123e71d23c"
+    },
+    {
+      "path": "maps/lesson52_height_slice/slice_config.json",
+      "bytes": 418,
+      "sha256": "0be98bbd877399f16d80c9e66b82ac8f9527f2e4f9c65ab397a780fd11afcfc1"
+    },
+    {
+      "path": "maps/lesson52_height_slice/manifest.json",
+      "bytes": 4369,
+      "sha256": "638ba1e2a8966b904aeccb323f63b4718af6cb171a8868b210f70b57b5eb0fe6"
+    }
+  ],
+  "implementation": [
+    {
+      "path": "lesson53_point_grid.py",
+      "bytes": 4932,
+      "sha256": "682902cb50f9453a2f6bcadeae6c6ea5d7f9b22e5a15a0abe2f339d1ebc8d469"
+    },
+    {
+      "path": "lesson53_grid_config.json",
+      "bytes": 292,
+      "sha256": "4bbe8278f06001d1560cd9960454c9e8d17cc29436e2c28cd826b5d267805170"
+    },
+    {
+      "path": "lesson51_transform_cloud.py",
+      "bytes": 5332,
+      "sha256": "640a9ed2066aae18b815b5d03d110599cfaaf8a06093799a52a6bba6782add89"
+    }
+  ],
+  "invocation": "OPENBLAS_NUM_THREADS=1 python3 src/sztu_learning/lesson53_point_grid.py; cwd /home/sztu/sztu",
+  "environment": {
+    "python": "3.10.12",
+    "numpy": "1.21.5",
+    "matplotlib": "3.5.1"
+  },
+  "files": {
+    "point_hits.npy": {
+      "path": "maps/lesson53_point_grid/point_hits.npy",
+      "bytes": 154730,
+      "sha256": "4ec06226726951f993777ecd7e3c7ef9c273a8834e75b04475b958ec33bccbe7"
+    },
+    "grid.json": {
+      "path": "maps/lesson53_point_grid/grid.json",
+      "bytes": 861,
+      "sha256": "b1935c89f95c6efd5ad2a94b87f4db37f376099dc4506f429b011f7c2ad8d3f8"
+    },
+    "grid_config.json": {
+      "path": "maps/lesson53_point_grid/grid_config.json",
+      "bytes": 292,
+      "sha256": "4bbe8278f06001d1560cd9960454c9e8d17cc29436e2c28cd826b5d267805170"
+    },
+    "positions.csv": {
+      "path": "maps/lesson53_point_grid/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    "transform.json": {
+      "path": "maps/lesson53_point_grid/transform.json",
+      "bytes": 1718,
+      "sha256": "3568cfc264a331c1a6900802aaa9644fb465cef21c2e1831f9502c123e71d23c"
+    },
+    "slice_config.json": {
+      "path": "maps/lesson53_point_grid/slice_config.json",
+      "bytes": 418,
+      "sha256": "0be98bbd877399f16d80c9e66b82ac8f9527f2e4f9c65ab397a780fd11afcfc1"
+    },
+    "point_grid.png": {
+      "path": "maps/lesson53_point_grid/point_grid.png",
+      "bytes": 93380,
+      "sha256": "21ee52211a7769f6213b7f7dc4f1cb0e026adebf84f2f42c4d53b30128156437"
+    },
+    "README.md": {
+      "path": "maps/lesson53_point_grid/README.md",
+      "bytes": 3084,
+      "sha256": "6cb87c146fda1e56edd19484469df22795af9c4c2c4f916bb512051b0c2d803f"
+    }
+  },
+  "verification": [
+    {
+      "path": "runtime_logs/lesson53/check_output.py",
+      "bytes": 3516,
+      "sha256": "b8cf2dcd3d4a64bb3cf9d8220f7a918461834ff3b291d93b00ff46da94244eb0"
+    },
+    {
+      "path": "runtime_logs/lesson53/output_check.json",
+      "bytes": 687,
+      "sha256": "e2a1cec2061e1b6e61c673f8a957373963bf08a332d5b668cf72611e5688b032"
+    }
+  ],
+  "visual_review": "Reviewed full extent and detail; increasing Y plotted up; hit cells blue, unresolved gray, red estimated trajectory. Full-grid far points retained.",
+  "limits": "Illustrative height-slice hits only, not obstacle classification or navigation occupancy map. No free-space clearing, floor calibration, noise removal or footprint inflation."
+}

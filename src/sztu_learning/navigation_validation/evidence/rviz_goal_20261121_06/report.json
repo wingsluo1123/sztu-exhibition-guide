@@ -1,0 +1,44 @@
+{
+  "actuation_requested": true,
+  "nonzero_commands": 0,
+  "scope": "supervised static-map commissioning; no dynamic obstacle avoidance",
+  "parameters": {
+    "turn_deg": null,
+    "goal": null,
+    "relative_goal": null,
+    "rviz_goal": true,
+    "goal_yaw_deg": null,
+    "map_directory": "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01",
+    "radius": 0.4,
+    "duration": 0.0,
+    "max_distance": 2.0,
+    "angular": 0.7,
+    "output": "/home/agi/sztu_learning/navigation_validation/runs/rviz_goal_20261121_06",
+    "execute_one_attempt": true,
+    "observe_seconds": 0.0,
+    "goal_wait_seconds": 180.0,
+    "approved_relative_goal": [
+      0.6,
+      -0.4
+    ],
+    "goal_selection_radius": 0.2
+  },
+  "source_sha256": {
+    "goal_navigation/navigate.py": "45673a4c6f6e1e7ae0387ec4e304eeb870f22434b4dcc78d7d097fe7917da221",
+    "goal_navigation/grid_route.py": "014b3e71a19d1214fee706e9a593746f2907076028355e2b60f53a204f0c3454",
+    "goal_navigation/motion_policy.py": "de37c22b907684d90678ba3c03b14c5fd197ca828398fc596cfc601426dd0957",
+    "goal_navigation/mission_timing.py": "dcc4d19facf437c4f0fbcb3fe34bc63900ebfd248ca5e9e3130968f3ce5fb17d",
+    "goal_navigation/input_readiness.py": "9913f17d536f07f761844077738d73816bd87091dcc4a97173308cb2e9433068",
+    "straight_trial.py": "47db367843d581350b789b604f477fae2376e927036a4cf9af4ca4c4ca5c7c74"
+  },
+  "error": "RuntimeError('no_goal_received')",
+  "ended_epoch": 1795200308.7306736,
+  "last_localization": {
+    "valid": true,
+    "source_valid": true,
+    "stamp": 1795200308.610203,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "reason": "map_match_accepted",
+    "mode": "diagnostic_no_actuator"
+  }
+}

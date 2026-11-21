@@ -1,0 +1,20 @@
+{
+  "frame_id": "learning_level_turned_candidate",
+  "resolution_m": 0.1,
+  "origin_xy_m": [
+    -32.9,
+    -26.3
+  ],
+  "origin_meaning": "Lower-left corner of cell [row=0,column=0] expressed in the existing frame; no coordinate transform",
+  "width_cells": 409,
+  "height_cells": 378,
+  "axis_order": "[row_y, column_x]",
+  "row_direction": "Increasing row means increasing coordinate Y",
+  "cell_interval": "floor((xy-origin_xy)/resolution): lower edge inclusive, upper edge exclusive, subject to float representation",
+  "source_points": 1592393,
+  "cells_with_points": 5012,
+  "true_meaning": "At least one retained height-slice point projects here",
+  "false_meaning": "Unresolved; NOT marked free",
+  "free_cells_asserted": 0,
+  "limits": "Not a navigation occupancy map; no ray clearing, floor calibration, obstacle classification or robot clearance"
+}

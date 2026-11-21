@@ -1,0 +1,89 @@
+{
+  "operation": "Fixed composed rotation of all ordered XYZ points, no filtering or resampling",
+  "source_frame": "camera_init",
+  "target_frame": "learning_level_turned_candidate",
+  "coordinate_unit": "m",
+  "point_count": 18359162,
+  "position_count": 1428,
+  "point_schema": "binary little-endian float32 XYZ",
+  "point_correspondence": "Every output row corresponds to the same input row; duplicate multiplicity retained.",
+  "inputs": [
+    {
+      "path": "maps/lesson47_move_run01/registered_scans_xyz.pcd",
+      "bytes": 220310055,
+      "sha256": "2c5293147c4bad55c016f5322eaacdca49dcfd88272d8939d8e67fd38b39123a"
+    },
+    {
+      "path": "maps/lesson47_move_run01/manifest.json",
+      "bytes": 2005,
+      "sha256": "6ade46e30d368ffc8238adc6a533eb7eb3461271cbd45c660679f035bf8cf12c"
+    },
+    {
+      "path": "maps/lesson50_turned_positions/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    {
+      "path": "maps/lesson50_turned_positions/transform.json",
+      "bytes": 1718,
+      "sha256": "3568cfc264a331c1a6900802aaa9644fb465cef21c2e1831f9502c123e71d23c"
+    },
+    {
+      "path": "maps/lesson50_turned_positions/manifest.json",
+      "bytes": 2368,
+      "sha256": "bcc378c27eef35f5779481c585556afbbd6788e648a884cb1df2bc6dfac2d7b3"
+    }
+  ],
+  "implementation": {
+    "path": "lesson51_transform_cloud.py",
+    "bytes": 5332,
+    "sha256": "640a9ed2066aae18b815b5d03d110599cfaaf8a06093799a52a6bba6782add89"
+  },
+  "invocation": "OPENBLAS_NUM_THREADS=1 python3 src/sztu_learning/lesson51_transform_cloud.py (cwd /home/sztu/sztu); preview regenerated with save_preview(output) after adding plot margin.",
+  "environment": {
+    "python": "3.10.12",
+    "numpy": "1.21.5",
+    "matplotlib": "3.5.1"
+  },
+  "files": {
+    "registered_scans_xyz.pcd": {
+      "path": "maps/lesson51_turned_cloud/registered_scans_xyz.pcd",
+      "bytes": 220310055,
+      "sha256": "b20eb397e4a2cb965bfbeb751151e6b4d111197742c9c484207e88003459c0a5"
+    },
+    "positions.csv": {
+      "path": "maps/lesson51_turned_cloud/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    "transform.json": {
+      "path": "maps/lesson51_turned_cloud/transform.json",
+      "bytes": 1718,
+      "sha256": "3568cfc264a331c1a6900802aaa9644fb465cef21c2e1831f9502c123e71d23c"
+    },
+    "cloud_and_positions.png": {
+      "path": "maps/lesson51_turned_cloud/cloud_and_positions.png",
+      "bytes": 1357463,
+      "sha256": "08e92bd09dd29d59dfa30f98404c293aaaad569985227a8f9a7bc4613863c6b1"
+    },
+    "README.md": {
+      "path": "maps/lesson51_turned_cloud/README.md",
+      "bytes": 2431,
+      "sha256": "b9c37f8c2fe59ad86c2ab19494419243174b3b4abd0b993c9394fb76974867b4"
+    }
+  },
+  "verification": [
+    {
+      "path": "runtime_logs/lesson51/check_output.py",
+      "bytes": 3951,
+      "sha256": "d62b82b37c6989b7745aa26fbbe11297db98b5c08162284ceadfa4560f769aec"
+    },
+    {
+      "path": "runtime_logs/lesson51/output_check.json",
+      "bytes": 894,
+      "sha256": "d24b7e9e3d492192c126988200cacaab0e5443fc48e9f52af91654e6832938c0"
+    }
+  ],
+  "visual_review": "Reviewed XY and 3D overlays; blue sampled accumulated scans, red estimated positions, Z vertical; no navigation occupancy or accuracy claim.",
+  "limits": "Candidate initial-static-IMU up only; same origin, floor height uncalibrated. No orientation/covariance/TF conversion or drift correction. PCD frame is specified in sidecar metadata."
+}

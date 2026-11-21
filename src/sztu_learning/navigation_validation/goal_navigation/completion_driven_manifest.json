@@ -1,0 +1,19 @@
+{
+  "status": "local_candidate_not_deployed_or_physically_retested",
+  "change_request": "正常以动作完成结束，默认取消固定任务总时长",
+  "default_task_duration_s": 0,
+  "software_checks": "59 passed in 1.13s",
+  "failed_baseline": "evidence/rviz_goal_20261121_04/report.json",
+  "files": {
+    "goal_navigation/mission_timing.py": "dcc4d19facf437c4f0fbcb3fe34bc63900ebfd248ca5e9e3130968f3ce5fb17d",
+    "goal_navigation/motion_policy.py": "d5068b6c4005599d45d93db017818ce96231b57720ed0ee5ff352b6bbe02f91a",
+    "goal_navigation/navigate.py": "93f7c33362e1ada290b77e7927d5ee422be0db652521045f13f716f64c98eaaa",
+    "goal_navigation/session.py": "2fa64ddabc7198c34d012e795668120d45ec5566fc208394deed29e2c3113728",
+    "diagnostic_session.py": "4de264b77b65c8eee777610701bcc74a0c2cef3633420b6785c12bee6ad6ff48",
+    "goal_navigation/test_mission_timing.py": "f5cff98e556475a72a34d86ff5aa682f177cc78ae59be3f99e5ed5a3f29f25ae",
+    "goal_navigation/test_goal_navigation.py": "b3940ff36f0008c73ce701b91c1ef2a8564fb47f7483aa9126ad27e2f43032c1",
+    "goal_navigation/README.md": "2ae24545fdea0b721570066f909ae2b16434407a84b11eb060e4841f85b9c70b",
+    "goal_navigation/completion_driven_candidate.md": "5af417e3d7f8b001690d41b630160d9b9cd75ea2adc836778706647e6a0cb921",
+    "evidence/completion_driven_tests_20261121.log": "aa099521a09b8b71c9be0f92490eaf7b95ff68a73337aafa31770283ca2698eb"
+  }
+}

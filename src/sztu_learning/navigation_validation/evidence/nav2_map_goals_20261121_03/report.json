@@ -1,0 +1,34 @@
+{
+  "mode": "actual_navfn_planning_only",
+  "synthetic_localization": true,
+  "navigation_requested": false,
+  "hardware_api": false,
+  "results": [
+    {
+      "goal": [
+        -2.174999999999999,
+        -1.3249999999999993
+      ],
+      "yaw_rad": -3.141592653589793,
+      "status": 6
+    }
+  ],
+  "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+  "radius_m": 0.4,
+  "start": [
+    0.0079452679,
+    -0.0576307147,
+    -1.8254150555
+  ],
+  "source_sha256": {
+    "map_goal_probe.py": "fc31f93864cc1edc1c7fd483a1c0517adfb89496944572bbfaf6df493c6ec718",
+    "parameters.py": "30583c2bccb5441c77f3dde4d0dfd6f998001fe6bfe7dff4236a93a2b8497799",
+    "goal_selection.py": "561670fe3d67068d0e4a707b9260cac4798e16144082323ef99173d0fd2394f8"
+  },
+  "error": "AssertionError(\"{'goal': [-2.174999999999999, -1.3249999999999993], 'yaw_rad': -3.141592653589793, 'status': 6}\")",
+  "nonzero_commands": 0,
+  "process_exit_codes": [
+    0,
+    0
+  ]
+}

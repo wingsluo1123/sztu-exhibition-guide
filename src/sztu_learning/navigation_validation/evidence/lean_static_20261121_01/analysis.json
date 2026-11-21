@@ -1,0 +1,36 @@
+{
+  "scope": "stationary diagnostic; no actuator commands, no independent physical accuracy reference",
+  "counts": {
+    "adapter": 58,
+    "localization": 1642,
+    "nav_status": 1644,
+    "base_pose": 488,
+    "nav_odometry": 487,
+    "nav_tf": 487
+  },
+  "exit_codes": {
+    "localization": 0,
+    "fastlio": 0,
+    "adapter": 0
+  },
+  "session_error": null,
+  "paired_tf_base_samples": 487,
+  "max_tf_composition_residual": 4.440892098500626e-16,
+  "odom_xy_peak_to_peak_m": [
+    0.030050151796470304,
+    0.009516534939420035
+  ],
+  "receive_age_p50_p95_max_s": [
+    0.05822277085852051,
+    0.08290338590474848,
+    0.16654682257580566
+  ],
+  "status_counts": {
+    "(False, 'collecting_current_startup_reference')": 46,
+    "(False, 'waiting_for_map_match')": 116,
+    "(False, 'expired_match_ignored')": 18,
+    "(False, 'map_match_accepted')": 5,
+    "(True, 'map_match_accepted')": 1446,
+    "(True, 'map_match_rejected:unconstrained_geometry')": 13
+  }
+}

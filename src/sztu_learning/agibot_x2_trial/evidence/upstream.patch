@@ -1,0 +1,388 @@
+diff --git a/src/lidar_localization_ros2/include/lidar_localization/lidar_localization_component.hpp b/src/lidar_localization_ros2/include/lidar_localization/lidar_localization_component.hpp
+index ec5cbdb..e060489 100644
+--- a/src/lidar_localization_ros2/include/lidar_localization/lidar_localization_component.hpp
++++ b/src/lidar_localization_ros2/include/lidar_localization/lidar_localization_component.hpp
+@@ -119,6 +119,7 @@ public:
+   double initial_pose_qw_;
+ 
+   bool use_odom_{false};
++  bool use_odom_tf_{false};
+   double last_odom_received_time_;
+   bool use_imu_{false};
+   bool enable_debug_{false};
+diff --git a/src/lidar_localization_ros2/src/lidar_localization_component.cpp b/src/lidar_localization_ros2/src/lidar_localization_component.cpp
+index 8c7f773..daa5852 100644
+--- a/src/lidar_localization_ros2/src/lidar_localization_component.cpp
++++ b/src/lidar_localization_ros2/src/lidar_localization_component.cpp
+@@ -34,6 +34,8 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions & options)
+   declare_parameter("initial_pose_qz", 0.0);
+   declare_parameter("initial_pose_qw", 1.0);
+   declare_parameter("use_odom", false);
++  declare_parameter("use_odom_tf", false);
++  declare_parameter("reliable_cloud", false);
+   declare_parameter("use_imu", false);
+   declare_parameter("enable_debug", false);
+   declare_parameter("enable_timer_publishing", false);
+@@ -206,6 +208,7 @@ void PCLLocalization::initializeParameters()
+   get_parameter("initial_pose_qz", initial_pose_qz_);
+   get_parameter("initial_pose_qw", initial_pose_qw_);
+   get_parameter("use_odom", use_odom_);
++  get_parameter("use_odom_tf", use_odom_tf_);
+   get_parameter("use_imu", use_imu_);
+   get_parameter("enable_debug", enable_debug_);
+   get_parameter("enable_timer_publishing", enable_timer_publishing_);
+@@ -262,8 +265,10 @@ void PCLLocalization::initializePubSub()
+     "odom", rclcpp::SensorDataQoS(),
+     std::bind(&PCLLocalization::odomReceived, this, std::placeholders::_1));
+ 
++  rclcpp::QoS cloud_qos = get_parameter("reliable_cloud").as_bool()
++    ? rclcpp::QoS(50).reliable() : rclcpp::SensorDataQoS();
+   cloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
+-    "cloud", rclcpp::SensorDataQoS(),
++    "cloud", cloud_qos,
+     std::bind(&PCLLocalization::cloudReceived, this, std::placeholders::_1));
+ 
+   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+@@ -525,6 +530,23 @@ void PCLLocalization::cloudReceived(const sensor_msgs::msg::PointCloud2::ConstSh
+   tf2::fromMsg(corrent_pose_with_cov_stamped_ptr_->pose.pose, affine);
+ 
+   Eigen::Matrix4f init_guess = affine.matrix().cast<float>();
++  // Use the measured SE(3) odometry delta at the two scan timestamps.
++  // This only seeds upstream NDT; it does not replace scan-to-map matching.
++  const auto previous_stamp = corrent_pose_with_cov_stamped_ptr_->header.stamp;
++  if (use_odom_tf_ && (previous_stamp.sec != 0 || previous_stamp.nanosec != 0)) {
++    try {
++      const auto previous = tfbuffer_.lookupTransform(
++        odom_frame_id_, base_frame_id_, previous_stamp, rclcpp::Duration::from_seconds(0.1));
++      const auto current = tfbuffer_.lookupTransform(
++        odom_frame_id_, base_frame_id_, msg->header.stamp, rclcpp::Duration::from_seconds(0.1));
++      const Eigen::Matrix4f before = tf2::transformToEigen(previous.transform).matrix().cast<float>();
++      const Eigen::Matrix4f after = tf2::transformToEigen(current.transform).matrix().cast<float>();
++      init_guess = init_guess * before.inverse() * after;
++    } catch (const tf2::TransformException & ex) {
++      RCLCPP_WARN(get_logger(), "Odometry prediction unavailable: %s", ex.what());
++      return;
++    }
++  }
+ 
+   pcl::PointCloud<pcl::PointXYZI>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+   rclcpp::Clock system_clock;
+@@ -538,11 +560,16 @@ void PCLLocalization::cloudReceived(const sensor_msgs::msg::PointCloud2::ConstSh
+     RCLCPP_WARN(get_logger(), "The registration didn't converge.");
+     return;
+   }
+-  if (fitness_score > score_threshold_) {
++  if (!std::isfinite(fitness_score) || fitness_score > score_threshold_) {
+     RCLCPP_WARN(get_logger(), "The fitness score is over %lf.", score_threshold_);
++    return;
+   }
+ 
+   Eigen::Matrix4f final_transformation = registration_->getFinalTransformation();
++  if (!final_transformation.allFinite()) {
++    RCLCPP_WARN(get_logger(), "Registration returned a nonfinite transform");
++    return;
++  }
+   Eigen::Matrix3d rot_mat = final_transformation.block<3, 3>(0, 0).cast<double>();
+   Eigen::Quaterniond quat_eig(rot_mat);
+   geometry_msgs::msg::Quaternion quat_msg = tf2::toMsg(quat_eig);
+diff --git a/src/my_nav2_pointcloud_pkg/launch/nav2_bringup.launch.py b/src/my_nav2_pointcloud_pkg/launch/nav2_bringup.launch.py
+index 31cb1e3..8144437 100644
+--- a/src/my_nav2_pointcloud_pkg/launch/nav2_bringup.launch.py
++++ b/src/my_nav2_pointcloud_pkg/launch/nav2_bringup.launch.py
+@@ -32,7 +32,7 @@ def generate_launch_description():
+         executable='map_server',
+         name='map_server',
+         output='screen',
+-        parameters=[params_file, {'yaml_filename': map_yaml_file}]
++        parameters=[params_file, {'yaml_filename': map_yaml_file, 'use_sim_time': use_sim_time}]
+     )
+ 
+     planner_server = Node(
+@@ -40,7 +40,8 @@ def generate_launch_description():
+         executable='planner_server',
+         name='planner_server',
+         output='screen',
+-        parameters=[params_file, {'pointcloud_topic': pointcloud_topic}]
++        parameters=[params_file, {'use_sim_time': use_sim_time}],
++        remappings=[('/lidar/points_rectified', pointcloud_topic)]
+     )
+ 
+     controller_server = Node(
+@@ -48,7 +49,8 @@ def generate_launch_description():
+         executable='controller_server',
+         name='controller_server',
+         output='screen',
+-        parameters=[params_file, {'pointcloud_topic': pointcloud_topic}]
++        parameters=[params_file, {'use_sim_time': use_sim_time}],
++        remappings=[('/lidar/points_rectified', pointcloud_topic)]
+     )
+ 
+     behavior_server = Node(
+@@ -56,7 +58,7 @@ def generate_launch_description():
+         executable='behavior_server',
+         name='behavior_server',
+         output='screen',
+-        parameters=[params_file, {'pointcloud_topic': pointcloud_topic}]
++        parameters=[params_file, {'use_sim_time': use_sim_time}]
+     )
+ 
+     bt_navigator = Node(
+@@ -64,7 +66,7 @@ def generate_launch_description():
+         executable='bt_navigator',
+         name='bt_navigator',
+         output='screen',
+-        parameters=[params_file, {'pointcloud_topic': pointcloud_topic}]
++        parameters=[params_file, {'use_sim_time': use_sim_time}]
+     )
+ 
+     waypoint_follower = Node(
+@@ -72,7 +74,7 @@ def generate_launch_description():
+         executable='waypoint_follower',
+         name='waypoint_follower',
+         output='screen',
+-        parameters=[params_file, {'pointcloud_topic': pointcloud_topic}]
++        parameters=[params_file, {'use_sim_time': use_sim_time}]
+     )
+ 
+     lifecycle_manager = Node(
+diff --git a/src/py_examples/py_examples/imu_rectifier.py b/src/py_examples/py_examples/imu_rectifier.py
+index bbd3a05..6e0ea27 100644
+--- a/src/py_examples/py_examples/imu_rectifier.py
++++ b/src/py_examples/py_examples/imu_rectifier.py
+@@ -34,18 +34,24 @@ class ImuRectifier(Node):
+         # ========= 你只改这里（先试 pitch=-90）=========
+         self.in_topic  = "/aima/hal/sensor/lidar_chest_front/imu"
+         self.out_topic = "/imu/rectified"
+-        self.out_frame = "lidar_imu_chest_front"
++        self.out_frame = "imu_rectified"
+ 
+         self.roll_deg  = 0.0
+         self.pitch_deg = -90.0   # 关键：把 g 从 x 转到 z（先试 -90）
+         self.yaw_deg   = 0.0
+         # ==============================================
+ 
++        for key, value in [('in_topic', self.in_topic), ('out_topic', self.out_topic),
++                           ('out_frame', self.out_frame), ('roll_deg', self.roll_deg),
++                           ('pitch_deg', self.pitch_deg), ('yaw_deg', self.yaw_deg)]:
++            setattr(self, key, self.declare_parameter(key, value).value)
+         self.R = rpy_to_R(math.radians(self.roll_deg),
+                           math.radians(self.pitch_deg),
+                           math.radians(self.yaw_deg))
+         # ✅ 输入：匹配传感器（BEST_EFFORT）
+         qos_in = qos_profile_sensor_data
++        if self.declare_parameter('reliable_input', False).value:
++            qos_in = QoSProfile(depth=1000, reliability=ReliabilityPolicy.RELIABLE)
+ 
+         # ✅ 输出：给下游用（RELIABLE）
+         qos_out = QoSProfile(
+@@ -82,12 +88,11 @@ class ImuRectifier(Node):
+         out.linear_acceleration.z = float(a2[2])
+ 
+         # copy covariances (keep as-is)
+-        out.angular_velocity_covariance = msg.angular_velocity_covariance
+-        out.linear_acceleration_covariance = msg.linear_acceleration_covariance
+-        out.orientation_covariance = msg.orientation_covariance
+-
+-        # keep orientation identity (FAST-LIO typically ignores it)
+-        out.orientation = msg.orientation
++        out.angular_velocity_covariance = (self.R @ np.array(msg.angular_velocity_covariance).reshape(3, 3) @ self.R.T).reshape(-1).tolist()
++        out.linear_acceleration_covariance = (self.R @ np.array(msg.linear_acceleration_covariance).reshape(3, 3) @ self.R.T).reshape(-1).tolist()
++        # This adapter supplies vectors only; no orientation estimate is provided.
++        out.orientation.w = 1.0
++        out.orientation_covariance[0] = -1.0
+ 
+         self.pub.publish(out)
+ 
+diff --git a/src/py_examples/py_examples/pcl_rectifier.py b/src/py_examples/py_examples/pcl_rectifier.py
+index 1d52d38..3c6d7ab 100644
+--- a/src/py_examples/py_examples/pcl_rectifier.py
++++ b/src/py_examples/py_examples/pcl_rectifier.py
+@@ -44,7 +44,7 @@ class PclRectifier(Node):
+         # ===== 你只改这里（固定配置，无需终端参数）=====
+         self.input_topic  = "/aima/hal/sensor/lidar_chest_front/lidar_pointcloud"
+         self.output_topic = "/lidar/points_rectified"
+-        self.output_frame = "lidar_chest_front"
++        self.output_frame = "lidar_rectified"
+ 
+         # 点云扶正（按你之前选好的）
+         self.roll_deg  = -90.0
+@@ -55,12 +55,18 @@ class PclRectifier(Node):
+         self.timestamp_scale = 1e-9   # raw timestamp * 1e-9 = seconds
+         # =================================================
+ 
++        for key, value in [('input_topic', self.input_topic), ('output_topic', self.output_topic),
++                           ('output_frame', self.output_frame), ('roll_deg', self.roll_deg),
++                           ('pitch_deg', self.pitch_deg), ('yaw_deg', self.yaw_deg)]:
++            setattr(self, key, self.declare_parameter(key, value).value)
+         self.R = rpy_to_R(math.radians(self.roll_deg),
+                           math.radians(self.pitch_deg),
+                           math.radians(self.yaw_deg))
+                           
+         # ✅ 输入：匹配传感器（BEST_EFFORT）
+         qos_in = qos_profile_sensor_data
++        if self.declare_parameter('reliable_input', False).value:
++            qos_in = QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE)
+ 
+         # ✅ 输出：给下游用（RELIABLE）
+         qos_out = QoSProfile(
+@@ -79,82 +85,54 @@ class PclRectifier(Node):
+         self.get_logger().info(f"timestamp_scale={self.timestamp_scale} (raw->sec), output adds field 'time' (float32, rel)")
+ 
+     def cb(self, msg: PointCloud2):
+-        # find offsets
+-        off = {}
+-        dt = {}
+-        for f in msg.fields:
+-            off[f.name] = f.offset
+-            dt[f.name] = f.datatype
+-
+-        need = ["x", "y", "z", "timestamp"]
+-        for k in need:
+-            if k not in off:
+-                self.get_logger().error(f"Missing field '{k}' in input cloud.")
+-                return
+-
+-        x_off, y_off, z_off, ts_off = off["x"], off["y"], off["z"], off["timestamp"]
+-        step_in = msg.point_step
+-        npts = msg.width * msg.height
+-        data_in = msg.data
+-
+-        # unpackers
+-        unpack_f = struct.Struct("<f").unpack_from
+-        pack_f   = struct.Struct("<f").pack_into
+-        unpack_d = struct.Struct("<d").unpack_from
+-
+-        # 1) sample timestamps to estimate t0 quickly (full scan still cheap: 25k points)
+-        t0 = float("inf")
+-        for i in range(npts):
+-            base = i * step_in + ts_off
+-            t = float(unpack_d(data_in, base)[0])
+-            if t < t0:
+-                t0 = t
+-
+-        # 2) build new fields: keep all original fields, append 'time' at the end
+-        fields_out = list(msg.fields)
+-        # compute new offsets: append 4 bytes
+-        time_off = msg.point_step
+-        fields_out.append(make_pointfield("time", time_off, PointField.FLOAT32, 1))
+-
+-        step_out = step_in + 4
+-        data_out = bytearray(npts * step_out)
+-
+-        # 3) copy point-by-point raw bytes, rotate xyz, write time_rel
+-        R = self.R
+-        for i in range(npts):
+-            base_in = i * step_in
+-            base_out = i * step_out
+-
+-            # copy original bytes
+-            data_out[base_out:base_out + step_in] = data_in[base_in:base_in + step_in]
+-
+-            # rotate xyz
+-            x = unpack_f(data_out, base_out + x_off)[0]
+-            y = unpack_f(data_out, base_out + y_off)[0]
+-            z = unpack_f(data_out, base_out + z_off)[0]
+-            xyz2 = R @ np.array([x, y, z], dtype=np.float64)
+-            pack_f(data_out, base_out + x_off, float(xyz2[0]))
+-            pack_f(data_out, base_out + y_off, float(xyz2[1]))
+-            pack_f(data_out, base_out + z_off, float(xyz2[2]))
+-
+-            # time_rel in seconds
+-            t = float(unpack_d(data_out, base_out + ts_off)[0])
+-            time_rel = (t - t0) * self.timestamp_scale
+-            pack_f(data_out, base_out + time_off, float(time_rel))
+-
++        # Preserve arbitrary original fields and row padding; only xyz and time change.
++        from copy import deepcopy
++        fields = {f.name: f for f in msg.fields}
++        if any(k not in fields for k in ['x', 'y', 'z', 'timestamp']):
++            self.get_logger().error('Missing xyz/timestamp field')
++            return
++        if any(fields[k].datatype != PointField.FLOAT32 for k in ['x', 'y', 'z']) or fields['timestamp'].datatype != PointField.FLOAT64:
++            self.get_logger().error('Unsupported xyz/timestamp datatype')
++            return
++        if 'time' in fields:
++            self.get_logger().error('Input already has time; refusing double rectification')
++            return
++        endian = '>' if msg.is_bigendian else '<'
++        dtype = np.dtype({'names': ['x', 'y', 'z', 'timestamp'],
++                          'formats': [endian+'f4']*3+[endian+'f8'],
++                          'offsets': [fields[k].offset for k in ['x', 'y', 'z', 'timestamp']],
++                          'itemsize': msg.point_step})
++        raw = np.ndarray((msg.height, msg.width), dtype=dtype, buffer=msg.data,
++                         strides=(msg.row_step, msg.point_step))
++        xyz = np.stack([raw[k].reshape(-1) for k in ['x', 'y', 'z']], axis=1)
++        times = raw['timestamp'].reshape(-1)
++        if len(times) == 0 or not np.isfinite(times).all() or times.min() < 0:
++            self.get_logger().error('Invalid point timestamps')
++            return
++        t0 = float(times.min())
++        step = msg.point_step + 4
++        output = bytearray(len(times)*step)
++        byte_rows = np.ndarray((msg.height, msg.width, msg.point_step), dtype='u1',
++                               buffer=msg.data, strides=(msg.row_step, msg.point_step, 1))
++        np.ndarray((len(times), step), dtype='u1', buffer=output)[:, :msg.point_step] = byte_rows.reshape(-1, msg.point_step)
++        transformed = xyz @ self.R.T
++        for i, k in enumerate(['x', 'y', 'z']):
++            np.ndarray((len(times),), dtype=endian+'f4', buffer=output,
++                       offset=fields[k].offset, strides=(step,))[:] = transformed[:, i]
++        np.ndarray((len(times),), dtype=endian+'f4', buffer=output,
++                   offset=msg.point_step, strides=(step,))[:] = (times-t0)*self.timestamp_scale
+         out = PointCloud2()
+-        out.header = msg.header
++        out.header = deepcopy(msg.header)
++        # timestamp is a nanosecond offset from the raw frame header in these bags.
++        # Moving t0 into the header preserves each point's absolute acquisition time.
++        start_ns = msg.header.stamp.sec*1_000_000_000 + msg.header.stamp.nanosec + round(t0*self.timestamp_scale*1e9)
++        out.header.stamp.sec, out.header.stamp.nanosec = divmod(start_ns, 1_000_000_000)
+         out.header.frame_id = self.output_frame
+-
+-        out.height = msg.height
+-        out.width = msg.width
+-        out.fields = fields_out
+-        out.is_bigendian = msg.is_bigendian
+-        out.point_step = step_out
+-        out.row_step = step_out * out.width
+-        out.is_dense = msg.is_dense
+-        out.data = bytes(data_out)
+-
++        out.height, out.width = msg.height, msg.width
++        out.fields = list(msg.fields) + [make_pointfield('time', msg.point_step, PointField.FLOAT32)]
++        out.is_bigendian, out.is_dense = msg.is_bigendian, msg.is_dense
++        out.point_step, out.row_step = step, step*msg.width
++        out.data = bytes(output)
+         self.pub.publish(out)
+ 
+ 
+diff --git a/src/spark-fast-lio/spark_fast_lio/src/spark_fast_lio.cpp b/src/spark-fast-lio/spark_fast_lio/src/spark_fast_lio.cpp
+index 40fccc6..ad949fb 100644
+--- a/src/spark-fast-lio/spark_fast_lio/src/spark_fast_lio.cpp
++++ b/src/spark-fast-lio/spark_fast_lio/src/spark_fast_lio.cpp
+@@ -30,6 +30,7 @@ SPARKFastLIO2::SPARKFastLIO2(const rclcpp::NodeOptions &options)
+   lidar_R_wrt_base_ = Eye3d;
+ 
+   path_en_           = declare_parameter<bool>("publish.path_en", true);
++  declare_parameter<bool>("publish.tf_en", true);
+   scan_pub_en_       = declare_parameter<bool>("publish.scan_publish_en", false);
+   dense_pub_en_      = declare_parameter<bool>("publish.dense_publish_en", false);
+   scan_lidar_pub_en_ = declare_parameter<bool>("publish.scan_lidarframe_pub_en", false);
+@@ -760,7 +761,9 @@ void SPARKFastLIO2::publishOdometry(const state_ikfom &state, const rclcpp::Time
+   transform_stamped.transform.translation.z = odomAftMapped_.pose.pose.position.z;
+   transform_stamped.transform.rotation      = odomAftMapped_.pose.pose.orientation;
+ 
+-  tf_broadcaster_->sendTransform(transform_stamped);
++  if (get_parameter("publish.tf_en").as_bool()) {
++    tf_broadcaster_->sendTransform(transform_stamped);
++  }
+ }
+ 
+ void SPARKFastLIO2::publishPath(const state_ikfom &state) {
+@@ -830,7 +833,7 @@ void SPARKFastLIO2::publishFrameWorld(
+     if (cloud_to_be_saved_->size() > 0 && pcd_save_interval_ > 0 &&
+         scan_wait_num >= pcd_save_interval_) {
+       pcd_index_++;
+-      std::string all_points_dir(std::string(ROOT_DIR) + "PCD/scans_" + std::to_string(pcd_index_) +
++      std::string all_points_dir((save_dir_.empty() ? std::string(ROOT_DIR) + "PCD/" : save_dir_ + "/") + "scans_" + std::to_string(pcd_index_) +
+                                  ".pcd");
+       pcl::PCDWriter pcd_writer;
+       std::cout << "Current scan saved to /PCD/ " << all_points_dir << std::endl;

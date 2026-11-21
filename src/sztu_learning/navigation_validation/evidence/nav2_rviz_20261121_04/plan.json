@@ -1,0 +1,159 @@
+{
+  "actuation_requested": true,
+  "motor_registered": false,
+  "nonzero_commands": 0,
+  "nav2_nonzero_samples": 0,
+  "controller": "official Nav2 RegulatedPurePursuit",
+  "planner": "official Nav2 Navfn A*",
+  "dynamic_obstacles": false,
+  "total_task_deadline": null,
+  "max_distance_m": 2.0,
+  "parameters": {
+    "rviz_goal": true,
+    "relative_goal": null,
+    "goal_yaw_deg": null,
+    "approved_relative_goal": [
+      0.6,
+      -0.4
+    ],
+    "execute_one_attempt": true,
+    "observe_seconds": 5.0,
+    "goal_wait_seconds": 180.0,
+    "output": "/home/agi/sztu_learning/navigation_validation/runs/nav2_rviz_20261121_04",
+    "map_directory": "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01"
+  },
+  "source_sha256": {
+    "nav2_integration/mission.py": "f28765de8b888f94981dd2a6a55590974019ab4cbf5b8f0bbd51ba68e2c657c4",
+    "nav2_integration/command_gate.py": "543602cc74709216c93f798957b35ede2099dfdf6d2aafaa7afa5623c874232c",
+    "nav2_integration/parameters.py": "612e8fa07ddb2c8527eb65832dcf5dd1986ae403d23be2ef928b23f1ce4735fd",
+    "nav2_integration/input_adapter.py": "66dd5165aaa5382373355ff3f19b587e3a692ab6c6e40a87aca6c731fa5edacc",
+    "nav2_integration/navigate_once.xml": "4de0ccfde21e56edcce79a1f814adfb6931672adbe638b7308ccfd037afa7343",
+    "navigation_observation.py": "be1ef2596dfe0c3eb39e730e52281576298a44ad8b6fc88e8f8bba639745d77b",
+    "navigation_localization.py": "0c7a0f3126c798c1ca1ae2577c13048833a6a83486f80b3f723863e24fd80b20",
+    "straight_trial.py": "80f0eaf6c80f400bddbcf85959a8f536895f2334f640f9be6fa93641236e2907",
+    "goal_navigation/navigate.py": "cf1b9a9948db24719eb58ef59c4df590e12f9271eb2469a6ca15ac19cc280160"
+  },
+  "goal": [
+    -0.5399999618530273,
+    -0.5133333206176758
+  ],
+  "goal_yaw_rad": -2.4127378700283857,
+  "nav2_path": [
+    [
+      -0.14999984949827194,
+      1.6242265665766809e-07
+    ],
+    [
+      -0.171734468962768,
+      -0.040749197315415486
+    ],
+    [
+      -0.18396133682074378,
+      -0.06255553308957396
+    ],
+    [
+      -0.19960693641911575,
+      -0.08205473992310353
+    ],
+    [
+      -0.2150991851851245,
+      -0.10167601707095208
+    ],
+    [
+      -0.23074554772296096,
+      -0.12117446096501716
+    ],
+    [
+      -0.2464926182701106,
+      -0.1405920332758459
+    ],
+    [
+      -0.2622435035145827,
+      -0.16000579088935218
+    ],
+    [
+      -0.2780294839744215,
+      -0.1793913197426722
+    ],
+    [
+      -0.29381088679747336,
+      -0.19878066329331467
+    ],
+    [
+      -0.30964569538303977,
+      -0.218126519294481
+    ],
+    [
+      -0.3254766892712837,
+      -0.23747542705350533
+    ],
+    [
+      -0.3413122607963146,
+      -0.2568205201152072
+    ],
+    [
+      -0.35717987577885424,
+      -0.27613967323511623
+    ],
+    [
+      -0.37302460257745906,
+      -0.29547713690217314
+    ],
+    [
+      -0.3888899287416052,
+      -0.3147978159010112
+    ],
+    [
+      -0.40476746193718327,
+      -0.3341085766868108
+    ],
+    [
+      -0.4206251587066845,
+      -0.3534353592013648
+    ],
+    [
+      -0.43650116602333355,
+      -0.37274764586609344
+    ],
+    [
+      -0.4523779362794471,
+      -0.39205916959135756
+    ],
+    [
+      -0.4682516547777027,
+      -0.41137298213501516
+    ],
+    [
+      -0.48412995091274524,
+      -0.4306829799813503
+    ],
+    [
+      -0.49999985471367836,
+      -0.4499998442828659
+    ],
+    [
+      -0.5499998554587364,
+      -0.49999984502792394
+    ],
+    [
+      -0.5399999618530273,
+      -0.5133333206176758
+    ]
+  ],
+  "preflight": {
+    "ready": true,
+    "invalid_odometry": false,
+    "mc_reason": "",
+    "status": {
+      "valid": true,
+      "source_valid": true,
+      "stamp": 1795204644.1102529,
+      "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+      "reason": "map_match_accepted",
+      "mode": "diagnostic_no_actuator"
+    },
+    "odom_age": 0.1336061954498291,
+    "map_age": 0.1336061954498291,
+    "status_receive_age": 0.07499781300430186
+  }
+}

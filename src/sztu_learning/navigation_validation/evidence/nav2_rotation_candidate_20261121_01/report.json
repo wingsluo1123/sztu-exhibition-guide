@@ -1,0 +1,195 @@
+{
+  "no_robot_api": true,
+  "frozen_pose_stress_test": true,
+  "cases": [
+    {
+      "case": "right_to_path",
+      "measured_angular": 0.0,
+      "samples": [
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "case": "right_to_path",
+      "measured_angular": 0.65,
+      "samples": [
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "case": "right_to_path",
+      "measured_angular": -0.65,
+      "samples": [
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ],
+        [
+          0.0,
+          -0.7
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "case": "left_final_heading",
+      "measured_angular": 0.0,
+      "samples": [
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "case": "left_final_heading",
+      "measured_angular": 0.65,
+      "samples": [
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "case": "left_final_heading",
+      "measured_angular": -0.65,
+      "samples": [
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.0,
+          0.7
+        ]
+      ],
+      "passed": true
+    }
+  ],
+  "parameters_sha256": "9802334c1ced062734648eca3315738f6a47d8a7ce43fa364861bb905cd82b7d",
+  "passed": true,
+  "exit_code": 0
+}

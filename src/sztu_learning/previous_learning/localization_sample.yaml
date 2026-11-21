@@ -1,0 +1,6 @@
+map_directory: maps/room_7x3_20261120_map01
+scan_file: runtime_logs/room_localization_20261120/independent_scan/scans.npz
+scan_key: scan_0
+seed_xy_yaw_degrees: [0.31717955624256744, -0.11791229537921759, -22.439916062]
+sample_kind: recorded stationary observation, not live robot
+seed_source: previous last pose used only as coarse hint, then perturbed +0.30m/-0.20m/+10deg

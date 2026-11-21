@@ -1,0 +1,124 @@
+{
+  "bag": "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_164421",
+  "rate": 0.7,
+  "physical_motor_bridge_started": false,
+  "localization_cloud": "/lio/cloud_registered_lidar",
+  "localization_config": "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/localization.yaml",
+  "playback_command": [
+    "ros2",
+    "bag",
+    "play",
+    "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_164421",
+    "--clock",
+    "100",
+    "--rate",
+    "0.7",
+    "--delay",
+    "2",
+    "--disable-keyboard-controls",
+    "--wait-for-all-acked",
+    "5000",
+    "--qos-profile-overrides-path",
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/playback_qos.yaml"
+  ],
+  "wall_sec": 225.80399772152305,
+  "lifecycle": {
+    "lidar_localization": "active",
+    "map_server": "active",
+    "planner_server": "active",
+    "controller_server": "active",
+    "behavior_server": "active",
+    "bt_navigator": "active",
+    "waypoint_follower": "active"
+  },
+  "isolated_velocity_publishers": 2,
+  "unisolated_velocity_publishers": 0,
+  "status": "passed",
+  "counts": {
+    "localization": 1518,
+    "rectified_cloud": 1520,
+    "odom": 30315,
+    "registered": 1517
+  },
+  "unique_header_counts": {
+    "localization": 1518,
+    "rectified_cloud": 1520,
+    "odom": 30315,
+    "registered": 1517
+  },
+  "exit_codes": {
+    "bringup": 0,
+    "player": 0
+  },
+  "map_odom_tf": {
+    "count": 1517,
+    "first": 1795164262.011824,
+    "last": 1795164413.612015
+  },
+  "odom": {
+    "samples": 30315,
+    "first": [
+      1795164262.011824,
+      -0.10041088862804266,
+      -0.010746260083864334,
+      -0.3295279064324737,
+      0.01204475736870495,
+      0.016247746246849954,
+      0.004935362624069643,
+      0.9997832648917443
+    ],
+    "last": [
+      1795164413.6300538,
+      0.116576393255071,
+      -0.026889741149829352,
+      -0.3281019122358584,
+      0.003804110007302702,
+      0.008013926248874204,
+      0.16768534542105618,
+      0.9858006546275727
+    ],
+    "xyz_min": [
+      -0.8426310438877088,
+      -0.03693911898414941,
+      -0.38180118686850656
+    ],
+    "xyz_max": [
+      1.4938581394825978,
+      3.266549690062589,
+      -0.17816464305864074
+    ]
+  },
+  "localization": {
+    "samples": 1518,
+    "first": [
+      0.0,
+      -0.11924952870873211,
+      -0.017831043777753214,
+      0.684609260403247,
+      0.000417571700164049,
+      0.043398228942698396,
+      0.004619488997878014,
+      0.9990470858172356
+    ],
+    "last": [
+      1795164413.612015,
+      -0.053592562675476074,
+      -0.07672040909528732,
+      0.6691728830337524,
+      0.0025757844053936854,
+      0.03469844713231143,
+      -0.13274369944183714,
+      0.9905394887268961
+    ],
+    "xyz_min": [
+      -0.37524619698524475,
+      -0.10661677271127701,
+      0.524763286113739
+    ],
+    "xyz_max": [
+      2.398087978363037,
+      2.4670255184173584,
+      0.7106382250785828
+    ]
+  }
+}

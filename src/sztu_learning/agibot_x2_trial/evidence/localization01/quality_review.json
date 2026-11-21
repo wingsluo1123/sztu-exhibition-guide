@@ -1,0 +1,5 @@
+{
+  "accepted_for_navigation": false,
+  "reason": "Process/interface smoke test passed, but scan-to-scan pose jumps reached 2.51 m and start-aligned LIO discrepancy reached 8.63 m. This is not a stable localization result.",
+  "ground_truth_available": false
+}

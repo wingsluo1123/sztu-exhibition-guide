@@ -1,0 +1,9 @@
+{
+  "operator_feedback": "已运动并停稳但是停的时候朝向不对",
+  "motion_observed": true,
+  "stopped_observed": true,
+  "heading_accepted": false,
+  "run": "rviz_goal_20261121_09",
+  "acceptance": "failed; result input_invalid, not arrived",
+  "note": "User feedback recorded separately; original raw report preserved."
+}

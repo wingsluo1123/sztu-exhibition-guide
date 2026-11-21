@@ -1,0 +1,18 @@
+{
+  "state": "consumed",
+  "authorized_epoch": 1795206763.915253,
+  "attempts": 1,
+  "objective": "One user-selected reachable RViz goal on original room map",
+  "operator_confirmation": "At original start and heading, stationary, on site with remote; chooses physically clear route",
+  "max_distance_m": 5.0,
+  "max_linear_m_s": 0.15,
+  "max_angular_rad_s": 0.7,
+  "radius_m": 0.4,
+  "total_task_deadline": null,
+  "stop": "arrival or fault; no automatic retries",
+  "release": "nav2_release06",
+  "physical_command_issued": true,
+  "result": "travel_limit_after_goal_region_entered",
+  "operator": "Already stopped; reached target, final heading wrong",
+  "ended_epoch": 1795207295.1798856
+}

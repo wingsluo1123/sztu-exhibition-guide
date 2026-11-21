@@ -1,0 +1,45 @@
+{
+  "source_bag": "/home/sztu/sztu/src/sztu_learning/bags/lesson43_move_20261119_231833",
+  "run_report": "/home/sztu/sztu/src/sztu_learning/runtime_logs/lesson47/run_report.json",
+  "output_check": "/home/sztu/sztu/src/sztu_learning/runtime_logs/lesson47/output_check.json",
+  "reception_check": "/home/sztu/sztu/src/sztu_learning/runtime_logs/lesson47/reception_check.json",
+  "build_record": "/home/sztu/sztu/src/sztu_learning/runtime_logs/lesson47/build_record.json",
+  "files": {
+    "README.md": {
+      "bytes": 2637,
+      "sha256": "9817115119fa2fc3e3b5a0728b7884bdf93b48dd3b05b4eba19cdeb56464bcc2"
+    },
+    "collection.json": {
+      "bytes": 489,
+      "sha256": "0e649940b1be8dd0cdc8b75b49d0fe21a89ba954326f17d25dfac3b61db1f7e6"
+    },
+    "pointcloud_preview.png": {
+      "bytes": 920423,
+      "sha256": "e85170e54713171ac01a0c80d09ed3502e139a1526c7c8912e14e07d46d4863b"
+    },
+    "registered_scans_xyz.pcd": {
+      "bytes": 220310055,
+      "sha256": "2c5293147c4bad55c016f5322eaacdca49dcfd88272d8939d8e67fd38b39123a"
+    },
+    "trajectory.csv": {
+      "bytes": 236608,
+      "sha256": "0710ea4b3185d99065595c7bb8cd57393da6f0e5e574dcac42ee987e45758a25"
+    },
+    "trajectory.png": {
+      "bytes": 113464,
+      "sha256": "a2e304e089203c22b5de571765e0e6c8fda56aa52312de54dd6b7ad67eb0e1fc"
+    }
+  },
+  "frame_id": "camera_init",
+  "coordinate_unit": "m",
+  "child_frame_id": "body",
+  "algorithm_cloud_callbacks": 1431,
+  "saved_cloud_frames": 1428,
+  "points": 18359162,
+  "candidate_timestamp_unit": "ns; source reference unconfirmed",
+  "visual_review": {
+    "trajectory.png": "Reviewed Y-Z projection and component traces; estimated out-and-return with bend, not ground truth.",
+    "pointcloud_preview.png": "Reviewed sampled planar structures; view clipped1%-99%, vertical display axis X, coordinates unchanged."
+  },
+  "limits": "Concatenated scans with duplicate points, not a navigation occupancy map. No independently measured accuracy, loop closure or relocalization."
+}

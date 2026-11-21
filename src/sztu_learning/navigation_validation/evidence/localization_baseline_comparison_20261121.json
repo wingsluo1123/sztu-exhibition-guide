@@ -1,0 +1,248 @@
+{
+  "scope": "Read-only analysis of preserved live logs; no new runtime or actuator commands",
+  "baselines": {
+    "moving01": {
+      "source": "src/sztu_learning/previous_learning/runtime_logs/online_20261120/robot_runs/moving01",
+      "hash_checks": {
+        "events.jsonl": true,
+        "session.json": true
+      },
+      "pose_count": 1376,
+      "invalid_after_first_valid": 0,
+      "applied_map_corrections": 241,
+      "pose_source_stamp_duration_s": 137.6022822856903,
+      "pose_source_stamp_rate_hz": 9.992566817643478,
+      "pose_receive_duration_s": 137.59591484069824,
+      "pose_receive_rate_hz": 9.993029237764123
+    },
+    "stationary07": {
+      "source": "src/sztu_learning/previous_learning/runtime_logs/online_20261120/robot_runs/stationary07",
+      "hash_checks": {
+        "events.jsonl": true,
+        "session.json": true
+      },
+      "pose_count": 888,
+      "invalid_after_first_valid": 0,
+      "applied_map_corrections": 157,
+      "pose_source_stamp_duration_s": 88.70055294036865,
+      "pose_source_stamp_rate_hz": 9.999937662128326,
+      "pose_receive_duration_s": 88.66540932655334,
+      "pose_receive_rate_hz": 10.003901259094091
+    }
+  },
+  "provenance_comparison": {
+    "source_sha256": {
+      "continuous_localizer.py": {
+        "yesterday": "37e6acf5360e3a2d1154e5ed0c6c2f00c0e461e2ee38156d9a0900873293da1e",
+        "today": "37e6acf5360e3a2d1154e5ed0c6c2f00c0e461e2ee38156d9a0900873293da1e",
+        "equal": true
+      },
+      "continuous_localization_node.py": {
+        "yesterday": "90023c1d5e7ca8d6c6f879186a8ebb2ed872a18a54b134a9d68b147cb97c5c92",
+        "today": "60f1267d60bd18d50b63abc116bcb29ce82a14c5385e171960f87962ca514714",
+        "equal": false
+      },
+      "online_robot_session.py": {
+        "yesterday": "bf1fdc715c7bc8bd45f730caec08dbcc57b09381611fa3c5ef5a91a56b458c4e",
+        "today": "bf1fdc715c7bc8bd45f730caec08dbcc57b09381611fa3c5ef5a91a56b458c4e",
+        "equal": true
+      },
+      "lesson44_collect_mapping.py": {
+        "yesterday": "9da058d707cc4807042ff84d170557069040d610b75c94ffd73e64d22e83a62b",
+        "today": "9da058d707cc4807042ff84d170557069040d610b75c94ffd73e64d22e83a62b",
+        "equal": true
+      },
+      "inspect_online_inputs.py": {
+        "yesterday": "ba2bcb954d69d69989d2f6528239732497c6dfedce483d56b22b8af1210267e9",
+        "today": "ba2bcb954d69d69989d2f6528239732497c6dfedce483d56b22b8af1210267e9",
+        "equal": true
+      },
+      "benchmark_online_match.py": {
+        "yesterday": "3ffccc06301429df6412b39a8299817bb0c4ac846c6831b14e97a443c5e19630",
+        "today": "3ffccc06301429df6412b39a8299817bb0c4ac846c6831b14e97a443c5e19630",
+        "equal": true
+      },
+      "robot_base_projection.py": {
+        "yesterday": "590e794023ae264ca51189b407741dee199af1bc44e7dc310947904e46ce09c2",
+        "today": "590e794023ae264ca51189b407741dee199af1bc44e7dc310947904e46ce09c2",
+        "equal": true
+      },
+      "planar_localizer.py": {
+        "yesterday": "dd8355cea1db8e22d14a5ce199e8631fc824d313398c145d17e3ee0866ecae32",
+        "today": "dd8355cea1db8e22d14a5ce199e8631fc824d313398c145d17e3ee0866ecae32",
+        "equal": true
+      },
+      "build_rviz_map.py": {
+        "yesterday": "7f20101f75bc009702ad2aefcb8c9b7de0aec904c052d52cb5aad6183ffd3d7c",
+        "today": "7f20101f75bc009702ad2aefcb8c9b7de0aec904c052d52cb5aad6183ffd3d7c",
+        "equal": true
+      },
+      "online_sensor_adapter.py": {
+        "yesterday": "700582726539f1f5541cf056b7da63c273879941486face333234a91d4a652c6",
+        "today": "700582726539f1f5541cf056b7da63c273879941486face333234a91d4a652c6",
+        "equal": true
+      },
+      "spatial_localizer.py": {
+        "yesterday": "337556c90ae0c640e09142fcc1dcee3b5df3b24d9ccc79166489ccc4ad757974",
+        "today": "337556c90ae0c640e09142fcc1dcee3b5df3b24d9ccc79166489ccc4ad757974",
+        "equal": true
+      },
+      "online_bootstrap.py": {
+        "yesterday": "57b2efe9b2a1006083ba8f202fc27be1d3209afd4ae8f96d81b95ad7a4cbe05b",
+        "today": "57b2efe9b2a1006083ba8f202fc27be1d3209afd4ae8f96d81b95ad7a4cbe05b",
+        "equal": true
+      },
+      "online_display_bridge.py": {
+        "yesterday": "978e7353814aac3100cc42f458957b6749b13bb11a7acf69d2d9db1a11c4cceb",
+        "today": "954c6db8eb3e14e22c0e7ab29a9bb76981402d14ddce7c26ca585da59a46875b",
+        "equal": false
+      },
+      "online_match_worker.py": {
+        "yesterday": "7ca5f6631c25bf0bc978e010a252db12e12f661f2e5cd1ee274d6b6a2abcb96a",
+        "today": "7ca5f6631c25bf0bc978e010a252db12e12f661f2e5cd1ee274d6b6a2abcb96a",
+        "equal": true
+      }
+    },
+    "configuration_sha256": {
+      "online_capture_qos.yaml": {
+        "yesterday": "01ed522e34c8ae44de4329a5685d5bcefada5b0c8e8a03d66fc83c2b88daa116",
+        "today": "01ed522e34c8ae44de4329a5685d5bcefada5b0c8e8a03d66fc83c2b88daa116",
+        "equal": true
+      },
+      "fastlio_localmap_candidate.yaml": {
+        "yesterday": "c5b7d9827c7f5e4f688dbdc4ab6e64f143c717a9a9ec9323ae27495737925bc1",
+        "today": "c5b7d9827c7f5e4f688dbdc4ab6e64f143c717a9a9ec9323ae27495737925bc1",
+        "equal": true
+      },
+      "fastlio_extrinsics_candidate.yaml": {
+        "yesterday": "568ad610ee58ff01cb1ae4ef4944489d47f69b1ec3727b7f2229c1026748dffa",
+        "today": "568ad610ee58ff01cb1ae4ef4944489d47f69b1ec3727b7f2229c1026748dffa",
+        "equal": true
+      },
+      "fastlio_inputs_candidate.yaml": {
+        "yesterday": "bc4588db964e107af9d366a4d8fe416b71c9f55737d37e74358d668049505443",
+        "today": "bc4588db964e107af9d366a4d8fe416b71c9f55737d37e74358d668049505443",
+        "equal": true
+      }
+    },
+    "binary_sha256": {
+      "yesterday": "a2d0cc2a0fd46a2ef78a0365f7923ddce10d2b193e0d2ba1efdf84f4e6e05fb8",
+      "today": "a2d0cc2a0fd46a2ef78a0365f7923ddce10d2b193e0d2ba1efdf84f4e6e05fb8",
+      "equal": true
+    },
+    "map_manifest_sha256": {
+      "yesterday": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+      "today": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+      "equal": true
+    }
+  },
+  "today_first_lost": {
+    "received_epoch": 1795197044.230787,
+    "kind": "localization",
+    "value": {
+      "state": "lost",
+      "reason": "input_timeout_requires_reinitialization",
+      "valid": false,
+      "stamp": 1795197043.8105264,
+      "last_map_match_stamp": 1795197043.510549,
+      "pose_xy_yaw": null,
+      "reference_point": "Floor projection of chest IMU origin; heading is projected IMU +Y, not base_link",
+      "recovery": "After lost, restart with verified initial pose and odometry frame; no automatic recovery",
+      "last_match_diagnostics": {
+        "accepted": true,
+        "applied": true,
+        "reasons": [],
+        "tracker_reason": "map_match_accepted",
+        "matching_wall_s": 0.09690484900056617,
+        "age_s": 0.18462085723876953
+      },
+      "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+      "mode": "live_robot",
+      "display_reference_point": "base_link floor projection, forward +X"
+    }
+  },
+  "adapter_samples_near_loss": [
+    {
+      "received_epoch": 1795197041.3292522,
+      "kind": "adapter",
+      "value": {
+        "accepted": 1058,
+        "rejected": 1,
+        "last_reason": "accepted",
+        "input_age_s": 0.10318756103515625,
+        "conversion_wall_s": 0.002037927995843347,
+        "point_time_interpretation": "Candidate relative ns; nominal calibration retained"
+      }
+    },
+    {
+      "received_epoch": 1795197042.33026,
+      "kind": "adapter",
+      "value": {
+        "accepted": 1068,
+        "rejected": 1,
+        "last_reason": "accepted",
+        "input_age_s": 0.10149860382080078,
+        "conversion_wall_s": 0.0019636900033219717,
+        "point_time_interpretation": "Candidate relative ns; nominal calibration retained"
+      }
+    },
+    {
+      "received_epoch": 1795197043.3279781,
+      "kind": "adapter",
+      "value": {
+        "accepted": 1078,
+        "rejected": 1,
+        "last_reason": "accepted",
+        "input_age_s": 0.1031179428100586,
+        "conversion_wall_s": 0.001865231002739165,
+        "point_time_interpretation": "Candidate relative ns; nominal calibration retained"
+      }
+    },
+    {
+      "received_epoch": 1795197044.3287919,
+      "kind": "adapter",
+      "value": {
+        "accepted": 1085,
+        "rejected": 2,
+        "last_reason": "accepted",
+        "input_age_s": 0.3075559139251709,
+        "conversion_wall_s": 0.0025076669990085065,
+        "point_time_interpretation": "Candidate relative ns; nominal calibration retained"
+      }
+    },
+    {
+      "received_epoch": 1795197045.3278513,
+      "kind": "adapter",
+      "value": {
+        "accepted": 1095,
+        "rejected": 2,
+        "last_reason": "accepted",
+        "input_age_s": 0.10442423820495605,
+        "conversion_wall_s": 0.005058843998995144,
+        "point_time_interpretation": "Candidate relative ns; nominal calibration retained"
+      }
+    },
+    {
+      "received_epoch": 1795197046.3279972,
+      "kind": "adapter",
+      "value": {
+        "accepted": 1105,
+        "rejected": 2,
+        "last_reason": "accepted",
+        "input_age_s": 0.1031036376953125,
+        "conversion_wall_s": 0.0018758840014925227,
+        "point_time_interpretation": "Candidate relative ns; nominal calibration retained"
+      }
+    }
+  ],
+  "interpretation": {
+    "baseline_usable": true,
+    "root_cause_established": false,
+    "limitations": [
+      "Successful live baseline spans about 138 s, not hours.",
+      "Input rejection and delay coincide with failure; 1 Hz adapter status does not identify rejected frame or establish cause.",
+      "Today uses navigation_localization subclass and different launch/observation load.",
+      "Moving-run node source hash is recorded, but exact source with that hash not found in inspected local archives; no claimed complete source diff."
+    ]
+  }
+}

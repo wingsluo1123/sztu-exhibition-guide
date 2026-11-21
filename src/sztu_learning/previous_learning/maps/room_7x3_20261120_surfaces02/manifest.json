@@ -1,0 +1,11 @@
+{
+  "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+  "archive_manifest_sha256": "5cb6720b7f14180821fdf897418984306a5e18c18900948cfb14d49a147dd198",
+  "reference_sha256": "9faebcecd09d572c9c6003b7854d6866f7b91bc1f5191c7bca70d0e58d2224cc",
+  "implementation_sha256": "ac0c256b3319f895882922c8cae0b96810c0d5f980eeeb3dc16a0463f1b8d714",
+  "frames": 1182,
+  "surface_targets": 1402,
+  "endpoint_targets": 18893,
+  "method": "Same-map registered XYZ, height .25-1.85m,7cm3D voxels,20-neighbor planes within35cm, eigenvalue ratio<.2, abs(normal.z)<.5; project stable vertical-plane normals toXY.",
+  "limits": "Nominal calibration and mapping trajectory retained. Dense targets supplement fixed PGM, no changed map pixels, unknown cells remain unknown."
+}

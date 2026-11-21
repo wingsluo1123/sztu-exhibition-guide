@@ -1,0 +1,31 @@
+{
+  "trial": "nav2_rviz_20261121_04",
+  "release": "nav2_release05",
+  "operator": "已运动并停稳，位置和朝向基本正确",
+  "official_action_status": 4,
+  "independent_result": "final_heading_outside_tolerance",
+  "final_distance_m": 0.10554026408509487,
+  "final_yaw_error_deg": -19.47618154349934,
+  "last_command_distance_m": 0.03646612756378233,
+  "last_command_yaw_error_deg": 2.205788239259925,
+  "post_action_estimated_translation_m": 0.1085641657085797,
+  "post_action_estimated_yaw_change_deg": 21.681969782759264,
+  "last_sdk_nonzero": {
+    "epoch": 1795204650.0115523,
+    "source": "sdk_learning_nav2",
+    "forward": 0.0,
+    "lateral": 0.0,
+    "angular": 0.7
+  },
+  "first_following_sdk_zero": {
+    "epoch": 1795204650.031193,
+    "source": "sdk_learning_nav2",
+    "forward": 0.0,
+    "lateral": 0.0,
+    "angular": 0.0
+  },
+  "following_sdk_all_zero": true,
+  "other_sources_nonzero_count": 0,
+  "uncertainty": "角度/位置均来自本机定位，现场仅定性确认基本正确。零命令回读证明线上请求，不能独立证明物理制动效果；实际脚步、上身运动、传感器/运动学误差仍需独立测量区分。",
+  "next": "先标定真实转向停止响应及其测量一致性，再选择Nav2减速配置；不自动修改门限或发起新实走。"
+}

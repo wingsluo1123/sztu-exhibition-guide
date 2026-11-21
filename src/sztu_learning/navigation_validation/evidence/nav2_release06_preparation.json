@@ -1,0 +1,14 @@
+{
+  "release": "nav2_release06",
+  "remote": "/home/agi/sztu_learning/navigation_validation/nav2_release06",
+  "verified_files": 76,
+  "map_identity_verified": true,
+  "robot_entrypoint_import_and_help_passed": true,
+  "software_planning": "nav2_map_goals_20261121_05/report.json",
+  "regression_log": "nav2_free_goal_unit_20261121_04.log",
+  "trial": "nav2_free_rviz_20261121_01",
+  "initial_non_actuating_localization": "nav2_free_live_20261121_01",
+  "reinitialized_non_actuating_localization": "nav2_free_live_20261121_02",
+  "authorization": "nav2_free_goal_trial_20261121_01_authorization.json",
+  "updated_epoch": 1795207106.7581108
+}

@@ -1,0 +1,50 @@
+{
+  "no_robot_api": true,
+  "results": [
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -2.6864483031,
+      "status": 4,
+      "final_pose": [
+        -0.7020734757473336,
+        -0.5058799924981557,
+        -2.635131975433636
+      ],
+      "distance_m": 0.040296287711695286,
+      "yaw_error_rad": 0.05131632766636418,
+      "nonzero_commands": 75
+    },
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -1.2,
+      "status": 4,
+      "final_pose": [
+        -0.7036801985843832,
+        -0.5076367507329888,
+        -1.2351869240210476
+      ],
+      "distance_m": 0.042106575958115164,
+      "yaw_error_rad": 0.035186924021047616,
+      "nonzero_commands": 115
+    }
+  ],
+  "model": {
+    "linear_gain": 2.0,
+    "linear_response_seconds": 0.65,
+    "angular_response_seconds": 0.12,
+    "synthetic_pose_feedback": true,
+    "source_localization_tested": false
+  },
+  "all_lifecycle_nodes_active": true,
+  "passed": true,
+  "process_exit_codes": [
+    0,
+    0
+  ]
+}

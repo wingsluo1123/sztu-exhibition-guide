@@ -1,0 +1,78 @@
+{
+  "operation": "Fixed proper rotation of saved trajectory positions; no re-estimation",
+  "source_frame": "camera_init",
+  "target_frame": "learning_level_candidate",
+  "unit": "m",
+  "translation_m": [
+    0,
+    0,
+    0
+  ],
+  "rows": 1428,
+  "contains_orientation": false,
+  "sources": [
+    {
+      "path": "maps/lesson47_move_run01/trajectory.csv",
+      "bytes": 236608,
+      "sha256": "0710ea4b3185d99065595c7bb8cd57393da6f0e5e574dcac42ee987e45758a25"
+    },
+    {
+      "path": "maps/lesson47_move_run01/manifest.json",
+      "bytes": 2005,
+      "sha256": "6ade46e30d368ffc8238adc6a533eb7eb3461271cbd45c660679f035bf8cf12c"
+    },
+    {
+      "path": "runtime_logs/lesson48/axis_check.json",
+      "bytes": 799,
+      "sha256": "219bdd5b437efe9d689cd8d99fd1509c6c7844ca4d60e6f6bfd60c9e3a78b6a7"
+    }
+  ],
+  "implementation": [
+    {
+      "path": "lesson49_level_positions.py",
+      "bytes": 2694,
+      "sha256": "53a3da436b3d300b96bb4ffb69772a7c11978bdbbeb7a87ca4e0e88f762dcd65"
+    },
+    {
+      "path": "lesson49_leveling_candidate.json",
+      "bytes": 1454,
+      "sha256": "ffd8039b1396740b5f6714dafdf3101a7285119578bbb1a0eeb808ebd4e78c50"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "maps/lesson49_level_positions/positions.csv",
+      "bytes": 119121,
+      "sha256": "32474ca6cfa3e10b7f9e8a9fb850f7f1873c8cbc04cf119e5b58111b25997e7c"
+    },
+    {
+      "path": "maps/lesson49_level_positions/transform.json",
+      "bytes": 1454,
+      "sha256": "ffd8039b1396740b5f6714dafdf3101a7285119578bbb1a0eeb808ebd4e78c50"
+    },
+    {
+      "path": "maps/lesson49_level_positions/level_trajectory.png",
+      "bytes": 95680,
+      "sha256": "0799e34f4fd4e310f5748af0fc9cf022078a80df0e7042a36b844c4b3059af59"
+    },
+    {
+      "path": "maps/lesson49_level_positions/README.md",
+      "bytes": 1993,
+      "sha256": "d47518c36dd4fced8624b1c117a711383e242d2a9d21b9b097ca39305d94461a"
+    }
+  ],
+  "verification": [
+    {
+      "path": "runtime_logs/lesson49/check_output.py",
+      "bytes": 3705,
+      "sha256": "3da67b1b0230d4615519569dd769e66eda75df42dbf18e31d6c60f81ba1e40d9"
+    },
+    {
+      "path": "runtime_logs/lesson49/output_check.json",
+      "bytes": 1330,
+      "sha256": "bf5f9cb356e5fa4570c18f14258b7aea00e2e1139e4e4d713e5d301590e7c4b6"
+    }
+  ],
+  "visual_review": "Reviewed both panels: horizontal out-and-return with bend, and vertical component trace. Not a measured trajectory accuracy or floor calibration.",
+  "limits": "Approximate static-IMU up direction; heading chosen, same origin, floor unknown. No point cloud/orientation/covariance/TF conversion. No drift correction."
+}

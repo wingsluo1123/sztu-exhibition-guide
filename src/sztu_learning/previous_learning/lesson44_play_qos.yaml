@@ -1,0 +1,10 @@
+/aima/hal/sensor/lidar_chest_front/lidar_pointcloud:
+  history: keep_last
+  depth: 100
+  reliability: reliable
+  durability: volatile
+/aima/hal/sensor/lidar_chest_front/imu:
+  history: keep_last
+  depth: 2000
+  reliability: reliable
+  durability: volatile

@@ -1,0 +1,29 @@
+{
+  "position_frame": "learning_level_turned_candidate",
+  "position_source": "maps/lesson50_turned_positions/positions.csv",
+  "query_source": "maps/lesson47_move_run01/collection.json: first_cloud_stamp and last_cloud_stamp",
+  "matching": "Exact integer (sec,nanosec) key equality; no nearest or interpolation",
+  "results": [
+    {
+      "source": "first_cloud_stamp",
+      "sec": 1795101514,
+      "nanosec": 309956073,
+      "body_position_m": [
+        0.006733199908265392,
+        -0.015027635602841136,
+        0.005216159970675009
+      ]
+    },
+    {
+      "source": "last_cloud_stamp",
+      "sec": 1795101657,
+      "nanosec": 9885072,
+      "body_position_m": [
+        -0.4685836201544935,
+        0.6810966037151366,
+        0.05385166064082871
+      ]
+    }
+  ],
+  "limits": "Lookup of saved FAST-LIO body-origin positions only. Not instantaneous per-point LiDAR origins. No pose orientation, extrinsic offset or point-to-scan association recovered."
+}

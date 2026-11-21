@@ -1,0 +1,6 @@
+{
+  "confirmed_stopped": true,
+  "observed": "已运动并停稳，位置和朝向基本正确",
+  "clarification": "在本次打开的 RViz 选点后，看到真机运动了",
+  "attribution": "unresolved; this mission has no accepted goal, motor registration or nonzero request"
+}

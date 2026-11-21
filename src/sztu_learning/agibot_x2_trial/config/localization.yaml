@@ -1,0 +1,34 @@
+/**:
+  ros__parameters:
+    registration_method: NDT_OMP
+    score_threshold: 2.0
+    ndt_resolution: 1.0
+    ndt_step_size: 0.1
+    ndt_num_threads: 4
+    ndt_max_iterations: 35
+    transform_epsilon: 0.01
+    voxel_leaf_size: 0.2
+    scan_max_range: 20.0
+    scan_min_range: 0.2
+    scan_period: 0.1
+    use_pcd_map: true
+    map_path: /home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/map.pcd
+    set_initial_pose: true
+    initial_pose_x: -0.11924952870873211
+    initial_pose_y: -0.017831043777753214
+    initial_pose_z: 0.684609260403247
+    initial_pose_qx: 0.000417571700164049
+    initial_pose_qy: 0.043398228942698396
+    initial_pose_qz: 0.004619488997878014
+    initial_pose_qw: 0.9990470858172356
+    use_odom: false
+    use_imu: false
+    enable_debug: true
+    enable_map_odom_tf: true
+    global_frame_id: map
+    odom_frame_id: odom
+    base_frame_id: base_link
+    enable_timer_publishing: false
+    pose_publish_frequency: 30.0
+    use_odom_tf: true
+    reliable_cloud: true

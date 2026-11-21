@@ -1,0 +1,74 @@
+{
+  "bag": "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_154812",
+  "rate": 0.5,
+  "physical_motor_bridge_started": false,
+  "playback_command": [
+    "ros2",
+    "bag",
+    "play",
+    "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_154812",
+    "--clock",
+    "100",
+    "--rate",
+    "0.5",
+    "--delay",
+    "2",
+    "--disable-keyboard-controls",
+    "--wait-for-all-acked",
+    "5000",
+    "--qos-profile-overrides-path",
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/playback_qos.yaml"
+  ],
+  "wall_sec": 244.8161790855229,
+  "status": "passed",
+  "counts": {
+    "rectified_cloud": 1185,
+    "odom": 23628,
+    "registered": 1182
+  },
+  "unique_header_counts": {
+    "rectified_cloud": 1185,
+    "odom": 23628,
+    "registered": 1182
+  },
+  "exit_codes": {
+    "sensors": 0,
+    "kinematics": 0,
+    "lio": 0,
+    "recorder": 0,
+    "player": 0
+  },
+  "odom": {
+    "samples": 23628,
+    "first": [
+      1795160893.9102972,
+      -0.10291511552510564,
+      -0.008657856340438596,
+      -0.33007909074255687,
+      0.01430415391320423,
+      0.018382657435619662,
+      0.005236260949051765,
+      0.9997149847119955
+    ],
+    "last": [
+      1795161012.07217,
+      -0.215171999021891,
+      0.0496895348029458,
+      -0.34620652355037007,
+      0.028003056549426242,
+      0.01703291179201604,
+      -0.294356377572146,
+      0.9551335151288427
+    ],
+    "xyz_min": [
+      -1.2723316378568787,
+      -2.8205122348987257,
+      -0.4950933411409708
+    ],
+    "xyz_max": [
+      2.4382163107940222,
+      3.0709648734513246,
+      -0.1358306108292138
+    ]
+  }
+}

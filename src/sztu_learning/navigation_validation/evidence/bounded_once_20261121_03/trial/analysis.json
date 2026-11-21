@@ -1,0 +1,21 @@
+{
+  "operator_observation": "已停稳，但是没动",
+  "own_nonzero_readback_count": 217,
+  "own_nonzero_values": [
+    [
+      0.1,
+      0.0,
+      0.0
+    ]
+  ],
+  "nonzero_readback_duration_s": 14.962332248687744,
+  "other_nonzero_readback_count": 0,
+  "conclusion": "command path and selected input source observed; 0.5m arrival not achieved; physical start threshold not established",
+  "next_candidate": {
+    "speed_mps": 0.15,
+    "duration_limit_s": 5,
+    "goal_m": 0.5,
+    "automatic_retry": false,
+    "authorization": "pending"
+  }
+}

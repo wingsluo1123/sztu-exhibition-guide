@@ -1,0 +1,49 @@
+/lidar_localization:
+  ros__parameters:
+    base_frame_id: base_link
+    enable_debug: true
+    enable_map_odom_tf: true
+    enable_timer_publishing: false
+    global_frame_id: map
+    initial_pose_qw: 0.9990470858172356
+    initial_pose_qx: 0.000417571700164049
+    initial_pose_qy: 0.043398228942698396
+    initial_pose_qz: 0.004619488997878014
+    initial_pose_x: -0.11924952870873211
+    initial_pose_y: -0.017831043777753214
+    initial_pose_z: 0.684609260403247
+    map_path: /home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/map.pcd
+    ndt_max_iterations: 35
+    ndt_num_threads: 4
+    ndt_resolution: 1.0
+    ndt_step_size: 0.1
+    odom_frame_id: odom
+    pose_publish_frequency: 30.0
+    qos_overrides:
+      /clock:
+        subscription:
+          depth: 1
+          durability: volatile
+          history: keep_last
+          reliability: best_effort
+      /tf:
+        publisher:
+          depth: 100
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+    registration_method: NDT_OMP
+    reliable_cloud: true
+    scan_max_range: 20.0
+    scan_min_range: 0.2
+    scan_period: 0.1
+    score_threshold: 2.0
+    set_initial_pose: true
+    transform_epsilon: 0.01
+    use_imu: false
+    use_odom: false
+    use_odom_tf: true
+    use_pcd_map: true
+    use_sim_time: true
+    voxel_leaf_size: 0.2
+

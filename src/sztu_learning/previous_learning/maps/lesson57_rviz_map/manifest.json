@@ -1,0 +1,29 @@
+{
+  "input_run": "maps/lesson56_paired_run01",
+  "input_manifest_sha256": "1454d9b94aa01aaf963895eef043e947c6faea2d8dcb046d7ddcac8acc619baf",
+  "input_index_sha256": "439545a318fc048735618f0a5ef696ec23f3d9df8e2b9c9b3199c1d0db370d1f",
+  "source_sha256": {
+    "build_rviz_map.py": "7f20101f75bc009702ad2aefcb8c9b7de0aec904c052d52cb5aad6183ffd3d7c",
+    "map_voxel_rays.cpp": "48521175ecfc2c3b43567bd1989a3644611b94ceb7410cfac739a3f06ede60df",
+    "map_pipeline_config.yaml": "b5354f10d05cb99b052dfa2d0ac0699b9776ef593f5e33ecc59f16b9071f51c0",
+    "fastlio_extrinsics_candidate.yaml": "568ad610ee58ff01cb1ae4ef4944489d47f69b1ec3727b7f2229c1026748dffa"
+  },
+  "binary_sha256": "3ffea0a70285d2c26861b2d53cb7cec06562eeca9277c01ff46d450402269d40",
+  "invocation": [
+    "src/sztu_learning/build_rviz_map.py"
+  ],
+  "files_sha256": {
+    "summary.json": "b28c15c545247c95d23a4fd89eee00ee74c5d60d8f51fb76b53360fd05b666aa",
+    "keyframes.json": "66e536cd82c2c2d735616eda6e9d16e6d7c25aadded0c3b0c45626acb2b07111",
+    "occupancy.npy": "63034db8d0413c3c73de858220d0f85eaf7d2d1a004f44e8573bedaf33db6a90",
+    "map_preview.png": "2c43a8bfbd4b98d5899a3d2934d192ffbc2a071ee58f53dc6e778b0db4ab6c63",
+    "transform.json": "9d64e2c7f3ed6c8cd248faa63d1a4df4942bbf8dc43489c5d1e45944cf78e709",
+    "map.pgm": "913b376c4da1caf00152b00c15036efdd1b44a3a0ec71117a5643fd1b169bb27",
+    "effective_config.yaml": "b5d1c8ab1af077e2238967f9b99d9830fbb279995e39cacdd941eae7895824e9",
+    "trajectory.csv": "46a972fd97816154fd0c7c05687be7996262ecc77f6ba75ad678824e1cce1787",
+    "map.yaml": "cee7946e7429740da8488345be02185f77f6571e78126262654feb9a870a4e51",
+    "evidence/raycast.log": "6a1a7f9935d732dcb2c3bc5bf6eaec9eba23062365b6d00a19f16445f02aaf34",
+    "evidence/rays.bin": "f553e86f3668650d47aed575d54d4a52266a748058bab088158f33df802f9239",
+    "evidence/voxel_counts.bin": "d66e8294059651f306872a18f6bd7bc69c1c555122ce1c19dbff5d143a33792d"
+  }
+}

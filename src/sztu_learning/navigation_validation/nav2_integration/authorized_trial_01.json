@@ -1,0 +1,17 @@
+{
+  "operator_reply": "进行一次，原起点原朝向已停稳，遥控器和净空满足",
+  "release": "nav2_release02",
+  "trial": "nav2_rviz_20261121_01",
+  "relative_goal_forward_left_m": [
+    0.6,
+    -0.4
+  ],
+  "linear_limit_m_s": 0.15,
+  "angular_limit_rad_s": 0.7,
+  "radius_m": 0.4,
+  "max_distance_m": 2.0,
+  "total_task_deadline": null,
+  "arcs_allowed": true,
+  "one_attempt": true,
+  "no_automatic_retry": true
+}

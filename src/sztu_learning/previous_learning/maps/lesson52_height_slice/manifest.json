@@ -1,0 +1,110 @@
+{
+  "operation": "Select ordered subsequence by inclusive coordinate Z range; no coordinate change",
+  "frame_id": "learning_level_turned_candidate",
+  "unit": "m",
+  "z_range_m": [
+    0.0,
+    1.0
+  ],
+  "height_reference": "Current coordinate origin; not calibrated floor",
+  "parameter_source": "Illustrative offline viewing band selected after source Z distribution inspection; not clearance or obstacle detection parameters",
+  "source_points": 18359162,
+  "selected_points": 1592393,
+  "correspondence": "All saved rows checked against complete source subsequence; retained coordinates and duplicate multiplicity unchanged",
+  "inputs": [
+    {
+      "path": "maps/lesson51_turned_cloud/registered_scans_xyz.pcd",
+      "bytes": 220310055,
+      "sha256": "b20eb397e4a2cb965bfbeb751151e6b4d111197742c9c484207e88003459c0a5"
+    },
+    {
+      "path": "maps/lesson51_turned_cloud/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    {
+      "path": "maps/lesson51_turned_cloud/transform.json",
+      "bytes": 1718,
+      "sha256": "3568cfc264a331c1a6900802aaa9644fb465cef21c2e1831f9502c123e71d23c"
+    },
+    {
+      "path": "maps/lesson51_turned_cloud/manifest.json",
+      "bytes": 3564,
+      "sha256": "32c721962f835554777b159befdcbbfaf5b87b670645b04f52cd9d709c6d9b6d"
+    }
+  ],
+  "implementation": [
+    {
+      "path": "lesson52_height_slice.py",
+      "bytes": 3888,
+      "sha256": "38718e24ffe085630e089e3b5d0171da22f4856091606a3a303265d4d8218d00"
+    },
+    {
+      "path": "lesson52_slice_config.json",
+      "bytes": 418,
+      "sha256": "0be98bbd877399f16d80c9e66b82ac8f9527f2e4f9c65ab397a780fd11afcfc1"
+    },
+    {
+      "path": "lesson51_transform_cloud.py",
+      "bytes": 5332,
+      "sha256": "640a9ed2066aae18b815b5d03d110599cfaaf8a06093799a52a6bba6782add89"
+    }
+  ],
+  "invocation": "OPENBLAS_NUM_THREADS=1 python3 src/sztu_learning/lesson52_height_slice.py (cwd /home/sztu/sztu); save_preview regenerated with shared source-percentile XY limits after plotting changes",
+  "environment": {
+    "python": "3.10.12",
+    "numpy": "1.21.5",
+    "matplotlib": "3.5.1"
+  },
+  "files": {
+    "height_slice_xyz.pcd": {
+      "path": "maps/lesson52_height_slice/height_slice_xyz.pcd",
+      "bytes": 19108825,
+      "sha256": "7f6cfc1c65519c5a6d0e2f381f44c3b3488076ab962fb16574da7f3a03d6f8dd"
+    },
+    "positions.csv": {
+      "path": "maps/lesson52_height_slice/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    "transform.json": {
+      "path": "maps/lesson52_height_slice/transform.json",
+      "bytes": 1718,
+      "sha256": "3568cfc264a331c1a6900802aaa9644fb465cef21c2e1831f9502c123e71d23c"
+    },
+    "slice_config.json": {
+      "path": "maps/lesson52_height_slice/slice_config.json",
+      "bytes": 418,
+      "sha256": "0be98bbd877399f16d80c9e66b82ac8f9527f2e4f9c65ab397a780fd11afcfc1"
+    },
+    "selection.json": {
+      "path": "maps/lesson52_height_slice/selection.json",
+      "bytes": 217,
+      "sha256": "addd41119130c68480d46349386046948847030e566b96cdcadb625a3ec37124"
+    },
+    "height_slice_comparison.png": {
+      "path": "maps/lesson52_height_slice/height_slice_comparison.png",
+      "bytes": 1113691,
+      "sha256": "1910e32aa4315dedaee336a40c61c5d216a9cf5391718f3c5e9b11214e664505"
+    },
+    "README.md": {
+      "path": "maps/lesson52_height_slice/README.md",
+      "bytes": 2367,
+      "sha256": "17e5bb73cb94bbd89cc19ef770a51a4ab2dbcb447256d3d5593491c73518dfea"
+    }
+  },
+  "verification": [
+    {
+      "path": "runtime_logs/lesson52/check_output.py",
+      "bytes": 3561,
+      "sha256": "3c390a16ebce0f4a3e04999c074058a85c2d600be377a8c9cb5143af20a7fc5f"
+    },
+    {
+      "path": "runtime_logs/lesson52/output_check.json",
+      "bytes": 1060,
+      "sha256": "72992189b1d59ffaa1811b669dccf1c8b27f97198f5c998d578160e493851e42"
+    }
+  ],
+  "visual_review": "Reviewed shared-bound XY plots before/after selection: reduced all-height overlap, wall-like outlines and other clusters remain. No free-space or physical-obstacle identification claim.",
+  "limits": "Range can omit low/high obstacles. Not ground segmentation, obstacle classification, free-space evidence or a navigation occupancy map. Pure-odometry drift and approximate up remain."
+}

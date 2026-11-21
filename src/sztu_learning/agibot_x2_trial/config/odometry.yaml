@@ -1,0 +1,60 @@
+/**:
+  ros__parameters:
+    preprocess:
+      lidar_type: 2
+      scan_line: 96
+      scan_rate: 10
+      timestamp_unit: 0
+      blind: 0.45
+      blind_for_human_pilot: 2.5
+      blind_for_human_pilots: 0.0
+    mapping:
+      acc_cov: 0.1
+      gyr_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      fov_degree: 180.0
+      det_range: 15.0
+      extrinsic_est_en: false
+      extrinsic_T:
+      - 0.011211999692022802
+      - -0.0157517995685339
+      - 0.004274399951100343
+      extrinsic_R:
+      - 0.9999533365735452
+      - 0.0015116197042464592
+      - 0.009541471652932842
+      - -0.0013867988479434046
+      - 0.9999135566296135
+      - -0.01307501653046847
+      - -0.009560411308585537
+      - 0.013061174303500178
+      - 0.999868993549367
+    filter_size_map: 0.1
+    publish:
+      path_en: true
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_lidarframe_pub_en: true
+      scan_bodyframe_pub_en: true
+      scan_baseframe_pub_en: false
+      tf_en: false
+    pcd_save:
+      pcd_save_en: false
+      interval: 25
+    verbose: false
+    runtime_pos_log_enable: false
+    point_filter_num_for_preprocessing: 1
+    point_filter_num: 4
+    max_iteration: 4
+    cube_side_length: 1000.0
+    common:
+      map_frame: odom
+      base_frame: ''
+      imu_frame: imu_rectified
+      lidar_frame: lidar_rectified
+      visualization_frame: imu
+      time_sync_en: false
+      save_dir: /home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping01/pcd
+    gravity_alignment:
+      enable_gravity_alignment: false

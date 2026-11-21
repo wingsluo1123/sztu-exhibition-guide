@@ -1,0 +1,8 @@
+{
+  "same_shape": true,
+  "same_grid": true,
+  "same_map_yaml": true,
+  "original_map": "/home/sztu/sztu/src/sztu_learning/previous_learning/maps/room_7x3_20261120_map01",
+  "reproduced_map": "/home/sztu/sztu/src/sztu_learning/mapping_learning/reproduction/generated_map",
+  "different_cells": 0
+}

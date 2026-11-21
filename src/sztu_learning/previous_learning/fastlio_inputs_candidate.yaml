@@ -1,0 +1,20 @@
+# 仅学习输入话题参数，不是可直接启动建图的完整配置。
+# /learning/fastlio_input 是为未来适配器预留的话题，当前尚未实现其发布者。
+laser_mapping:
+  ros__parameters:
+    common:
+      lid_topic: /learning/fastlio_input
+      imu_topic: /aima/hal/sensor/lidar_chest_front/imu
+      # 不启用源码中的Livox分支自动时间差估计。
+      time_sync_en: false
+      # 暂不人为平移IMU时间；0.0不表示已证明两传感器无时间偏差。
+      time_offset_lidar_to_imu: 0.0
+    preprocess:
+      # 本仓库2对应Velodyne字段格式分支，不表示真机型号是Velodyne。
+      # 需未来适配器提供x/y/z/intensity/time/ring及正确的时间定义。
+      lidar_type: 2
+      # 练习录包42帧中实际出现ring编号0～95；不是每帧点数。
+      scan_line: 96
+      # 约定未来适配器输出的time使用秒；0是本仓库的SEC编号。
+      # 这不代表已确认原始timestamp的单位，也不执行原始字段转换。
+      timestamp_unit: 0

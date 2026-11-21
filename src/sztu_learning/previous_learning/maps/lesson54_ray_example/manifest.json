@@ -1,0 +1,43 @@
+{
+  "input": "Synthetic idealized horizontal 2D first-return beam, row2 source column1 hit column7; no real data",
+  "implementation": {
+    "path": "lesson54_ray_example.py",
+    "bytes": 3063,
+    "sha256": "283a18fbbde6c81a58b0b0582b31c6b45c3127c84927dab6256e713151dcb2e0"
+  },
+  "invocation": "python3 src/sztu_learning/lesson54_ray_example.py (cwd /home/sztu/sztu)",
+  "environment": {
+    "python": "3.10.12",
+    "numpy": "1.21.5",
+    "matplotlib": "3.5.1"
+  },
+  "files": {
+    "example_grid.npy": {
+      "path": "maps/lesson54_ray_example/example_grid.npy",
+      "bytes": 188,
+      "sha256": "be2599d231f2d8366be7fa33a4b5fbda54f55aee89c1c6455f4f6700d79a0e84"
+    },
+    "example.json": {
+      "path": "maps/lesson54_ray_example/example.json",
+      "bytes": 790,
+      "sha256": "ca37f3cc633181f35d413397478ae7aa9c9bdf034fb359cd5330b7a837c6b68b"
+    },
+    "ray_example.png": {
+      "path": "maps/lesson54_ray_example/ray_example.png",
+      "bytes": 43116,
+      "sha256": "54f8371143801f92ecdb012221c79d7c62d29a4b13dde8366605c5ca43255f42"
+    },
+    "README.md": {
+      "path": "maps/lesson54_ray_example/README.md",
+      "bytes": 2354,
+      "sha256": "29d8a3e53aeeb6333ea2b147e6b2986f611e368d7788ed4da6186c3e7f545ddd"
+    }
+  },
+  "verification": {
+    "path": "runtime_logs/lesson54/output_check.json",
+    "bytes": 385,
+    "sha256": "0169bec11654cce25f65f16dc8ec95a707bb7057a8a5844f3678f6a34347946a"
+  },
+  "visual_review": "Reviewed single row: source green, ray red, free evidence white, endpoint blue, other and behind-hit cells gray unknown",
+  "limits": "Concept example only, no general ray tracing, 3D-column clearing, real map changes or robot action."
+}

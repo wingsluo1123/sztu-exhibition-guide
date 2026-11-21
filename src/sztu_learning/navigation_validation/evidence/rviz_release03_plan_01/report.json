@@ -1,0 +1,98 @@
+{
+  "actuation_requested": false,
+  "nonzero_commands": 0,
+  "scope": "supervised static-map commissioning; no dynamic obstacle avoidance",
+  "parameters": {
+    "turn_deg": null,
+    "goal": null,
+    "relative_goal": [
+      0.6,
+      -0.4
+    ],
+    "rviz_goal": false,
+    "goal_yaw_deg": null,
+    "map_directory": "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01",
+    "radius": 0.4,
+    "duration": 0.0,
+    "max_distance": 2.0,
+    "angular": 0.7,
+    "output": "/home/agi/sztu_learning/navigation_validation/runs/rviz_release03_plan_01",
+    "execute_one_attempt": false,
+    "observe_seconds": 2.0,
+    "goal_wait_seconds": 180.0,
+    "approved_relative_goal": null,
+    "goal_selection_radius": 0.2
+  },
+  "source_sha256": {
+    "goal_navigation/navigate.py": "45673a4c6f6e1e7ae0387ec4e304eeb870f22434b4dcc78d7d097fe7917da221",
+    "goal_navigation/grid_route.py": "014b3e71a19d1214fee706e9a593746f2907076028355e2b60f53a204f0c3454",
+    "goal_navigation/motion_policy.py": "de37c22b907684d90678ba3c03b14c5fd197ca828398fc596cfc601426dd0957",
+    "goal_navigation/mission_timing.py": "dcc4d19facf437c4f0fbcb3fe34bc63900ebfd248ca5e9e3130968f3ce5fb17d",
+    "goal_navigation/input_readiness.py": "9913f17d536f07f761844077738d73816bd87091dcc4a97173308cb2e9433068",
+    "straight_trial.py": "47db367843d581350b789b604f477fae2376e927036a4cf9af4ca4c4ca5c7c74"
+  },
+  "plan": {
+    "map_route": [
+      [
+        -0.058866995729973066,
+        -0.0032437657399498887
+      ],
+      [
+        -0.6288152937869559,
+        -0.4450117337298764
+      ]
+    ],
+    "odom_route": [
+      [
+        -0.10174629117652403,
+        0.13389016959560662
+      ],
+      [
+        -0.48987085437698624,
+        -0.4738592223748424
+      ]
+    ],
+    "map_goal_yaw": null,
+    "initial_map_pose": [
+      -0.058866995729973066,
+      -0.0032437657399498887,
+      -1.8942163668671956
+    ],
+    "map_from_odom_frozen": [
+      [
+        0.9417214387848305,
+        0.33639371535899526,
+        -0.008090143612508649
+      ],
+      [
+        -0.33639371535899526,
+        0.9417214387848305,
+        -0.1635578218035386
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "radius_m": 0.4,
+    "turn_only": false,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "maximum_source_age_s": 0.35,
+    "yaw_tolerance_rad": 0.1,
+    "forward_coast_compensation_m": 0.26,
+    "no_progress_timeout_s": 5.0
+  },
+  "observed_not_ready_samples": 0,
+  "observed_samples": 97,
+  "result": "diagnostic_plan_only_no_motor_registration",
+  "ended_epoch": 1795199935.6456728,
+  "last_localization": {
+    "valid": true,
+    "source_valid": true,
+    "stamp": 1795199935.512322,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "reason": "map_match_accepted",
+    "mode": "diagnostic_no_actuator"
+  }
+}

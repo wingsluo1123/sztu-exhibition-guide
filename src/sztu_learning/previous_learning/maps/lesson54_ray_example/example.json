@@ -1,0 +1,17 @@
+{
+  "source": "Synthetic teaching example; no real bag, point cloud or robot input",
+  "model": "One horizontal idealized 2D first-return beam, through centers of row 2 cells, source at column 1, hit in column 7",
+  "assumptions": "Ideal thin beam, valid opaque first return, same plane, no prior observations; free is evidence at beam height, not whole robot clearance",
+  "cell_values": {
+    "-1": "unknown",
+    "0": "free evidence along idealized beam",
+    "100": "hit/occupied in this example"
+  },
+  "shape_rows_columns": [
+    6,
+    10
+  ],
+  "axis_order": "[row_y,column_x]",
+  "units": "Cell indices only, no physical resolution or real frame assigned",
+  "limitations": "Not a general ray tracer, conflict/update policy, ROS map publisher or conversion of real point clouds"
+}

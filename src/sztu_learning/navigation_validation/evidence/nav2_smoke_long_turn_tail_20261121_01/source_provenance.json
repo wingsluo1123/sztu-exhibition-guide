@@ -1,0 +1,6 @@
+{
+  "smoke_test_sha256": "a7983f3a28302b966c7d88ef157efae6ba92062c955e58718932e163a68923b1",
+  "parameters_sha256": "612e8fa07ddb2c8527eb65832dcf5dd1986ae403d23be2ef928b23f1ce4735fd",
+  "outcome": "expected acceptance check failed on second task with longer angular response; no physical test",
+  "hardware_release05_unchanged": true
+}

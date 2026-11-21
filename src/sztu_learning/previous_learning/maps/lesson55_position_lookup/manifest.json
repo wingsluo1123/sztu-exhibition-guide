@@ -1,0 +1,48 @@
+{
+  "operation": "Exact integer sec,nanosec lookup of saved body position for first and last registered-cloud header stamps",
+  "frame_id": "learning_level_turned_candidate",
+  "unit": "m",
+  "query_count": 2,
+  "inputs": [
+    {
+      "path": "maps/lesson50_turned_positions/positions.csv",
+      "bytes": 119665,
+      "sha256": "cdf992fff11e5d4dcc690ede6ffb8726e65fcc3630037979007f284aa122e4da"
+    },
+    {
+      "path": "maps/lesson50_turned_positions/manifest.json",
+      "bytes": 2368,
+      "sha256": "bcc378c27eef35f5779481c585556afbbd6788e648a884cb1df2bc6dfac2d7b3"
+    },
+    {
+      "path": "maps/lesson47_move_run01/collection.json",
+      "bytes": 489,
+      "sha256": "0e649940b1be8dd0cdc8b75b49d0fe21a89ba954326f17d25dfac3b61db1f7e6"
+    }
+  ],
+  "implementation": {
+    "path": "lesson55_position_at_stamp.py",
+    "bytes": 2368,
+    "sha256": "c45e4a852d2c12171f4ca631c5bdc5cc2259ce191a1f01d0993c2900b6da2f0b"
+  },
+  "invocation": "python3 src/sztu_learning/lesson55_position_at_stamp.py (cwd /home/sztu/sztu)",
+  "python": "3.10.12",
+  "files": {
+    "positions_at_stamps.json": {
+      "path": "maps/lesson55_position_lookup/positions_at_stamps.json",
+      "bytes": 972,
+      "sha256": "c4871aa0c052392a6a96538d561aa74bb4109232ff986980a6e6d1691e611159"
+    },
+    "README.md": {
+      "path": "maps/lesson55_position_lookup/README.md",
+      "bytes": 2101,
+      "sha256": "15fe1ecbfb0285f469666d36326fc11ebe0e91d38366c827e586be553ba85c34"
+    }
+  },
+  "verification": {
+    "path": "runtime_logs/lesson55/output_check.json",
+    "bytes": 367,
+    "sha256": "7c061cc92b6a17c2320d2705c3ad08534619fdc17161ef289c1207c7c932b4d8"
+  },
+  "limits": "No per-point firing time, scan provenance, interpolation, orientation or extrinsic offset conversion. Queried positions do not alone establish LiDAR ray origins."
+}

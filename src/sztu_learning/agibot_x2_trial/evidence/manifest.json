@@ -1,0 +1,762 @@
+{
+  "upstream_commit": "9ad1ad8af1b47b1d8fda42c3ca9c828bc5625629",
+  "ros_distro": "humble",
+  "python": "3.10.12",
+  "package_prefixes": {
+    "spark_fast_lio": "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/spark_fast_lio",
+    "ndt_omp_ros2": "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/ndt_omp_ros2",
+    "lidar_localization_ros2": "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/lidar_localization_ros2",
+    "py_examples": "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples",
+    "my_nav2_pointcloud_pkg": "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg"
+  },
+  "files": {
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/bin/pcd_merge": {
+      "sha256": "f1d05242937f0b17180766e59e105544aedf95133370d9de5a9a71acf4d1113b",
+      "size": 124952
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/calibration.json": {
+      "sha256": "ccc8dad35a8bc9c295cef93daa3ca9c0effd3daaa3bb268e8bc8a9a4b4d82cf8",
+      "size": 753
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/localization.yaml": {
+      "sha256": "88bfc2c48e095e395b92a126b888d097c1ba2de4457fd1bf750fcc5d7abb296c",
+      "size": 1009
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/localization_baseline.yaml": {
+      "sha256": "6ca57bb9c0bdfc70788c42fd56aa4ecf6e16380237a08576f0c841f9beead77b",
+      "size": 1011
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/mapping.yaml": {
+      "sha256": "9cf0494bf07b8be12828f65b228970fefacd2463c5d1bac950678ad86e1f5d64",
+      "size": 1562
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/nav2.yaml": {
+      "sha256": "61ba02ab68c4fc8f6ab416b5a5feace967210dec679e92793a72d68d58f7109b",
+      "size": 7052
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/navigate.xml": {
+      "sha256": "83259cbe8a4ad2ae07d20d7041d7b63f8380622132251fe4d21ddbbcde73e88f",
+      "size": 409
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/navigate_through.xml": {
+      "sha256": "e99add9225bfde3a35cbe739b6ca4d598babbceffeeec07698738e7909393597",
+      "size": 387
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/octomap.yaml": {
+      "sha256": "3119773344826534dc7fb8b4d0d2a6c0f76249393fa6bbdc2e8d1d87738c2ada",
+      "size": 463
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/odometry.yaml": {
+      "sha256": "5e13fb8f0013118643c3475c62484543f63bcca93a69c7a122a06f0d3f0f45ea",
+      "size": 1555
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/playback_qos.yaml": {
+      "sha256": "a5da3fcaa65475dff2029afd2e17052d1f27f9a14ac40facf5a2f5d2499d02be",
+      "size": 444
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/config/trial.rviz": {
+      "sha256": "d3ba2d19de2d8ea3cc1fd9e5c91c9cc49e39eb44881659b85e7a4ae4306d50b4",
+      "size": 3507
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/env.bash": {
+      "sha256": "2c970b64792ad11343775c7e71f03a8b938d2e65da5f3524b7c78ad1afc9118d",
+      "size": 615
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/evidence/upstream.patch": {
+      "sha256": "3a1ebfb9ec3bdca172972f0cb07caefb834d3da18f5ece26f8936345c85951f9",
+      "size": 19369
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/lidar_localization_ros2/lib/liblidar_localization_component.so": {
+      "sha256": "38977f5178441e789664972438a20abc4ca83be2b8235a95888effdc2fa0181d",
+      "size": 82678952
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/lidar_localization_ros2/lib/lidar_localization_ros2/lidar_localization_node": {
+      "sha256": "14d95331213e65b5192a3317d44a15a3e7bac97eae8a9b48957f736ddef49ff3",
+      "size": 5984608
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/my_nav2_pointcloud_pkg/cmd_to_aimavel": {
+      "sha256": "3905d72aa9cd3af66a083dee9ee4ae48c86c71ad854f1b742614fe785e96b55e",
+      "size": 1017
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/my_nav2_pointcloud_pkg/send_goal": {
+      "sha256": "962be8b534a00f95aefc236f8309cb46fca5287c65fb30587ecb3a93975c5844",
+      "size": 1007
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg/__init__.py": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg/cmd_to_aimavel.py": {
+      "sha256": "b9555d131c262a6c3e623babe221d72ae97c7c4d12a3d06d01765da02ef03625",
+      "size": 8618
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg/send_goal.py": {
+      "sha256": "965e4e5c1dfd94989af41197d1d6b8856ff78ccf8420b86bf5880210afc6d05f",
+      "size": 2280
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg-0.0.1-py3.10.egg-info/PKG-INFO": {
+      "sha256": "352d98a7736e2192002824bf585b07ef13e14f0750ee059fb9a0ce930aeae411",
+      "size": 245
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg-0.0.1-py3.10.egg-info/SOURCES.txt": {
+      "sha256": "9d3a518ce1276cf734de4d831d800f79a3005243c6683a382a810a9ff2c43bb8",
+      "size": 972
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg-0.0.1-py3.10.egg-info/dependency_links.txt": {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size": 1
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg-0.0.1-py3.10.egg-info/entry_points.txt": {
+      "sha256": "c482669494b25a204ae806be5a646a0395e480d119ff8a56fd004de246c81009",
+      "size": 129
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg-0.0.1-py3.10.egg-info/requires.txt": {
+      "sha256": "4e34d3b17ef5dd1e34865d1d3245f1a40158ec9bc19ea6d3547423a3fb96e916",
+      "size": 11
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg-0.0.1-py3.10.egg-info/top_level.txt": {
+      "sha256": "398db01821d6535d1aaf17db1f1bc1fc9def426dc8adbf2f867d2a56cc4ee05b",
+      "size": 23
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/my_nav2_pointcloud_pkg/lib/python3.10/site-packages/my_nav2_pointcloud_pkg-0.0.1-py3.10.egg-info/zip-safe": {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size": 1
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/ndt_omp_ros2/lib/ndt_omp_ros2/align": {
+      "sha256": "737e2f13687e3d343536a190fc61764d155e2309f1b58a6d79cc35ccb781e1fd",
+      "size": 799328
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/drift_detect": {
+      "sha256": "581426cafefa7f91a3294b5584c8e737f3c8011be9aca88741d39c30410d3508",
+      "size": 980
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/echo_camera_head_rear": {
+      "sha256": "e303f3b5ef863f0e92b6a252b578e9fcfb8cff90ce4a99864a55e06ea8e82e2f",
+      "size": 998
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/echo_camera_rgbd": {
+      "sha256": "4ca4d72e804ede561c1d4e1183707f7ac12ed4d0558ca78c0e6d3993d7e510b2",
+      "size": 988
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/echo_camera_stereo": {
+      "sha256": "58ae11b772eab78b54c35be1e6ac87ab8d0aae6d9c593adc019cbb73877725c2",
+      "size": 992
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/echo_hds_diagnostics": {
+      "sha256": "6c4df19aeebbc664a3bc7f655f47c9ad3e2b643efd8bf8f9f5a03d4319feac29",
+      "size": 996
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/echo_imu_data": {
+      "sha256": "6e662025d3daa763a62adab0f317fafe46c07d2c776eae413671064007876673",
+      "size": 982
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/echo_lidar_data": {
+      "sha256": "260d3ca97ea5b48477966de4a255263f73b7689b6c10c33c71a0171cc4c5aa91",
+      "size": 986
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/gesture_detection": {
+      "sha256": "089412f21a236ede8148441a07abfd97a505444e3fc982d05f0bd714bf8c7a86",
+      "size": 990
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/get_current_input_source": {
+      "sha256": "de80561adc0c6fa0ef2cb3fd5ecb1f4353dbd6fabf542a026c6098ee909e2e16",
+      "size": 1004
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/get_mc_action": {
+      "sha256": "56af684d1bf796640dcf6ac92a922239a60251b31ba5a16aec29f680ab7f3020",
+      "size": 982
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/hand_control": {
+      "sha256": "058318a1e801752b2cd598d5fc05d797572c0908f085a1a761f3d1d2d902e669",
+      "size": 980
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/imu_rectifier": {
+      "sha256": "144693225d61c09590ffcc53fc26c2b0c5dc4c00a1381c233040f86f4a165716",
+      "size": 982
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/keyboard": {
+      "sha256": "62175eded18261d7fec402c78e5f04ae27178f37c9c0cc00c13e2b6444d7d83a",
+      "size": 972
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/mc_locomotion_velocity": {
+      "sha256": "afbca07b90eb9ef00c4de5045ed2d8f93c73a2c0adf25521b30b05c7008c90d4",
+      "size": 1000
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/mic_receiver": {
+      "sha256": "323a1a32ae595398ad4893f29d76c0fb829e3feef54f1642c4680a1bebf2edc8",
+      "size": 980
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/motoarmcontrol": {
+      "sha256": "68642a0c5da43b245eb436a023965e57b20c991f88ab3dbbbbb8498e67a67f04",
+      "size": 984
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/motocontrol": {
+      "sha256": "a5a01e820fc4fce24e87c697d590b5ca9c5e02c14ff3349fdb0d8cd35ac9fd1c",
+      "size": 978
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/motocontroltime": {
+      "sha256": "d3e9b58db32e5b9d3e3d641928f4debaf50dfc648a191a46368cf7007265b3a9",
+      "size": 986
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/motoheadcontrol": {
+      "sha256": "1e203f40ce5bcca01dfc05d6abd60ba0380065405785aaf44b84c1f755a11f12",
+      "size": 986
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/object_detection": {
+      "sha256": "bfe16ee1309160c10230b21422b39d6eae8545795118ce5edd4eccd253352e26",
+      "size": 988
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/omnihand_control": {
+      "sha256": "b0a9613aad9e6cee56ba3170629561df745654a103bb23b271107ac1bf189f4b",
+      "size": 988
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/pcd_to_cloud": {
+      "sha256": "81d2d69f718c6cde51530a41759ddd4139f6cb3d25aa13524f796efbcbf39a6e",
+      "size": 980
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/pcl_rectifier": {
+      "sha256": "dec7d1b6377bcaff60c916a4c50b2bc74541d3e8863925be6b761204af6a3d09",
+      "size": 982
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/play_emoji": {
+      "sha256": "4391d9165da09eb3dc50833891cb33862ea982d409dac96809b8e9161913a898",
+      "size": 976
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/play_lights": {
+      "sha256": "72e43f6c8d3153cf46f74706b055a06104906f997e2790a7ef1af84cdf19df41",
+      "size": 978
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/play_media": {
+      "sha256": "eab7a8ec822d5c3aa682d2311cee78317cdb05be7dc5f61f47962b53b4b11959",
+      "size": 976
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/play_tts": {
+      "sha256": "df6cb9f73a22a00f02d0e1e3465fca1e5527ee226d9e8c130cef445a067d4dbe",
+      "size": 972
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/play_video": {
+      "sha256": "3832b006ca9fca87b695cc5d8f9fd4238d687ef2e3253535b579daf29581c1ed",
+      "size": 976
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/preset_motion_client": {
+      "sha256": "57e1eb00d97dbb803a9c9a83212b6bbdc6893f080371d5dca4933c21d750e7dd",
+      "size": 996
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/robot": {
+      "sha256": "42126ea7ad4c24bfd268f06788ae6e2a5fd3e370698373e42fcb979484d11e3a",
+      "size": 966
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/set_mc_action": {
+      "sha256": "d637ff9090c96cbeb1af4dc356af2aa54460ea385dd27a138335490d1f8ec328",
+      "size": 982
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/set_mc_input_source": {
+      "sha256": "276252d0c421a9f89e66da1f6584d64145aaf88302f724c25dbec75644958ee4",
+      "size": 994
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/take_photo": {
+      "sha256": "1a93737edf02f5c46dc1288e2df8bacffb5eb1249994d99036d41d44e6426c04",
+      "size": 976
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/py_examples/ts_check": {
+      "sha256": "e261ca5ab8b705c14c3643e5f4129fe007aa71c24a5b35f913a1d0053f7c716e",
+      "size": 972
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/__init__.py": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/drift_detect.py": {
+      "sha256": "4b161fa232eaa1a6d1ba976732a73b5cba576cd763a3dff7ea1928585b46c8d9",
+      "size": 1783
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/echo_camera_head_rear.py": {
+      "sha256": "552721a3ca7648429b872d073b09604379df9bd4b6cb56adca247880d33981a7",
+      "size": 7689
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/echo_camera_rgbd.py": {
+      "sha256": "9eccf712ebcf0eff6996fc92c52eda2a43017ae98a5e3db80259ef06323ea2ce",
+      "size": 9778
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/echo_camera_stereo.py": {
+      "sha256": "18773eb7b736d2d28df361080289505a1899ca73cdc949c5d266955b1054d72f",
+      "size": 9829
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/echo_imu_data.py": {
+      "sha256": "7023e7cc36de246ca144efb60b2ebbcffc22d4d9a7c6f3ed471eb5eb96763b99",
+      "size": 2144
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/echo_lidar_data.py": {
+      "sha256": "21b2d0e6a9e12b57ac0b0e05b32e873d805cfbdaab38a452a539215e0ab3f93d",
+      "size": 5479
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/gesture_detection.py": {
+      "sha256": "74d9d9a086f53e7f6bd3ba851dfb339edce86bbc4ad4768f973f70d73579540e",
+      "size": 11201
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/get_current_input_source.py": {
+      "sha256": "f967ea85670740bb3ade56e60351c71474934903788f885b36d199c2c520f56a",
+      "size": 2705
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/get_mc_action.py": {
+      "sha256": "550a4ebb7ce88fa562b3ee3ee022d7f81b1ead539b21b269f9bcec8a9b86737f",
+      "size": 2118
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/hand_control.py": {
+      "sha256": "edb841febaf1068538ebb39feaed58e753f48fa058fe311f1afa143613f61ec8",
+      "size": 3079
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/imu_rectifier.py": {
+      "sha256": "96a704fbb4e8aa0fbe4ef7108d29e8f817b4bc71f65477dce1e51e136c03cde8",
+      "size": 4105
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/keyboard.py": {
+      "sha256": "b6175b7ac19f4471d8174084d4d232ffb438aa99b1cc7b8b1b74fe9932cd3bb6",
+      "size": 5621
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/mc_locomotion_velocity.py": {
+      "sha256": "e5ddfb7e81221ed9d006a779692e1a565f44c68502145f9e2a1d65e4bf86389b",
+      "size": 6723
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/mic_receiver.py": {
+      "sha256": "56d6934e7fe172eec7cb26678765937f2f7bb36ccc144efb8980f0abd3028544",
+      "size": 7218
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/motoarmcontrol.py": {
+      "sha256": "606899ee2c0bffcb58268f5cf30e3213a6ef37c0c19e68fac6cb09f5244efc63",
+      "size": 11143
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/motocontrol.py": {
+      "sha256": "5e7242e56d6dbd9dc2e7f11c7af39750029e60bc3556a9f36a44deeba964fc8c",
+      "size": 11759
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/motocontroltime.py": {
+      "sha256": "de4871e7ba2d635935761910435c7159212221cdd406f3b66b69db0365c75a76",
+      "size": 12686
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/motoheadcontrol.py": {
+      "sha256": "0ac1bbae6fb6f4f7be3be9307e515bdb9460c613ad6a4e2c3f55d49cdaf1d6bb",
+      "size": 11762
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/object_detection.py": {
+      "sha256": "12021d3cc21a64279ddb088a48047d818f4f090b8b3f8304bc4ff8d2361b67d4",
+      "size": 16618
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/omnihand_control.py": {
+      "sha256": "8c717fba78d6a7738483d2d0aa6841f0480146afabb3e72be2a24c7be993e94d",
+      "size": 4349
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/pcd_to_cloud.py": {
+      "sha256": "9caeb89e96f550de57285b81c57baa662ca03a4025bcaa357be38ec645b82bba",
+      "size": 2939
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/pcl_rectifier.py": {
+      "sha256": "a4484c5ed7efc13fa6af48685cbf06f5a421b2f3d067dd932ca3c825b78a35ae",
+      "size": 6616
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/play_emoji.py": {
+      "sha256": "8067155f4978c6dd0f115ef771260dcedbc87d1896f2c8bb81f345f22656a31b",
+      "size": 2696
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/play_lights.py": {
+      "sha256": "1c544d0e801368dbf9e589148293d78947e13c7163a2fe955d7953bf1b3fe040",
+      "size": 4112
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/play_media.py": {
+      "sha256": "acbf8fcffac1a6835e195463c8e97a9f0acbb5bb8f38dfb0ee3f3cc51b888af3",
+      "size": 2971
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/play_tts.py": {
+      "sha256": "938526e49a832ddc160a54e12bf4f8f15b353e2376d8b00c87faa14b309e7e0f",
+      "size": 2673
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/play_video.py": {
+      "sha256": "df5965873d37dc1111823914c16e3efde4ec77ffbd13c3c961e1a35a86a5bb1c",
+      "size": 2640
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/preset_motion_client.py": {
+      "sha256": "fdaacfe0c97e5e38ba73b74097a7ac3bbb14a43c05c7f8e5666b84c8a8236682",
+      "size": 3088
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/set_mc_action.py": {
+      "sha256": "17339356a1e9591575e64d8d869a027448dea4333e50044f8c9324c86a8d8083",
+      "size": 3355
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/set_mc_input_source.py": {
+      "sha256": "211ed1cb82cc70633eff02db0742eda2aad57a1b5cfb2fad58e4cdd7349982aa",
+      "size": 3020
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/take_photo.py": {
+      "sha256": "239fb7c2cd3be875d6849b438bbbaccb1d8cfa1dbe278ee58eae423455c6feb9",
+      "size": 2917
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples/ts_check.py": {
+      "sha256": "ca690effb8a775d84732df3dc8e2d6fe766c332bbe9b9468732346d53214033b",
+      "size": 3536
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples-0.0.0-py3.10.egg-info/PKG-INFO": {
+      "sha256": "c02a9d3d95da71ecba4f8c9ac8bdaf468b5204bfe1be8c3d3261c2fc4e30179b",
+      "size": 234
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples-0.0.0-py3.10.egg-info/SOURCES.txt": {
+      "sha256": "2b19426b5c22b808479fa8f3565e9c1e343954bcff2cf4a93a27f37fb13e10a7",
+      "size": 1528
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples-0.0.0-py3.10.egg-info/dependency_links.txt": {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size": 1
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples-0.0.0-py3.10.egg-info/entry_points.txt": {
+      "sha256": "b409605387a9e4d4b44c9854f79da7aecd75dce3232e466c5ee4dedb9f9396eb",
+      "size": 1677
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples-0.0.0-py3.10.egg-info/requires.txt": {
+      "sha256": "4e34d3b17ef5dd1e34865d1d3245f1a40158ec9bc19ea6d3547423a3fb96e916",
+      "size": 11
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples-0.0.0-py3.10.egg-info/top_level.txt": {
+      "sha256": "f5142e0c17fb505995627d928afb09e23458047f2248f282eac4c0eee122d23a",
+      "size": 12
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/py_examples/lib/python3.10/site-packages/py_examples-0.0.0-py3.10.egg-info/zip-safe": {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size": 1
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/spark_fast_lio/lib/libspark_lio_component.so": {
+      "sha256": "d30ab547291780f0b1776c90c308744f7aaea5508c7864725beb2ed82cd82e4b",
+      "size": 96097424
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/install/spark_fast_lio/lib/spark_fast_lio/spark_lio_mapping": {
+      "sha256": "3f30f5f49cd020b08868d88e81446ecb311743cd1c559b09685f47ba5c478f5e",
+      "size": 1159720
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/launch/sensors.launch.py": {
+      "sha256": "a88417d5d03b79206f4b609089211c6aafa5658d379d5d10bb331bd8c50b0c52",
+      "size": 1408
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/launch/trial.launch.py": {
+      "sha256": "8119e9c40b82f9ac4dcaadda59c294d6b49caa2c6b31ee4cc01f291d37f8e84a",
+      "size": 2857
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/localization01/localization.csv": {
+      "sha256": "ad7e35c338c63abbdaaf8c617212020cdceafc70eb2fad0d3e69709c4b6fa2fa",
+      "size": 217978
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/localization01/odom.csv": {
+      "sha256": "e10045d9b1f613617341c78ac0721e698565a348ac10df42aaba66998f011684",
+      "size": 6147295
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/localization02/localization.csv": {
+      "sha256": "7bf6b8e58e839fd23e86ac4e0d7f7d99ac810085dbe351e7d01671a0772d324f",
+      "size": 306996
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/localization02/odom.csv": {
+      "sha256": "33c686557f3f0354b37285d5aa6d31c351109d8721f0498c289a000e297b1824",
+      "size": 6146304
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/map.pcd": {
+      "sha256": "3641eb911beb6e43b78750b45a625344c5448e28cd3cf3df3a77f5be978c726d",
+      "size": 6416190
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/map.pcd.transform.json": {
+      "sha256": "a0d3730d2b6cb960fc77ea64171cf010be7dbf830839714c51cff35fde480a40",
+      "size": 187
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/map.pgm": {
+      "sha256": "ec1123fc92e0f803d5e7afc3ddf255a93b1f1ca23fa2fc38a705e23f7b186a73",
+      "size": 119715
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/map.yaml": {
+      "sha256": "187d32df3a14eceba1b87e68c072d38d84a63297a29f9c94aa1c10e9eb3cd5d5",
+      "size": 121
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/occupancy.npy": {
+      "sha256": "5d1ca35e9c00f8702f09c4d75aa7a63689f9d9c0730486c55321816bc19447b0",
+      "size": 119828
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/odom.csv": {
+      "sha256": "dbe33b9bdc95c8f17293a4d8b97a11d044b49ef9df69a6724fc9ac25d06fc492",
+      "size": 4805753
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_1.pcd": {
+      "sha256": "a3e2a5ae79a364f17f94980acbf6f71b4c6a0dd0c29314946de1c3736f3ab195",
+      "size": 20620475
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_10.pcd": {
+      "sha256": "92e688eb265fd26232f9adf2cc931fd7b04e07d984b21d52fda6552dc465f90b",
+      "size": 20618907
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_11.pcd": {
+      "sha256": "93d31292d1a3e9504cbefc1cc5e9f7b9489c00db48d821a14481b65051810a03",
+      "size": 20619483
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_12.pcd": {
+      "sha256": "46fa567f31867b99eedc78ca52efc734094aa686de72b294352be5e33d2bee13",
+      "size": 20618907
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_13.pcd": {
+      "sha256": "dc3cec30c955f938348b0b802959e3ba571b0c3f7ed3d7fc187115e2dfa9e661",
+      "size": 20619963
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_14.pcd": {
+      "sha256": "b4cf781dfad728ee740ccf0407e1972da6da4299bb4d0f70dde58b1f93de1c79",
+      "size": 20618619
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_15.pcd": {
+      "sha256": "0b4418b60ee128d08a389e5511934ad78fde9a2246ba540510732bfcab53c1ba",
+      "size": 20620027
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_16.pcd": {
+      "sha256": "cd928588f3a2674d7349273a0f7174d857a39ff769fa44059a515f7c8b7f02c6",
+      "size": 20619483
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_17.pcd": {
+      "sha256": "af7a79c92b6ee754199a8626b7c9a51bdf678c7e839c07b57194995ba20beb86",
+      "size": 20620731
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_18.pcd": {
+      "sha256": "15bd2ed8a006c7505cb0bd8febabd089b660df58479301a4bd350dcbc3e75bf4",
+      "size": 20574587
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_19.pcd": {
+      "sha256": "bf4c9aa1c207af4820cc4dee43f4984c0bbc04a4271f9c4ebfd2b4ea6a9daf8d",
+      "size": 20520571
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_2.pcd": {
+      "sha256": "f733dcdca6d8493300c88b54afd539a40559bf0e8407d23de486a001648b0505",
+      "size": 20620859
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_20.pcd": {
+      "sha256": "545761650cb1875a08527debee2f64a3d324db471fdd0158d8e4092595087e7d",
+      "size": 20575067
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_21.pcd": {
+      "sha256": "f308834e78e3cb9d630f2ebe8bfb24e36d292315b671029a5deaba17edf0a421",
+      "size": 20639771
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_22.pcd": {
+      "sha256": "c893162369e5d0835aa86fc22a728a7cd07a8178d07194d48897eeba7ab8afed",
+      "size": 20706107
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_23.pcd": {
+      "sha256": "cd15abb748e31b0ba32ec742031f9d9b37fdceb5c8c57309b28c3727630cb608",
+      "size": 20702651
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_24.pcd": {
+      "sha256": "78f6ab9a86939a6e7479e5414c4f7922b0c19a561dc6a12f0082a11fdb693a19",
+      "size": 20647931
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_25.pcd": {
+      "sha256": "f2edea9e3a153312adf9b4d5e9db3492936b75a3dfb86841366f0f4d2abb0a2b",
+      "size": 20595419
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_26.pcd": {
+      "sha256": "d25f8d009b801606e98ae1b20bd6d22686c373f29af622cfb41920e06e724a45",
+      "size": 20649275
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_27.pcd": {
+      "sha256": "2dc344d26321f7a7e054456ce61f8ab89bed9c7766127cc6dc18eb8acfaf16ab",
+      "size": 20544315
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_28.pcd": {
+      "sha256": "aee6717ba96cd685ccb83fe742638c2db3fcd168c6735d5e71bbfa77b0193fc4",
+      "size": 20567803
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_29.pcd": {
+      "sha256": "64138470fe979112927893b3daa62e099cfb8e6e1e398cf392321934431440cd",
+      "size": 20616219
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_3.pcd": {
+      "sha256": "5b300f9c5bd0ade32a57a35cf86923f6d8bffb6e2c91df8400934f35f3ea93bd",
+      "size": 20621243
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_30.pcd": {
+      "sha256": "9295b24ee267974c6f9e4b717e6bf95d80ba74a65494c77a1a529b8e2daff356",
+      "size": 20661051
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_31.pcd": {
+      "sha256": "24240d816eb692376cfe82de11318167860778181908498d30f2f9368a156011",
+      "size": 20708635
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_32.pcd": {
+      "sha256": "0fe4fac1abf21b59e1c95c8c99da4dc337c1dc18a229d241c361f37d8ab5e488",
+      "size": 20613755
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_33.pcd": {
+      "sha256": "d38c06e4d4252adc4329ce7dae9d5cd0bba5ce8312570f7ab4e03aad50805d74",
+      "size": 20621179
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_34.pcd": {
+      "sha256": "82f0874456548937e42541a8cacac2698ee3cc62801a0e88142185623189b355",
+      "size": 20597883
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_35.pcd": {
+      "sha256": "75163c8e789674c366e55e77dfd9b4235a2f10362435133750a59b73666f67d6",
+      "size": 20624443
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_36.pcd": {
+      "sha256": "6ed1fe1f705d05bfe88ce86367ce8d4d9fc3f97f04975075c8cc82e43812fe5c",
+      "size": 20646427
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_37.pcd": {
+      "sha256": "321238b0fb1266b38bfea798c17167257332c9e4222295bc33a4fdb62392aed7",
+      "size": 20653371
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_38.pcd": {
+      "sha256": "11bdacc322ed87b5900d4de7df021ff6a17d3d3bd36450e3e35b4c0ef1f2c27c",
+      "size": 20581083
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_39.pcd": {
+      "sha256": "5c42bb7b923e2b252b12ede97e0e720a1b3e972189a8384b7a94740151f17621",
+      "size": 20587579
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_4.pcd": {
+      "sha256": "6fe506d92776d419a09aa2b1ec1eb3a577a86acab479a4c6515bf0b66f0d0e06",
+      "size": 20618651
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_40.pcd": {
+      "sha256": "a782ecaf4539fb9e15801b34241e58e1b7e7a106a89e94ea6b2c9fb9150bf46b",
+      "size": 20599195
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_41.pcd": {
+      "sha256": "97593ae89a66dbbd98c29dd4eca34236c970a68671bd0e3eb55e71d3cfaac943",
+      "size": 20601659
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_42.pcd": {
+      "sha256": "fb5e0a0b65fa42b2837bc5a0d530d7997e23ec492bad8411403b6b5ce342a843",
+      "size": 20606459
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_43.pcd": {
+      "sha256": "8b34fd09b9f523a250fe01beffcba4b5768db04eb621611e395ec4c0e2879d28",
+      "size": 20615803
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_44.pcd": {
+      "sha256": "13f32eca4ceaf5928d02736f0823ccff5ab8524498400a15ce273199d7aa17a0",
+      "size": 20611067
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_45.pcd": {
+      "sha256": "704180b7a0b5d8e619ef50d19ecd8d347f9c7e57c21f4a55d0afbfd30c791994",
+      "size": 20608507
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_46.pcd": {
+      "sha256": "573cb724b89b965eff4e712c9c665c04ebcc8239a634baf791eddf99fc8b7c81",
+      "size": 20600603
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_47.pcd": {
+      "sha256": "a3f7c7cdb4a3dd5f9cf5a6bd01917babd8b99d3a9a92dca4e5a1fce5fcab84c8",
+      "size": 20600763
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_5.pcd": {
+      "sha256": "c42a4eb583bee48b801dbea579412f10bf7163a3e46ce7027c897ec43bdce207",
+      "size": 20620059
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_6.pcd": {
+      "sha256": "978f30a70f1a9a3954514e8c9d8a13f70b91a3e26b0a1f05e03f45ecbfe745cc",
+      "size": 20620955
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_7.pcd": {
+      "sha256": "be98e8113aa478718a98cb27967e93d7cd2caeb2029f694555864cb0f95e51bd",
+      "size": 20619867
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_8.pcd": {
+      "sha256": "f4f7079013d6cbe29e25aed43a4b0aab9dca3b91efc57792b75055db7a529b73",
+      "size": 20620539
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/pcd/scans_9.pcd": {
+      "sha256": "6935ad3b486baabd33f223d973cf0de550bf2de25178c7a8aaec51417a03342b",
+      "size": 20619419
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/preview.png": {
+      "sha256": "820c252fa661b45fbbd2014bd008c2c43a85fdfd645ca978664a50da8b8a41a5",
+      "size": 58074
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/raw_map.pcd": {
+      "sha256": "e3369aac767ff4cfa3869c4b68b77e9b086985f13750c50d072ff3d5ccf66927",
+      "size": 6416190
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/raw_map.pcd.json": {
+      "sha256": "cb97516a3284c5dd0140684ed62da68cc5ebb282bb882059575ca8818b042d1f",
+      "size": 204
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/registered_bag/metadata.yaml": {
+      "sha256": "05fa546b3d88b574f2f5d7c0c53ff1e5c5c994f3d21789905c1dbde050d21500",
+      "size": 3233
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/maps/mapping02/registered_bag/registered_bag_0.db3": {
+      "sha256": "701ef8b98688ad1b1c6db9b09374e6a887368a87e87798aa55e7ad5bf0756fc9",
+      "size": 2981814272
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/CMakeLists.txt": {
+      "sha256": "6abd826591085adb85394cc13d06e3bed9576876aed3e21c379d8a6fe1eff2ef",
+      "size": 331
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/analyze_localization.py": {
+      "sha256": "df1934684ab0538fe6459c3bee9f49c7a58633d6605a531e87f124feac605e0a",
+      "size": 6556
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/build.bash": {
+      "sha256": "f6cb1ac43baa715fd93157f74cd4395728b4aec67f2b2630255b15daa13cb2a4",
+      "size": 561
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/kinematic_odom.py": {
+      "sha256": "1ff0729cdba4d0bfd7603f184ad64215c2992136f74a154a36deca22375aee23",
+      "size": 4646
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/nav2_check.py": {
+      "sha256": "f78d3522574f8744b6506a6cbd17a6748597ded79ae178956c68af48d23e2ff9",
+      "size": 9792
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/pcd_merge.cpp": {
+      "sha256": "e9dcbd0f7a1d74a19012ee114e9277faab40ba5a132e7c05bdf71f5e568bc9ba",
+      "size": 3705
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/prepare_localization.py": {
+      "sha256": "1305ca9e414c80feb94c3a996d9aea985134a818f5423f039f08f221441b1197",
+      "size": 1690
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/project.py": {
+      "sha256": "515c9f1e045d3f7b2e21f3db151a275ea190c9f35ae7ecf60a9edabf71caf314",
+      "size": 4958
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/replay.py": {
+      "sha256": "c17e832df687d06bc61c4e2a54dac10f02f752d447fe78eeca40fcbe20808cc3",
+      "size": 11968
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/scripts/snapshot.py": {
+      "sha256": "8872bfb8ceb60d98f6305e8a5e2e9bd2a0191e023f2af63e70aa657d6b3c7ad9",
+      "size": 2636
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/tests/test_adapters.py": {
+      "sha256": "c1bb76af2af31c24c88797c053f1598d42832866ee28d07028f81a17074be786",
+      "size": 3265
+    },
+    "/home/sztu/sztu/src/sztu_learning/agibot_x2_trial/vendor/opt/ros/humble/lib/octomap_server/octomap_server_node": {
+      "sha256": "6562ed0c9a02359eefdc23146a4e331488e7c7d09752433e3edcc115c4991d7e",
+      "size": 43464
+    },
+    "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_154812/metadata.yaml": {
+      "sha256": "dda5a9db294920529587a957872c61fbe585e8776c6f511d7cbf44edfbb15990",
+      "size": 4626
+    },
+    "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_154812/room_7x3_20261120_154812_0.db3": {
+      "sha256": "98873c4ba9b7b0018b87c5e55b8268e05f86f651df0933e50b01d2c89b90e61d",
+      "size": 1024405504
+    },
+    "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_164421/metadata.yaml": {
+      "sha256": "1494566b14d9e26835cf5914c6ba9c30b79255b0d1bf7458fb374b188f35a2ec",
+      "size": 2512
+    },
+    "/home/sztu/sztu/src/sztu_learning/previous_learning/bags/room_7x3_20261120_164421/room_7x3_20261120_164421_0.db3": {
+      "sha256": "f0e0fa1afce0aa75f5f45ca59c383a2dd0831ffbdce5384094a0e1477f35d470",
+      "size": 1312313344
+    },
+    "/opt/ros/humble/lib/nav2_controller/controller_server": {
+      "sha256": "0b1f209f272daa5bcf9fb79628eee5f2bae274430f3ec09ac319479cf352273c",
+      "size": 18760
+    },
+    "/opt/ros/humble/lib/nav2_planner/planner_server": {
+      "sha256": "a78be7c567cafe370ade47972df728a86ce1b722e8ba45bb2915220cc9ff37cf",
+      "size": 18760
+    }
+  }
+}

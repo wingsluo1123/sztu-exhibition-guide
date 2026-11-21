@@ -1,0 +1,32 @@
+{
+  "commands": {
+    "localization": [
+      "/usr/bin/python3",
+      "/home/agi/sztu_learning/navigation_validation/nav2_release03/diagnostic_session.py",
+      "--run",
+      "/home/agi/sztu_learning/navigation_validation/runs/nav2_live_20261121_02/localization",
+      "--duration",
+      "0",
+      "--seed",
+      "-0.0524241084",
+      "-0.1369438325",
+      "-12.8028330082"
+    ],
+    "adapter": [
+      "/usr/bin/python3",
+      "/home/agi/sztu_learning/navigation_validation/nav2_release03/nav2_integration/input_adapter.py"
+    ],
+    "nav2": [
+      "bash",
+      "/home/agi/sztu_learning/navigation_validation/nav2_release03/nav2_integration/run_stack.bash"
+    ]
+  },
+  "started_epoch": 1795203834.1318002,
+  "motor_output": false,
+  "ended_epoch": 1795204209.8097951,
+  "exit_codes": {
+    "localization": 0,
+    "adapter": 0,
+    "nav2": 0
+  }
+}

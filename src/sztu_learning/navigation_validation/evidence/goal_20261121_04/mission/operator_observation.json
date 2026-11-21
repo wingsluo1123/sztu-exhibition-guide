@@ -1,0 +1,6 @@
+{
+  "raw_answer": "有，已停稳",
+  "question": "是否先右转再向斜前方走到目标附近、已停稳，有无方向错误或走过头",
+  "supports": "operator confirmed motion and stopped; no independent surveyed target error",
+  "do_not_infer": "specific no-overshoot statement not separately supplied"
+}

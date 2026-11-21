@@ -1,0 +1,57 @@
+{
+  "archive_name": "agibot-x2-navigation-full-9ad1ad8.tar.gz",
+  "size_bytes": 306667900,
+  "sha256": "d2dc8faf46c2fab7fa88646f0cccd16b76278c600d6e211b7ece452bf1970514",
+  "parts": [
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part000",
+      "size_bytes": 33554432,
+      "sha256": "05b1549e26f9fc2912f1b1ee926ab2b2cd61f5bc073a84375a1b56eb69ccfe7e"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part001",
+      "size_bytes": 33554432,
+      "sha256": "3446bf85b620635b7fecf16d8c424982460edd797a4913f3d18894e27ec6b34c"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part002",
+      "size_bytes": 33554432,
+      "sha256": "e5eb94590d894e7762ee020ec8343d1d569a20d969211b7cc4b685e60da7a580"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part003",
+      "size_bytes": 33554432,
+      "sha256": "2bdf06c0e0f7cd96f5b215fd719a6762ade56cd1adb9c20f39d11d4d6f00dd03"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part004",
+      "size_bytes": 33554432,
+      "sha256": "6ea2ceab1075892212ab092799bd73fc843cd19e75f9586bb793aa811b98276d"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part005",
+      "size_bytes": 33554432,
+      "sha256": "de85a9f0c05f27eb8ea4af7740e31dd5dd264109cd2695e024913f01ff872f5a"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part006",
+      "size_bytes": 33554432,
+      "sha256": "9ffd174239f74128fb961cb7fcc203621dfc4e757ab66de2623c44da457d2ca1"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part007",
+      "size_bytes": 33554432,
+      "sha256": "375ecd6ed2a2d6b946d1cda0f239c4305aef079aa84effee6560fc3969d73cea"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part008",
+      "size_bytes": 33554432,
+      "sha256": "87ae234da3bdaebcbf6f00293745103825c8e868ebd02b775ba5f987de05cf41"
+    },
+    {
+      "name": "agibot-x2-navigation-full-9ad1ad8.tar.gz.part009",
+      "size_bytes": 4678012,
+      "sha256": "8c2ede507f133ae456ab140ef3b28cd5f22e41b285ed7b7b142e360642823e7b"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "observation": "User confirmed approximately 90 degrees left turn, no obvious translation",
+  "raw_answer": "是的，无明显挪动位置",
+  "prior_question_included_stopped": true,
+  "scope": "qualitative operator observation, not surveyed angle/translation"
+}

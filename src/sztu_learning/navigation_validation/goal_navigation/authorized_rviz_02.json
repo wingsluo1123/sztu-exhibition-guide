@@ -1,0 +1,20 @@
+{
+  "scope": "one human RViz click and supervised physical mission",
+  "operator_reply": "进行一次，已停稳，遥控器及路线净空满足",
+  "relative_target_forward_left_m": [
+    0.6,
+    -0.4
+  ],
+  "forward_command_m_s": 0.15,
+  "angular_command_rad_s": 0.7,
+  "task_deadline_s": null,
+  "max_distance_m": 2.0,
+  "radius_m": 0.4,
+  "route_target_clearance_m": 1.0,
+  "goal_tolerance_m": 0.15,
+  "one_attempt": true,
+  "no_automatic_retry": true,
+  "fault_stops_retained": true,
+  "candidate_release": "rviz_release03",
+  "mission_id": "rviz_goal_20261121_05"
+}

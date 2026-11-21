@@ -1,0 +1,17 @@
+external_projects/agibot-x2-navigation/
+external_projects/agibot-x2-navigation-full-*.tar.gz
+agibot_x2_trial/upstream/
+agibot_x2_trial/vendor/
+agibot_x2_trial/bin/
+previous_learning/runtime_logs/
+*.pcd
+!agibot_x2_trial/maps/mapping02/map.pcd
+!agibot_x2_trial/maps/mapping02/raw_map.pcd
+*.npz
+*.bin
+*.jsonl
+*.tar.gz
+*.zip
+*.mcap
+*.db3-shm
+*.db3-wal

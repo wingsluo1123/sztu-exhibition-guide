@@ -1,0 +1,23 @@
+{
+  "release": "nav2_release07",
+  "remote": "/home/agi/sztu_learning/navigation_validation/nav2_release07",
+  "verified_files": 76,
+  "map_identity_verified": true,
+  "archive_sha256": "14212232c6c21b49bdfcc65a47d6435c98d3b0126192b394063322c0cd257532",
+  "pc_nav2_version": "1.1.20",
+  "robot_nav2_version": "1.1.18",
+  "unit_checks": "38 passed; nav2_official_shim_unit_20261121_01.log",
+  "pc_model_checks": [
+    "nav2_official_shim_short_20261121_01/report.json",
+    "nav2_official_shim_long_20261121_01/report.json"
+  ],
+  "robot_isolated_model": "nav2_release07_robot_software_20261121_01/report.json",
+  "physical_attempts": 0,
+  "robot_motion_tasks_running": false,
+  "sztu_bridge": "inactive",
+  "unknowns": [
+    ".20rad/s turn onset on hardware",
+    ".05m/s approach request response on hardware",
+    "unmodeled gait and pose projection errors"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "no_robot_api": true,
+  "results": [
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -2.6864483031,
+      "status": 4,
+      "final_pose": [
+        -0.700845631135073,
+        -0.503470609368143,
+        -2.634706254077037
+      ],
+      "distance_m": 0.03889088021359573,
+      "yaw_error_rad": 0.05174204902296298,
+      "nonzero_commands": 79
+    },
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -1.2,
+      "status": 4,
+      "final_pose": [
+        -0.7023328111165755,
+        -0.505098048505364,
+        -1.2347056529280533
+      ],
+      "distance_m": 0.040480937430393577,
+      "yaw_error_rad": 0.03470565292805339,
+      "nonzero_commands": 119
+    }
+  ],
+  "all_lifecycle_nodes_active": true,
+  "passed": true,
+  "process_exit_codes": [
+    0,
+    0
+  ]
+}

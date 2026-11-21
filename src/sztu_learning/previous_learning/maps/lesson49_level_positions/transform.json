@@ -1,0 +1,41 @@
+{
+  "source_frame": "camera_init",
+  "target_frame": "learning_level_candidate",
+  "rotation_target_from_source": [
+    [
+      0.025798385715308795,
+      0.9996659503147582,
+      0.0015591907437837395
+    ],
+    [
+      -0.06032745281632376,
+      0.0,
+      0.9981786405432117
+    ],
+    [
+      0.9978451992825231,
+      -0.025845459587543605,
+      0.06030730044969903
+    ]
+  ],
+  "translation_m": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "up_source_estimate": [
+    0.9978451992825231,
+    -0.025845459587543605,
+    0.06030730044969903
+  ],
+  "heading_choice": "Target +X is source +Y projected onto plane perpendicular to estimated up; +Y = up cross +X. Not compass north or confirmed robot forward.",
+  "origin_choice": "Same physical origin as camera_init; floor height not established.",
+  "basis_source": {
+    "path": "runtime_logs/lesson48/axis_check.json",
+    "sha256": "219bdd5b437efe9d689cd8d99fd1509c6c7844ca4d60e6f6bfd60c9e3a78b6a7",
+    "samples": 400,
+    "recorded_span_sec": 1.996381142
+  },
+  "assumptions": "First ~2s IMU approximately static. Initial FAST-LIO state rotation is identity and IMU_init does not rotate world axes; use initial IMU direction as approximate initial camera_init up. Not calibrated floor or exact final estimator gravity.",
+  "recipe": "z = normalize(mean_initial_acc); x = normalize(old_Y - z*dot(z,old_Y)); y = cross(z,x); R rows = [x,y,z]. Column convention: p_target = R @ p_source; no translation."
+}

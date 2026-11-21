@@ -1,0 +1,14 @@
+{
+  "response": "已回原起点原朝向并停稳，该目标和净空满足",
+  "target_relative_forward_left_m": [
+    0.6,
+    -0.4
+  ],
+  "scope": "same unconsumed trial, re-established origin and heading",
+  "radius_m": 0.4,
+  "speed_m_s": 0.15,
+  "angular_rad_s": 0.7,
+  "duration_s": 30,
+  "max_observed_travel_m": 2,
+  "tolerance_m": 0.15
+}

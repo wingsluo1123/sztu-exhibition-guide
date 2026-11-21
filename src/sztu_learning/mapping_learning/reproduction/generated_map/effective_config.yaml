@@ -1,0 +1,30 @@
+source: inputs/run
+output: generated_map
+frame_id: learning_map
+up_hint_record: inputs/room_reference.json
+turn_heading_degrees: 0.0
+resolution_xy_m: 0.05
+resolution_z_m: 0.1
+maximum_range_m: 15.0
+minimum_range_m: 0.45
+floor_search_height_m:
+- -1.4
+- -0.6
+floor_inlier_m: 0.05
+floor_seed: 57
+obstacle_height_m:
+- 0.25
+- 1.85
+keyframe_translation_m: 0.1
+keyframe_rotation_degrees: 5.0
+keyframe_maximum_interval_s: 1.0
+use_all_frames: true
+minimum_hit_frames: 3
+minimum_free_frames: 2
+occupied_hit_ratio: 0.35
+conflict_minimum_free_frames: 20
+free_maximum_hit_ratio: 0.1
+up_hint:
+- 0.9979397954752438
+- -0.022118953424160714
+- 0.06022388650899429

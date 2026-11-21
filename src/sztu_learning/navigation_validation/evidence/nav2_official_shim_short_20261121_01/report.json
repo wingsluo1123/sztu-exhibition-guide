@@ -1,0 +1,106 @@
+{
+  "no_robot_api": true,
+  "results": [
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -2.6864483031,
+      "status": 4,
+      "final_pose": [
+        -0.6022617973555292,
+        -0.43852912756568896,
+        -2.6559767779566394
+      ],
+      "distance_m": 0.08693436888090428,
+      "yaw_error_rad": 0.03047152514336071,
+      "nonzero_commands": 198
+    },
+    {
+      "goal": [
+        -0.6619954705,
+        -0.501691401
+      ],
+      "yaw": -1.2,
+      "status": 4,
+      "final_pose": [
+        -0.602416944173812,
+        -0.4386133821527901,
+        -1.2067008573697833
+      ],
+      "distance_m": 0.08676656764497048,
+      "yaw_error_rad": 0.00670085736978332,
+      "nonzero_commands": 359
+    }
+  ],
+  "model": {
+    "linear_gain": 2.0,
+    "linear_response_seconds": 0.65,
+    "angular_response_seconds": 0.5,
+    "synthetic_pose_feedback": true,
+    "source_localization_tested": false
+  },
+  "case": "short",
+  "initial_pose": [
+    0.0079452679,
+    -0.0576307147,
+    -1.8254150555
+  ],
+  "all_lifecycle_nodes_active": true,
+  "loaded_controller_parameters": {
+    "FollowPath.plugin": {
+      "type": 4,
+      "string": "nav2_rotation_shim_controller::RotationShimController",
+      "boolean": false,
+      "number": 0.0
+    },
+    "FollowPath.primary_controller": {
+      "type": 4,
+      "string": "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController",
+      "boolean": false,
+      "number": 0.0
+    },
+    "FollowPath.rotate_to_goal_heading": {
+      "type": 1,
+      "string": "",
+      "boolean": true,
+      "number": 0.0
+    },
+    "FollowPath.closed_loop": {
+      "type": 1,
+      "string": "",
+      "boolean": false,
+      "number": 0.0
+    },
+    "FollowPath.rotate_to_heading_angular_vel": {
+      "type": 3,
+      "string": "",
+      "boolean": false,
+      "number": 0.2
+    },
+    "FollowPath.min_approach_linear_velocity": {
+      "type": 3,
+      "string": "",
+      "boolean": false,
+      "number": 0.05
+    },
+    "progress_checker.plugin": {
+      "type": 4,
+      "string": "nav2_controller::PoseProgressChecker",
+      "boolean": false,
+      "number": 0.0
+    },
+    "progress_checker.required_movement_angle": {
+      "type": 3,
+      "string": "",
+      "boolean": false,
+      "number": 0.1
+    }
+  },
+  "passed": true,
+  "process_exit_codes": [
+    0,
+    0
+  ]
+}

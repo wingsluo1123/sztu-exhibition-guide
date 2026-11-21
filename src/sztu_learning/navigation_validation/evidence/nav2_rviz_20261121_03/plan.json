@@ -1,0 +1,159 @@
+{
+  "actuation_requested": true,
+  "motor_registered": false,
+  "nonzero_commands": 0,
+  "nav2_nonzero_samples": 0,
+  "controller": "official Nav2 RegulatedPurePursuit",
+  "planner": "official Nav2 Navfn A*",
+  "dynamic_obstacles": false,
+  "total_task_deadline": null,
+  "max_distance_m": 2.0,
+  "parameters": {
+    "rviz_goal": true,
+    "relative_goal": null,
+    "goal_yaw_deg": null,
+    "approved_relative_goal": [
+      0.6,
+      -0.4
+    ],
+    "execute_one_attempt": true,
+    "observe_seconds": 5.0,
+    "goal_wait_seconds": 180.0,
+    "output": "/home/agi/sztu_learning/navigation_validation/runs/nav2_rviz_20261121_03",
+    "map_directory": "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01"
+  },
+  "source_sha256": {
+    "nav2_integration/mission.py": "f28765de8b888f94981dd2a6a55590974019ab4cbf5b8f0bbd51ba68e2c657c4",
+    "nav2_integration/command_gate.py": "543602cc74709216c93f798957b35ede2099dfdf6d2aafaa7afa5623c874232c",
+    "nav2_integration/parameters.py": "9802334c1ced062734648eca3315738f6a47d8a7ce43fa364861bb905cd82b7d",
+    "nav2_integration/input_adapter.py": "66dd5165aaa5382373355ff3f19b587e3a692ab6c6e40a87aca6c731fa5edacc",
+    "nav2_integration/navigate_once.xml": "4de0ccfde21e56edcce79a1f814adfb6931672adbe638b7308ccfd037afa7343",
+    "navigation_observation.py": "be1ef2596dfe0c3eb39e730e52281576298a44ad8b6fc88e8f8bba639745d77b",
+    "navigation_localization.py": "0c7a0f3126c798c1ca1ae2577c13048833a6a83486f80b3f723863e24fd80b20",
+    "straight_trial.py": "80f0eaf6c80f400bddbcf85959a8f536895f2334f640f9be6fa93641236e2907",
+    "goal_navigation/navigate.py": "cf1b9a9948db24719eb58ef59c4df590e12f9271eb2469a6ca15ac19cc280160"
+  },
+  "goal": [
+    -0.579399824142456,
+    -0.42303240299224854
+  ],
+  "goal_yaw_rad": 3.1386566740729167,
+  "nav2_path": [
+    [
+      -0.09999984875321388,
+      1.6242265665766809e-07
+    ],
+    [
+      -0.14074844555182153,
+      -0.021735982920768393
+    ],
+    [
+      -0.16255478132598,
+      -0.03396285077874417
+    ],
+    [
+      -0.18205322522004508,
+      -0.049609213316580636
+    ],
+    [
+      -0.20167373942842914,
+      -0.06510146208258938
+    ],
+    [
+      -0.22117218332249422,
+      -0.08074858755989034
+    ],
+    [
+      -0.24058899269385847,
+      -0.09649565810703997
+    ],
+    [
+      -0.26000351324682924,
+      -0.11224654335151207
+    ],
+    [
+      -0.27938827916068476,
+      -0.12803252381135088
+    ],
+    [
+      -0.29877762271132724,
+      -0.14381468957386723
+    ],
+    [
+      -0.3181227157730291,
+      -0.15965026109889813
+    ],
+    [
+      -0.3374716235320534,
+      -0.17548125498714207
+    ],
+    [
+      -0.35681671659375525,
+      -0.19131682651217297
+    ],
+    [
+      -0.3761351067741998,
+      -0.2071844414947126
+    ],
+    [
+      -0.3954725704412567,
+      -0.22302993123278192
+    ],
+    [
+      -0.41479401237955926,
+      -0.23889525739692807
+    ],
+    [
+      -0.4341040102258944,
+      -0.2547727905925061
+    ],
+    [
+      -0.4534307927404484,
+      -0.27063125030147184
+    ],
+    [
+      -0.4727423164657125,
+      -0.2865072576181209
+    ],
+    [
+      -0.49205384019097664,
+      -0.30238402787423446
+    ],
+    [
+      -0.5113691786135632,
+      -0.31825622049356106
+    ],
+    [
+      -0.5306807023388274,
+      -0.3341329907496746
+    ],
+    [
+      -0.5499998554587364,
+      -0.34999984279274976
+    ],
+    [
+      -0.5999998562037945,
+      -0.3999998435378078
+    ],
+    [
+      -0.579399824142456,
+      -0.42303240299224854
+    ]
+  ],
+  "preflight": {
+    "ready": true,
+    "invalid_odometry": false,
+    "mc_reason": "",
+    "status": {
+      "valid": true,
+      "source_valid": true,
+      "stamp": 1795204107.1115592,
+      "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+      "reason": "map_match_accepted",
+      "mode": "diagnostic_no_actuator"
+    },
+    "odom_age": 0.07625818252563477,
+    "map_age": 0.07625818252563477,
+    "status_receive_age": 0.01697411199711496
+  }
+}

@@ -1,0 +1,20 @@
+status: historical_pose_example_not_for_deployment
+assumptions:
+- 人工测量参考点近似雷达原点投影
+- 外形边沿机器人前后左右方向
+- 历史TF不代表当前测量姿态
+- 尚未确认覆盖摆臂范围
+tf_source: /home/sztu/sztu/src/sztu_learning/previous_learning/runtime_logs/online_20261120/input_probe01.json
+lidar_position_in_base_m:
+- 0.10065222438180521
+- 0.000528307108792328
+- 0.3377620858870203
+footprint_example_m:
+- - 0.20065222438180522
+  - 0.3005283071087923
+- - 0.20065222438180522
+  - -0.2994716928912077
+- - -0.19934777561819478
+  - -0.2994716928912077
+- - -0.19934777561819478
+  - 0.3005283071087923

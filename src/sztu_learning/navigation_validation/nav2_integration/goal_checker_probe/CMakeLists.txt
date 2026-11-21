@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.16)
+project(nav2_goal_checker_trace_probe)
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+find_package(nav2_core REQUIRED)
+find_package(nav2_controller REQUIRED)
+add_executable(goal_checker_trace_probe probe.cpp)
+ament_target_dependencies(goal_checker_trace_probe rclcpp rclcpp_lifecycle nav2_core nav2_controller)
+find_library(GOAL_CHECKER_LIBRARY NAMES simple_goal_checker
+             HINTS "${nav2_controller_DIR}/../../../lib" REQUIRED)
+target_link_libraries(goal_checker_trace_probe "${GOAL_CHECKER_LIBRARY}")

@@ -1,0 +1,351 @@
+{
+  "epoch": 1795204586.791398,
+  "no_action_or_motor": true,
+  "parameters": {
+    "FollowPath.plugin": "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController",
+    "FollowPath.max_angular_accel": 28.0,
+    "FollowPath.desired_linear_vel": 0.15,
+    "FollowPath.rotate_to_heading_angular_vel": 0.7,
+    "controller_frequency": 20.0,
+    "goal_checker.xy_goal_tolerance": 0.15,
+    "goal_checker.yaw_goal_tolerance": 0.1,
+    "goal_checker.stateful": false
+  },
+  "lifecycle": {
+    "map_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "planner_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "controller_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "bt_navigator": {
+      "id": 3,
+      "label": "active"
+    }
+  },
+  "observations": [
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204588.316092,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08044991289224622,
+        0.13318707440225605,
+        -1.5559224676087453
+      ],
+      "map_pose": [
+        -0.14546196062933414,
+        0.02988425532440396,
+        -1.6774468320929818
+      ],
+      "age": 0.06609797477722168
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204588.410405,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.0783564227300133,
+        0.13328692825663596,
+        -1.5561873659315502
+      ],
+      "map_pose": [
+        -0.14337180513207962,
+        0.029729588427825818,
+        -1.677711730415787
+      ],
+      "age": 0.10691308975219727
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204588.510958,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08108547730446841,
+        0.13526616968540936,
+        -1.5555366371503383
+      ],
+      "map_pose": [
+        -0.14584079844982067,
+        0.03202506386892236,
+        -1.6770610016345748
+      ],
+      "age": 0.08611273765563965
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204588.6110458,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08113293884410727,
+        0.13610155819979933,
+        -1.5557989571038269
+      ],
+      "map_pose": [
+        -0.14578663959532534,
+        0.03286004493828816,
+        -1.6773233215880634
+      ],
+      "age": 0.06402420997619629
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204588.7121348,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08184969515223732,
+        0.13592625995973626,
+        -1.5554173604006842
+      ],
+      "map_pose": [
+        -0.14651936043533265,
+        0.03277292864341537,
+        -1.6769417248849208
+      ],
+      "age": 0.07161617279052734
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204588.81096,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08219088435412067,
+        0.13623804932001385,
+        -1.5557595487265348
+      ],
+      "map_pose": [
+        -0.13728060380618584,
+        0.021321522849030716,
+        -1.6778245498929028
+      ],
+      "age": 0.09505534172058105
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204588.909973,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08208260109968651,
+        0.1351960202852227,
+        -1.5552504531610971
+      ],
+      "map_pose": [
+        -0.13730000589869834,
+        0.020274062429088913,
+        -1.677315454327465
+      ],
+      "age": 0.06899189949035645
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204589.01494,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08150353145059627,
+        0.13604825183628233,
+        -1.5556762469480467
+      ],
+      "map_pose": [
+        -0.13662147542069408,
+        0.021049444054830835,
+        -1.6777412481144147
+      ],
+      "age": 0.07282733917236328
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204589.110366,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.0815562260097315,
+        0.13471316808086523,
+        -1.5553859355412973
+      ],
+      "map_pose": [
+        -0.1368363404999779,
+        0.019730710439484156,
+        -1.6774509367076653
+      ],
+      "age": 0.061026573181152344
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795204589.210934,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        -0.08063262951559978,
+        0.13617505435728772,
+        -1.555356460979196
+      ],
+      "map_pose": [
+        -0.13574161385261113,
+        0.021069260228139736,
+        -1.677421462145564
+      ],
+      "age": 0.09933900833129883
+    }
+  ],
+  "nodes": [
+    "soc0_hal_4853079",
+    "soc0_robot_chores4110",
+    "soc0_sm4372",
+    "soc0_ota_mcu4374",
+    "soc0_hal_imu2864",
+    "hal_ethercat_x22624",
+    "soc0_housekeeper",
+    "soc0_hal_pmu2943",
+    "soc0_rc3468",
+    "soc0_ota_slave4493",
+    "mc_ros2_node3470",
+    "tf_base_imu_subscriber",
+    "linkswarm_manager3985",
+    "soc0_hds_slave3993",
+    "soc0_cloud_proxy3746",
+    "soc0_ota_master4544",
+    "app_proxy",
+    "imu_sub_node",
+    "app_proxy_ros2_node",
+    "soc0_task_manager4855",
+    "soc0_drp_ros2_node2297",
+    "soc2_housekeeper",
+    "soc2_drp_ros2_node3125",
+    "soc2_hds_slave2619",
+    "soc2_interaction_slave1881",
+    "soc2_hal_sensor2137",
+    "aimrt_agent_node2249",
+    "soc2_ota_slave2258",
+    "soc2_hal_audio3047",
+    "display_proxy_node1790",
+    "bt_navigator",
+    "bt_navigator_navigate_to_pose_rclcpp_node",
+    "bt_navigator_navigate_through_poses_rclcpp_node",
+    "soc1_robot_chores4105",
+    "learning_nav2_readonly_preflight",
+    "learning_live_sensor_adapter",
+    "lifecycle_manager",
+    "static_transform_publisher_fmewl1vJASgz09wn",
+    "launch_ros_2872",
+    "learning_nav2_input_adapter",
+    "aimrt_auto_integrated_node5180",
+    "soc1_hds_slave3903",
+    "learning_rviz_robot_relay",
+    "soc1_housekeeper",
+    "soc1_ec4206",
+    "lx_webrtc_app_manager",
+    "soc1_ota_mcu3447",
+    "camera_container",
+    "camera",
+    "soc1_drp_ros2_node3219",
+    "soc1_hal_sensor_orin2968",
+    "soc1_hds_master3993",
+    "transform_listener_impl_aaab21ef4d00",
+    "aimrt_perception_node4766",
+    "transform_listener_impl_aaab226f3c50",
+    "map_server",
+    "planner_server",
+    "global_costmap",
+    "transform_listener_impl_aaaafd69e690",
+    "soc1_dm4329",
+    "learning_continuous_localization",
+    "controller_server",
+    "local_costmap",
+    "transform_listener_impl_ffff9c0a9ad0",
+    "soc1_ota_slave3567",
+    "learning_online_session",
+    "aimrt_planning_planning_node4859",
+    "ros2_bridge_node",
+    "costmap_ros_node",
+    "controller_server_ros_node",
+    "planner_server_ros_node",
+    "re_plan_check_server_ros_node",
+    "transform_ros_node",
+    "behavior_tree_ros_node",
+    "perception_ros_node",
+    "common_timed_vel_ros_node",
+    "HighPrecisionTrackingController",
+    "MPPIController",
+    "SpinToGoal",
+    "SpinToGoalCollisionAbort",
+    "SpinToGoalNoAvoid",
+    "SpinToGoalOdom",
+    "SpinToNear",
+    "SpinToNearExtend",
+    "SpinToNearExtendCollisionAbort",
+    "SpinToNearOdom",
+    "SpinToStart",
+    "SpinToStartOdom",
+    "SpinToSwarmStart",
+    "ToPose",
+    "ToPoseLateral",
+    "ToPoseLateralNoAvoid",
+    "ToPoseLateralOdom",
+    "ToPoseNoAvoid",
+    "ToPoseOdom",
+    "TrackingController",
+    "TrajController",
+    "GridBased",
+    "GridBasedAstar",
+    "Ego",
+    "EgoSwarm",
+    "TaskPipelineVisualizeTask"
+  ],
+  "command_publishers": 1,
+  "nav2_odom_publishers": 1,
+  "passed": true
+}

@@ -1,0 +1,362 @@
+{
+  "epoch": 1795208937.2576725,
+  "no_action_or_motor": true,
+  "parameters": {
+    "FollowPath.plugin": "nav2_rotation_shim_controller::RotationShimController",
+    "FollowPath.max_angular_accel": 0.5,
+    "FollowPath.primary_controller": "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController",
+    "FollowPath.closed_loop": false,
+    "FollowPath.rotate_to_goal_heading": true,
+    "FollowPath.min_approach_linear_velocity": 0.05,
+    "FollowPath.approach_velocity_scaling_dist": 1.0,
+    "progress_checker.plugin": "nav2_controller::PoseProgressChecker",
+    "progress_checker.required_movement_angle": 0.1,
+    "FollowPath.desired_linear_vel": 0.15,
+    "FollowPath.rotate_to_heading_angular_vel": 0.2,
+    "controller_frequency": 20.0,
+    "goal_checker.xy_goal_tolerance": 0.15,
+    "goal_checker.yaw_goal_tolerance": 0.1,
+    "goal_checker.stateful": false
+  },
+  "lifecycle": {
+    "map_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "planner_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "controller_server": {
+      "id": 3,
+      "label": "active"
+    },
+    "bt_navigator": {
+      "id": 3,
+      "label": "active"
+    }
+  },
+  "observations": [
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208939.810688,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.0908314556107263,
+        0.14768463989913413,
+        -1.5950974815923338
+      ],
+      "map_pose": [
+        -0.05925954560147462,
+        0.04905375465248922,
+        -1.7691420741853783
+      ],
+      "age": 0.029183149337768555
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208939.911788,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.09077953231148966,
+        0.14713094900029078,
+        -1.5952053796029166
+      ],
+      "map_pose": [
+        -0.05940656559258528,
+        0.04851742009022479,
+        -1.7692499721959611
+      ],
+      "age": 0.043474435806274414
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.010664,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.09097115483873508,
+        0.1472182028492694,
+        -1.594888202189512
+      ],
+      "map_pose": [
+        -0.05920272850689369,
+        0.04857017300110429,
+        -1.7689327947825566
+      ],
+      "age": 0.0436708927154541
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.1107402,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.08761724839983813,
+        0.14894916482059004,
+        -1.5947219216205508
+      ],
+      "map_pose": [
+        -0.07759446040446162,
+        0.061536466076676996,
+        -1.7685351925330954
+      ],
+      "age": 0.04635739326477051
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.21074,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.08626196717741906,
+        0.15087696865018016,
+        -1.5944852117363497
+      ],
+      "map_pose": [
+        -0.0785959276190913,
+        0.06366960419110983,
+        -1.768298482648894
+      ],
+      "age": 0.03124690055847168
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.311698,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.08482928503915776,
+        0.15012613721974122,
+        -1.5941122310741915
+      ],
+      "map_pose": [
+        -0.0801368711143957,
+        0.06317785314585732,
+        -1.7679255019867361
+      ],
+      "age": 0.028232812881469727
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.4107103,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.08484549820724145,
+        0.14971795265963736,
+        -1.5942679688343466
+      ],
+      "map_pose": [
+        -0.08019149343646051,
+        0.0627730150252971,
+        -1.7680812397468912
+      ],
+      "age": 0.0287930965423584
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.510669,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.08402931562213282,
+        0.15022874370021438,
+        -1.5938918069934112
+      ],
+      "map_pose": [
+        -0.08090704225957902,
+        0.06341725983986844,
+        -1.7677050779059558
+      ],
+      "age": 0.045250892639160156
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.610842,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.0828322647647966,
+        0.14927693775861062,
+        -1.5943505685220845
+      ],
+      "map_pose": [
+        -0.08225066127033125,
+        0.06268681253891732,
+        -1.768163839434629
+      ],
+      "age": 0.03516817092895508
+    },
+    {
+      "status": {
+        "valid": true,
+        "source_valid": true,
+        "stamp": 1795208940.71066,
+        "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+        "reason": "map_match_accepted",
+        "mode": "diagnostic_no_actuator"
+      },
+      "local": [
+        0.08594027051419365,
+        0.14949136479816144,
+        -1.5947646056585025
+      ],
+      "map_pose": [
+        -0.0791524026214032,
+        0.0623605120057915,
+        -1.7685778765710471
+      ],
+      "age": 0.029603958129882812
+    }
+  ],
+  "nodes": [
+    "soc0_hal_4853079",
+    "soc0_robot_chores4110",
+    "soc0_sm4372",
+    "soc0_ota_mcu4374",
+    "soc0_hal_imu2864",
+    "hal_ethercat_x22624",
+    "soc0_housekeeper",
+    "soc0_hal_pmu2943",
+    "soc0_rc3468",
+    "soc0_ota_slave4493",
+    "mc_ros2_node3470",
+    "tf_base_imu_subscriber",
+    "linkswarm_manager3985",
+    "soc0_hds_slave3993",
+    "soc0_cloud_proxy3746",
+    "soc0_ota_master4544",
+    "app_proxy",
+    "imu_sub_node",
+    "app_proxy_ros2_node",
+    "soc0_task_manager4855",
+    "soc0_drp_ros2_node2297",
+    "soc2_housekeeper",
+    "soc2_drp_ros2_node3125",
+    "soc2_hds_slave2619",
+    "soc2_interaction_slave1881",
+    "soc2_hal_sensor2137",
+    "aimrt_agent_node2249",
+    "soc2_ota_slave2258",
+    "soc2_hal_audio3047",
+    "display_proxy_node1790",
+    "lifecycle_manager",
+    "soc1_robot_chores4105",
+    "static_transform_publisher_fmewl1vJASgz09wn",
+    "launch_ros_2872",
+    "aimrt_auto_integrated_node5180",
+    "soc1_hds_slave3903",
+    "learning_nav2_readonly_preflight",
+    "learning_online_session",
+    "learning_nav2_input_adapter",
+    "aimrt_planning_planning_node4692",
+    "soc1_hal_camera3682",
+    "soc1_housekeeper",
+    "soc1_ec4206",
+    "lx_webrtc_app_manager",
+    "learning_rviz_robot_relay",
+    "soc1_ota_mcu3447",
+    "aimrt_slam_node4472",
+    "camera_container",
+    "camera",
+    "soc1_drp_ros2_node3219",
+    "soc1_hal_sensor_orin2968",
+    "soc1_hds_master3993",
+    "transform_listener_impl_aaab21ef4d00",
+    "aimrt_perception_node4766",
+    "transform_listener_impl_aaab226f3c50",
+    "map_server",
+    "planner_server",
+    "global_costmap",
+    "transform_listener_impl_aaaac6b5bfd0",
+    "learning_continuous_localization",
+    "controller_server",
+    "local_costmap",
+    "transform_listener_impl_aaab0a7221c0",
+    "laser_mapping",
+    "soc1_dm4329",
+    "bt_navigator",
+    "bt_navigator_navigate_to_pose_rclcpp_node",
+    "bt_navigator_navigate_through_poses_rclcpp_node",
+    "soc1_ota_slave3567",
+    "aimrt_planning_planning_node4859",
+    "ros2_bridge_node",
+    "costmap_ros_node",
+    "controller_server_ros_node",
+    "planner_server_ros_node",
+    "re_plan_check_server_ros_node",
+    "transform_ros_node",
+    "behavior_tree_ros_node",
+    "perception_ros_node",
+    "common_timed_vel_ros_node",
+    "HighPrecisionTrackingController",
+    "MPPIController",
+    "SpinToGoal",
+    "SpinToGoalCollisionAbort",
+    "SpinToGoalNoAvoid",
+    "SpinToGoalOdom",
+    "SpinToNear",
+    "SpinToNearExtend",
+    "SpinToNearExtendCollisionAbort",
+    "SpinToNearOdom",
+    "SpinToStart",
+    "SpinToStartOdom",
+    "SpinToSwarmStart",
+    "ToPose",
+    "ToPoseLateral",
+    "ToPoseLateralNoAvoid",
+    "ToPoseLateralOdom",
+    "ToPoseNoAvoid",
+    "ToPoseOdom",
+    "TrackingController",
+    "TrajController",
+    "GridBased",
+    "GridBasedAstar",
+    "Ego",
+    "EgoSwarm",
+    "TaskPipelineVisualizeTask",
+    "learning_live_sensor_adapter"
+  ],
+  "command_publishers": 1,
+  "nav2_odom_publishers": 1,
+  "passed": true
+}

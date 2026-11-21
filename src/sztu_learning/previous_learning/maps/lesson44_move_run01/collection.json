@@ -1,0 +1,18 @@
+{
+  "frame_id": "camera_init",
+  "coordinate_unit": "m",
+  "cloud_frames": 696,
+  "points": 8947119,
+  "skipped_nonfinite_points": 0,
+  "odometry_messages": 696,
+  "scope": "Concatenated registered scans, duplicates retained; candidate timing; not a validated navigation map",
+  "first_cloud_stamp": [
+    1795101514,
+    810010194
+  ],
+  "last_cloud_stamp": [
+    1795101656,
+    609918832
+  ],
+  "xyz_payload_sha256": "558b41dcf1c025e27b352609dc8c822e0d66e35651e69d4425b1be31ce2ec9fd"
+}

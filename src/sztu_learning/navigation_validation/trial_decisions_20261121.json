@@ -1,0 +1,14 @@
+{
+  "first_motion": "heading_deviation after about1.04s; operator confirms stationary, mostly sway/turn",
+  "next_trial_authorized": true,
+  "policy": "instantaneous heading/lateral deviation observed only per user; freshness, MC, deadline and 0.60m total displacement abort remain",
+  "speed_mps": 0.1,
+  "goal_m": 0.5,
+  "max_duration_s": 15,
+  "seed_from_last_valid_localization": [
+    -0.08310234279984652,
+    0.022428165077510637,
+    -0.3218634746808023
+  ],
+  "seed_epoch": 1795193602.0137525
+}

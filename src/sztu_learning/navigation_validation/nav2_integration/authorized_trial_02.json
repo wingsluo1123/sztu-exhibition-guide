@@ -1,0 +1,25 @@
+{
+  "operator_reply": "再试一次，已回起点原朝向并停稳，遥控器及净空满足",
+  "release": "nav2_release03",
+  "trial": "nav2_rviz_20261121_02",
+  "relative_goal_forward_left_m": [
+    0.6,
+    -0.4
+  ],
+  "linear_limit_m_s": 0.15,
+  "angular_limit_rad_s": 0.7,
+  "radius_m": 0.4,
+  "max_distance_m": 2.0,
+  "total_task_deadline": null,
+  "arcs_allowed": true,
+  "one_attempt": true,
+  "no_automatic_retry": true,
+  "state": "consumed_physical_commands_issued",
+  "direct_turn_request_rad_s": 0.7,
+  "execution_release": "nav2_release04",
+  "bringup_release": "nav2_release03",
+  "physical_attempt_run": "nav2_rviz_20261121_03",
+  "non_actuating_preflight_run": "nav2_rviz_20261121_02",
+  "result": "final_position_outside_tolerance",
+  "operator_stopped": true
+}

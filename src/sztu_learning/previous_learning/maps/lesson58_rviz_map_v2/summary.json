@@ -1,0 +1,52 @@
+{
+  "input_frames": 1428,
+  "keyframes": 1428,
+  "rays": 13247619,
+  "width": 268,
+  "height": 333,
+  "vertical_bins": 16,
+  "resolution_m": 0.05,
+  "origin_xy_m": [
+    -5.300000000000001,
+    -5.300000000000001
+  ],
+  "frame_id": "learning_map",
+  "occupied_cells": 6042,
+  "free_cells": 15976,
+  "unknown_cells": 67226,
+  "height_band_m": [
+    0.25,
+    1.85
+  ],
+  "projection": "occupied if any supported voxel; free only if ALL height bins are uncontested free or have >=20 traversal frames and <=0.10 hit fraction; conflicting or unobserved bins stay unknown",
+  "ray_origin_approximation": "one LiDAR origin at each scan reference time; registered/undistorted endpoints; not exact instantaneous per-beam origins",
+  "floor": {
+    "normal_in_initial_level_frame": [
+      0.020180363501185627,
+      0.009792099899485922,
+      0.9997484022035337
+    ],
+    "point_on_plane_in_initial_level_frame_m": [
+      0.11512914471849187,
+      3.1703880623709297,
+      -1.0527827725859613
+    ],
+    "candidate_points_after_voxel_sample": 30000,
+    "inliers": 14305,
+    "inlier_absolute_error_p95_m": 0.06235592857412787,
+    "inlier_xy_extent_m": [
+      8.614464677126476,
+      11.253242231645322
+    ],
+    "tilt_from_gravity_hint_degrees": 1.2852871123710228,
+    "method": "Seeded near-horizontal RANSAC followed by SVD; global flat-floor candidate"
+  },
+  "limits": [
+    "Static-map candidate; not navigation or collision-clearance acceptance",
+    "Uncalibrated candidate external parameters and point-time interpretation inherited from FAST-LIO run",
+    "Global flat-floor model; no slope/step/drop-off handling",
+    "Below/above configured height band not covered",
+    "No interpolation, hole filling or trajectory carving; only evidence-supported unknown-to-free updates",
+    "No real robot command or localization deployment"
+  ]
+}

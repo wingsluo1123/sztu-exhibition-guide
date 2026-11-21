@@ -1,0 +1,7 @@
+*.pcd binary
+*.pgm binary
+*.npy binary
+*.deb binary
+*.bundle binary
+repository_backup/*.part* binary -delta
+repository_backup/*.tar.gz binary

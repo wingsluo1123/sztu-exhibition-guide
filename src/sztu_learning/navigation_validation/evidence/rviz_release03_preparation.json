@@ -1,0 +1,15 @@
+{
+  "previous_trial": "rviz_goal_20261121_04",
+  "operator_reply": "已回到原标记起点并恢复原朝向",
+  "source": "用户本轮回复",
+  "interpretation": "仅确认返回起点与朝向；仍需确认本次试验遥控器及路线净空",
+  "next_release": "rviz_release03",
+  "deployment_hash_verification": {
+    "files": 57,
+    "matched": 57
+  },
+  "software_checks": {
+    "passed": 62,
+    "log": "evidence/completion_driven_tests_20261121_02.log"
+  }
+}

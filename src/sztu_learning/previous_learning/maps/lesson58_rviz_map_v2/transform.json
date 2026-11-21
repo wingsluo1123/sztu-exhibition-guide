@@ -1,0 +1,56 @@
+{
+  "source_frame": "camera_init",
+  "target_frame": "learning_map",
+  "rotation_target_from_source": [
+    [
+      -0.045940968653915684,
+      -0.9989408283179682,
+      -0.002578549699312165
+    ],
+    [
+      0.050551569223995105,
+      0.00025313287128851897,
+      -0.9987214200029662
+    ],
+    [
+      0.9976642552723494,
+      -0.04601257918397271,
+      0.05048639726408563
+    ]
+  ],
+  "translation_m": [
+    0.0,
+    0.0,
+    1.0191497901433475
+  ],
+  "formula": "p_target = R @ p_source + t; q_target = q_R * q_source",
+  "lidar_origin_formula": "p_lidar_source = p_body_source + R_body_source @ extrinsic_T",
+  "floor": {
+    "normal_in_initial_level_frame": [
+      0.020180363501185627,
+      0.009792099899485922,
+      0.9997484022035337
+    ],
+    "point_on_plane_in_initial_level_frame_m": [
+      0.11512914471849187,
+      3.1703880623709297,
+      -1.0527827725859613
+    ],
+    "candidate_points_after_voxel_sample": 30000,
+    "inliers": 14305,
+    "inlier_absolute_error_p95_m": 0.06235592857412787,
+    "inlier_xy_extent_m": [
+      8.614464677126476,
+      11.253242231645322
+    ],
+    "tilt_from_gravity_hint_degrees": 1.2852871123710228,
+    "method": "Seeded near-horizontal RANSAC followed by SVD; global flat-floor candidate"
+  },
+  "extrinsic_T_m": [
+    0.004274399951100346,
+    -0.0157517995685339,
+    -0.0112119996920228
+  ],
+  "up_hint_source": "runtime_logs/lesson48/axis_check.json",
+  "up_hint_source_sha256": "219bdd5b437efe9d689cd8d99fd1509c6c7844ca4d60e6f6bfd60c9e3a78b6a7"
+}

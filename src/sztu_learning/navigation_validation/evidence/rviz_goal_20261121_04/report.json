@@ -1,0 +1,135 @@
+{
+  "actuation_requested": true,
+  "nonzero_commands": 282,
+  "scope": "supervised static-map commissioning; no dynamic obstacle avoidance",
+  "parameters": {
+    "turn_deg": null,
+    "goal": null,
+    "relative_goal": null,
+    "rviz_goal": true,
+    "goal_yaw_deg": null,
+    "map_directory": "/home/agi/sztu_learning/live_release01/maps/room_7x3_20261120_map01",
+    "radius": 0.4,
+    "duration": 30.0,
+    "max_distance": 2.0,
+    "angular": 0.7,
+    "output": "/home/agi/sztu_learning/navigation_validation/runs/rviz_goal_20261121_04",
+    "execute_one_attempt": true,
+    "observe_seconds": 0.0,
+    "goal_wait_seconds": 180.0,
+    "approved_relative_goal": [
+      0.6,
+      -0.4
+    ],
+    "goal_selection_radius": 0.2
+  },
+  "source_sha256": {
+    "goal_navigation/navigate.py": "c1ca1d70080b054ef1ecfa3205d44fabea0cb84de588243b5267ea5ebb8ef4c3",
+    "goal_navigation/grid_route.py": "014b3e71a19d1214fee706e9a593746f2907076028355e2b60f53a204f0c3454",
+    "goal_navigation/motion_policy.py": "316833814eab1464ad19b69f76e662fb567ad803d20ffdf79322b77f7ad46aa6",
+    "goal_navigation/input_readiness.py": "9913f17d536f07f761844077738d73816bd87091dcc4a97173308cb2e9433068",
+    "straight_trial.py": "47db367843d581350b789b604f477fae2376e927036a4cf9af4ca4c4ca5c7c74"
+  },
+  "plan": {
+    "map_route": [
+      [
+        -0.06464167222444678,
+        -0.002879387273970857
+      ],
+      [
+        -0.6340501308441162,
+        -0.33432209491729736
+      ]
+    ],
+    "odom_route": [
+      [
+        -0.025616855540190643,
+        0.15514029189380182
+      ],
+      [
+        -0.47492860403015796,
+        -0.3267302445228335
+      ]
+    ],
+    "map_goal_yaw": -2.5029534362183155,
+    "initial_map_pose": [
+      -0.06464167222444678,
+      -0.002879387273970857,
+      -1.8509504538461559
+    ],
+    "map_from_odom_frozen": [
+      [
+        0.9573215430814466,
+        0.2890250216714084,
+        -0.08495753077653168
+      ],
+      [
+        -0.2890250216714084,
+        0.9573215430814466,
+        -0.15880244313150818
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "radius_m": 0.4,
+    "turn_only": false,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "maximum_source_age_s": 0.35,
+    "yaw_tolerance_rad": 0.1,
+    "forward_coast_compensation_m": 0.26
+  },
+  "registration_responses": [
+    {
+      "action": 1001,
+      "code": 1,
+      "state": 0,
+      "stamp_sec": 1795199119,
+      "stamp_nanosec": 517352498,
+      "task_id": 30
+    },
+    {
+      "action": 1002,
+      "code": 0,
+      "state": 0,
+      "stamp_sec": 1795199119,
+      "stamp_nanosec": 607432873,
+      "task_id": 31
+    },
+    {
+      "action": 2001,
+      "code": 0,
+      "state": 0,
+      "stamp_sec": 1795199119,
+      "stamp_nanosec": 609220206,
+      "task_id": 32
+    }
+  ],
+  "started_epoch": 1795199120.1398833,
+  "result": "duration_limit",
+  "final_map_pose": [
+    -0.6832848306692285,
+    -0.016633496474372844,
+    -1.4766115299789861
+  ],
+  "final_odom": [
+    -0.5544746935565411,
+    -0.025795187053790497,
+    -1.186741219477322
+  ],
+  "goal_distance_m": 0.32148110558398085,
+  "goal_yaw_error_deg": -58.80505956492522,
+  "arrival_checked_after_settling": false,
+  "operator_stop_confirmation": "pending",
+  "ended_epoch": 1795199152.2507288,
+  "last_localization": {
+    "valid": true,
+    "source_valid": true,
+    "stamp": 1795199152.010745,
+    "map_manifest_sha256": "f2b1f398b010e58de0b276646d59d2905c48dac805f90226d67e69429fcf51c0",
+    "reason": "map_match_accepted",
+    "mode": "diagnostic_no_actuator"
+  }
+}
